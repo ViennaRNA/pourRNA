@@ -6,7 +6,7 @@ AC_INIT( [ParKin], [1.0], [], [ParKin], [http://www.bioinf.uni-freiburg.de] )
 
 AC_CANONICAL_HOST
 AC_CONFIG_AUX_DIR([.])
-AC_CONFIG_SRCDIR([src/parKin.cpp])
+AC_CONFIG_SRCDIR([src/ParKin.cpp])
 AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_MACRO_DIR([m4])
 

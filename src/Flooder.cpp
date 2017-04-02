@@ -6,39 +6,50 @@
  */
 
 #include "Flooder.h"
+extern "C" {
+  #include <ViennaRNA/neighbor.h>
+  #include <ViennaRNA/eval.h>
+  #include <ViennaRNA/structure_utils.h>
+}
 
 //energy*100 --> convert from kcal/mol to 10cal/mol (the ViennaRNA internal integer format for energies)
-Flooder::Flooder (std::string sequence, size_t maxNeighbors, double maxEnergy, size_t maxToQueue) :
-    Sequence ((char*) sequence.c_str ()), MaxNeighbors (maxNeighbors), MaxEnergy (maxEnergy * 100.0), MaxStatesToQueue (
-	maxToQueue), ProcessedStates (0), EnergyParameter (*GlobalParameter::getInstance ()->getEnergyParameter ())
+Flooder::Flooder (std::string sequence, double maxEnergy, size_t maxToQueue) :
+    Sequence ((char*) sequence.c_str ()), MaxEnergy (maxEnergy * 100.0), MaxStatesToQueue (
+	maxToQueue), ProcessedStates (0)
 {
-  NeighborList.list = NULL;
-  NeighborList.list_length = 0;
 
-  make_pair_matrix (); //is important before encode_sequence.
-  S0 = encode_sequence (sequence.c_str (), 0);
-  S1 = encode_sequence (sequence.c_str (), 1);
 }
 
 Flooder::~Flooder ()
 {
-  freeNeighborList ();
-
-  free (S0);
-  S0 = NULL;
-  free (S1);
-  S1 = NULL;
 }
 
-void
-Flooder::get_Neighbors_pt (struct_en* structureEnergy)
+struct_en*
+Flooder::get_Neighbors_pt (vrna_fold_compound_t *vc, struct_en* structureEnergy)
 {
-  browse_neighs_pt_par_list_alloc_energy (Sequence, structureEnergy, S0, S1, 0, 0, 0, &NeighborList,
-					  &EnergyParameter, MaxNeighbors);
+  //browse_neighs_pt_par_list_alloc_energy (Sequence, structureEnergy, S0, S1, 0, 0, 0, &NeighborList, &EnergyParameter, MaxNeighbors);
+  vrna_move_t *tmp_neighbors = vrna_neighbors (vc, structureEnergy->structure,  VRNA_MOVESET_DEFAULT);
+  size_t count = 0;
+  for(vrna_move_t *m = tmp_neighbors; m->pos_5 != 0; m++)
+	  count++;
+
+  struct_en* neighbors = (struct_en*)malloc(sizeof(struct_en)*(count+1));
+  int i = 0;
+  for(vrna_move_t *m = tmp_neighbors; m->pos_5 != 0; m++, i++){
+	  double energy = vrna_eval_move_pt(vc,structureEnergy->structure,m->pos_5,m->pos_3)/100.0f;
+	  short *pt_neighbor = vrna_ptable_copy(structureEnergy->structure);
+	  vrna_move_apply(pt_neighbor, m);
+	  struct_en * neighbor = &neighbors[i];
+	  neighbor->energy = energy;
+	  neighbor->structure = pt_neighbor;
+  }
+  neighbors[i].structure = NULL;
+  free(tmp_neighbors);
+  return neighbors;
 }
 
 int
-Flooder::floodBasin (const MyState& localMinState, StateCollector& scBasin, StatePairCollector& scSurface)
+Flooder::floodBasin (vrna_fold_compound_t *vc, const MyState& localMinState, StateCollector& scBasin, StatePairCollector& scSurface)
 {
   if (localMinState.structure == NULL)
     std::cout << "No local Min given! (structure==NULL)" << std::endl;
@@ -76,8 +87,8 @@ Flooder::floodBasin (const MyState& localMinState, StateCollector& scBasin, Stat
 
       // get neighbor list
       struct_en tmpTopState (
-	{ topState->energy, allocopy(topState->structure) });
-      get_Neighbors_pt (&tmpTopState);
+	{ topState->energy, vrna_ptable_copy(topState->structure) });
+      struct_en *neighbors = get_Neighbors_pt (vc, &tmpTopState);
 
       // contains all neighbors with E(top) < E <= maxE
       NeighListPQ toStore;
@@ -87,9 +98,8 @@ Flooder::floodBasin (const MyState& localMinState, StateCollector& scBasin, Stat
       short * minNeigh = tmpTopState.structure; //init neighbor with minimal energy
       int minNeighE = tmpTopState.energy; //init energy of the minimal neighbor
       // iterate through all neighbors
-      for (size_t i = 0; i < NeighborList.list_length; i++)
+      for (struct_en *neighbor = neighbors; neighbor->structure != NULL; neighbor++)
 	{
-	  struct_en * neighbor = &NeighborList.list[i];
 	  // get neighbor data
 	  int neighborE = neighbor->energy;
 	  // the compressed sequence of the current neighbor checked
@@ -149,7 +159,7 @@ Flooder::floodBasin (const MyState& localMinState, StateCollector& scBasin, Stat
 		  toFill = pq.insert (n->QueueState).first;
 		  // feed data
 		  toFill->second.QueueState.energy = top->first.QueueState.energy;
-		  toFill->second.QueueState.structure = allocopy (top->first.QueueState.structure);
+		  toFill->second.QueueState.structure = vrna_ptable_copy (top->first.QueueState.structure);
 		  toFill->second.StateID = top->second.StateID;
 		  // check queue size and reduce if necessary
 		  if (pq.size () >= MaxStatesToQueue)
@@ -171,7 +181,7 @@ Flooder::floodBasin (const MyState& localMinState, StateCollector& scBasin, Stat
 		{
 		  // feed data
 		  toFill->second.QueueState.energy = top->first.QueueState.energy;
-		  toFill->second.QueueState.structure = allocopy (top->first.QueueState.structure);
+		  toFill->second.QueueState.structure = vrna_ptable_copy (top->first.QueueState.structure);
 		  toFill->second.StateID = top->second.StateID;
 		}
 	    }
@@ -189,7 +199,7 @@ Flooder::floodBasin (const MyState& localMinState, StateCollector& scBasin, Stat
 		      // get neighbor
 		      curNeigh = (MyState*) &n->QueueState;
 		      // add to surface reporter
-		      scSurface.add (topState, curNeigh);
+		      scSurface.add (vc, topState, curNeigh);
 		    }
 		}
 	    }
@@ -209,7 +219,7 @@ Flooder::floodBasin (const MyState& localMinState, StateCollector& scBasin, Stat
 		      // get neighbor
 		      curNeigh = (MyState*) &n->QueueState;
 		      // add to surface reporter
-		      scSurface.add (curNeigh, topState);
+		      scSurface.add (vc, curNeigh, topState);
 		    }
 		}
 	    }
@@ -223,7 +233,9 @@ Flooder::floodBasin (const MyState& localMinState, StateCollector& scBasin, Stat
       toStore.clear ();
       toCheck.clear ();
 
-      clearNeighborList ();
+      for (struct_en *neighbor = neighbors; neighbor->structure != NULL; neighbor++)
+    	  free(neighbor->structure);
+      free(neighbors);
     }
 
   handled.clear ();

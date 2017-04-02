@@ -4,8 +4,7 @@
  * Main file for ParKin_Explore 1.0
  *
  *  Created on: 09.08.2014
- *      Author: Main code copied from Hamdi Aldaoos and Martin Mann.
- *              Basin flooder from Gregor Entzian
+ *      Author: Gregor Entzian
  *
  */
 
@@ -31,6 +30,8 @@ extern "C"
 #include <ViennaRNA/move_set.h>
 #include <ViennaRNA/fold.h>
 #include <ViennaRNA/read_epars.h>
+#include <ViennaRNA/eval.h>
+#include <ViennaRNA/data_structures.h>
 }
 #include "BIUlibPart/OptionParser.h"
 #include "BIUlibPart/MatrixSparse.hh"
@@ -38,23 +39,7 @@ extern "C"
 #include "RNAkinetics/RNA_NeighMinFilter.h"
 #include "Flooder.h"
 #include "TypeID.h"
-<<<<<<< ParKin_Explore.cpp
-
-/*! converts anything to string via stringstream
- * @param val the object to convert to string
- * @return the string value of the object derived by feeding it to a stream
- * */
-template<typename T>
-  static std::string
-  to_string (const T& val)
-  {
-    std::stringstream out;
-    out << val;
-    return out.str ();
-  }
-=======
 #include "SC_DotPlot.h"
->>>>>>> 1.57
 
 /*! Exception class for exceptions thrown during argument and input parsing.
  */
@@ -265,7 +250,6 @@ struct flooderInputParameter
   size_t MaxToHash;
   double MaxEnergy;
   double DeltaE;
-  size_t MaxMicroNeighbors;
   std::string RnaSequence;
   size_t BasinID;
   MyState* CurrentMinimum;
@@ -305,8 +289,8 @@ struct flooderOutputParameter
  *   @param inParameter contains a structure which identifies the basin and filter parameters.
  *   @param outParameter contains the partitionfunctions and neigbored minima.
  */
-void
-floodBasin (flooderInputParameter* inParameter, flooderOutputParameter* outParameter)
+int
+floodBasin (vrna_fold_compound_t *vc, flooderInputParameter* inParameter, flooderOutputParameter* outParameter)
 {
   size_t loopCurrentMinID = inParameter->BasinID;
 
@@ -323,26 +307,21 @@ floodBasin (flooderInputParameter* inParameter, flooderOutputParameter* outParam
   // start walking and computing the Partition Function
 
   // creating the StatePaircollector to manage the state of Pairs between the neighbor basins
-  StatePairCollector spc (inParameter->RnaSequence, inParameter->MaxMicroNeighbors, loopCurrentLocalMinID,
+  StatePairCollector spc (inParameter->RnaSequence, loopCurrentLocalMinID,
 			  localThreadMinima, outParameter->PartitionFunctions, inParameter->MaxToHash);
 
   // set the maximal energy as upper floodlevel.
   double maxEnergy = min (inParameter->MaxEnergy, (inParameter->DeltaE + minState->energy / 100.0));
 
-  Flooder myFlooder (inParameter->RnaSequence, inParameter->MaxMicroNeighbors, maxEnergy, inParameter->MaxToQueue);
+  Flooder myFlooder (inParameter->RnaSequence, maxEnergy, inParameter->MaxToQueue);
 
   // perform local basin flooding
   // SC_PartitionFunction scBasin;
-  myFlooder.floodBasin (*minState, *outParameter->ScBasin, spc);
+  myFlooder.floodBasin (vc, *minState, *outParameter->ScBasin, spc);
 
   outParameter->PartitionFunctions.insert (
-<<<<<<< ParKin_Explore.cpp
-      std::pair<PairID, SC_PartitionFunction> (
-	  SC_PartitionFunction::PairID (loopCurrentLocalMinID, loopCurrentLocalMinID), outParameter->ScBasin));
-=======
       std::pair<PairID, SC_PartitionFunction> (
 	  SC_PartitionFunction::PairID (loopCurrentLocalMinID, loopCurrentLocalMinID), *outParameter->ScBasin));
->>>>>>> 1.57
 
   for (auto it = localThreadMinima.begin (); it != localThreadMinima.end (); it++)
     {
@@ -742,9 +721,17 @@ main (int argc, char** argv)
 	    }
 	}
 
-      GlobalParameter::Initialize (temperatureForEnergy);
-      GlobalParameter::getInstance ()->setBoltzmannWeightTemperature (temperatureForBoltzmannWeight);
-      GlobalParameter::getInstance ()->getEnergyParameter ()->model_details.dangles = danglingEnd;
+  	vrna_md_t md;
+  	vrna_md_set_default(&md);
+    md.circ = circ;
+  	md.uniq_ML = 1; /* in case we need M1 arrays */
+  	md.compute_bpp = 0;
+  	md.temperature = temperatureForEnergy;
+  	md.dangles = danglingEnd;
+  	char * sequence = (char *)rnaSequence.c_str();
+  	vrna_fold_compound_t *vc = vrna_fold_compound(sequence, &md, VRNA_OPTION_MFE | VRNA_OPTION_PF);
+
+  	//TODO: distinguish T for boltzmann weight and T for energy!
 
       // set best K filter if required
       // create an filter Object type NeighMinFilter as first filtering Technique
@@ -781,16 +768,16 @@ main (int argc, char** argv)
       //do flooding
 
       // start walking to find gradient basin minimum for start state
-      const size_t maxMicroNeighbors = getMaxNeighborNumber (rnaSequence);
-      short * rnaStructurePT = make_pair_table (rna_start_str.c_str ());
-      float energy = round (energy_of_structure (rnaSequence.c_str (), rna_start_str.c_str (), 0) * 100);
+      short * rnaStructurePT = vrna_ptable(rna_start_str.c_str ());
+      printf("%s\n",rna_start_str.c_str());
+      int energy = vrna_eval_structure_pt(vc,rnaStructurePT);
       MyState startState (energy, rnaStructurePT);
 
       //init stopwatch for initial walk:
       std::chrono::time_point<std::chrono::system_clock> startInitialWalk, endInitialWalk;
       startInitialWalk = std::chrono::system_clock::now ();
 
-      MyState* startStateMinimum = WalkGradientHashed (rnaSequence, maxMicroNeighbors, maxToHash).walk (
+      MyState* startStateMinimum = WalkGradientHashed (rnaSequence, maxToHash).walk (vc,
 	  (char*) rnaSequence.c_str (), startState);
 
       //print stopwatch for initial walk:
@@ -831,10 +818,8 @@ main (int argc, char** argv)
 
       ////// init dynamic-Best-K feature /////
       bool mfeFound = false;
-      char * mfeStructure = new char[rnaSequence.size () + 1];
-      GlobalParameter* gp = GlobalParameter::getInstance ();
-      paramT & parameter = *gp->getEnergyParameter ();
-      float mfeEnergy = fold_par (rnaSequence.c_str (), mfeStructure, &parameter, 0, 0);
+      char * mfeStructure = (char*)vrna_alloc((vc->length+1)*sizeof(char));
+      float mfeEnergy = vrna_mfe(vc,mfeStructure);
 
       //init dynamic k-best filter list.
       std::unordered_map<size_t, std::vector<size_t>> dynamicBestKFilterNeighborList;
@@ -870,7 +855,6 @@ main (int argc, char** argv)
 		  inParameter->MaxToHash = maxToHash;
 		  inParameter->MaxToQueue = maxToQueue;
 		  inParameter->RnaSequence = rnaSequence;
-		  inParameter->MaxMicroNeighbors = maxMicroNeighbors;
 		  inParameter->Filter = neighborFilter;
 		  inParameter->MaxEnergy = maxEnergy;
 		  inParameter->DeltaE = deltaE;
@@ -881,15 +865,15 @@ main (int argc, char** argv)
 		  if (writeDotplot)
 		    {
 		      outParameter->ScBasin = new SC_DotPlot (
-			  GlobalParameter::getInstance ()->getBoltzmannWeightTemperature (), logEnergies);
+		    		  temperatureForBoltzmannWeight, logEnergies);
 		    }
 		  else
 		    {
 		      outParameter->ScBasin = new SC_PartitionFunction (
-			  GlobalParameter::getInstance ()->getBoltzmannWeightTemperature (), logEnergies);
+		    		  temperatureForBoltzmannWeight, logEnergies);
 		    }
 
-		  floodBasin (inParameter, outParameter);
+		  floodBasin (vc, inParameter, outParameter);
 
 		  threadParameter[k] = std::pair<flooderInputParameter*, flooderOutputParameter*> (inParameter,
 												   outParameter);
@@ -932,13 +916,9 @@ main (int argc, char** argv)
 		      if (addedMinIDs.find (inParameter->BasinID) == addedMinIDs.end ())
 			{
 			  addedMinIDs.insert (inParameter->BasinID);
-<<<<<<< ParKin_Explore.cpp
-			  const std::vector<int>& energies = outParameter->ScBasin.getEnergies ();
-			  for (int m = 0; m < energies.size (); m++)
-=======
+
 			  const std::vector<int>& energies = outParameter->ScBasin->getEnergies ();
 			  for (int m = 0; m < energies.size (); m++)
->>>>>>> 1.57
 			    {
 			      energy = energies[m];
 			      energyFile << energy << " ";
@@ -1076,7 +1056,7 @@ main (int argc, char** argv)
 		{
 		  bool finalStructureDone = false;
 		  //check if final structure is explored and break the loop.
-		  short * finalStructurePT = make_pair_table (rna_final_str.c_str ());
+		  short * finalStructurePT = vrna_ptable(rna_final_str.c_str ());
 		  for (auto doneIt = done_List.begin (); doneIt != done_List.end (); ++doneIt)
 		    {
 		      if (StructureUtils::IsEqual (MinimaForReverseSearch[*doneIt].structure, finalStructurePT))
@@ -1101,7 +1081,7 @@ main (int argc, char** argv)
 	    }
 
 	  /////// Search the MFE structure in the done_list ////
-	  short * mfeStructurePT = make_pair_table (mfeStructure);
+	  short * mfeStructurePT = vrna_ptable(mfeStructure);
 	  for (auto doneIt = done_List.begin (); doneIt != done_List.end (); ++doneIt)
 	    {
 	      if (StructureUtils::IsEqual (MinimaForReverseSearch[*doneIt].structure, mfeStructurePT))
@@ -1238,9 +1218,9 @@ main (int argc, char** argv)
 
       /***********Garbage collection ************/
       //	delete ScMinimum;
-      delete GlobalParameter::getInstance ();
+      vrna_fold_compound_free(vc);
       if (mfeStructure != NULL)
-	delete[] mfeStructure;
+    	  free(mfeStructure);
       neighborFilter = NULL;
       if (neighborCombinator != NULL)
 	delete neighborCombinator;

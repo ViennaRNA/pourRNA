@@ -7,11 +7,11 @@
 
 #include "StatePairCollector.h"
 
-StatePairCollector::StatePairCollector (std::string rnaSequence, size_t maxNeighbors, size_t currentMinID,
+StatePairCollector::StatePairCollector (std::string rnaSequence, size_t currentMinID,
 					PairHashTable::HashTable& minima, SC_PartitionFunction::Z_Matrix& z,
 					const size_t maxGradWalkHashed) :
     RNAsequence ((char*) rnaSequence.c_str ()), CurMinID (currentMinID), Minima (minima), Z (z), GradWalk (
-	rnaSequence, maxNeighbors, maxGradWalkHashed), NumberOfOuterStates (0)
+	rnaSequence, maxGradWalkHashed), NumberOfOuterStates (0)
 {
 
 }
@@ -21,11 +21,11 @@ StatePairCollector::~StatePairCollector ()
 }
 
 void
-StatePairCollector::add (const MyState* const state1, const MyState* const state2)
+StatePairCollector::add (vrna_fold_compound_t *vc, const MyState* const state1, const MyState* const state2)
 {
   // int minimumEnergy = move_gradient (RNAsequence, structurePairTable, s0, s1, 0, 0, 0);
   size_t neighborMinID = -1;
-  MyState* newMin = GradWalk.walk ((char *)RNAsequence.c_str(), *state2);
+  MyState* newMin = GradWalk.walk (vc, (char *)RNAsequence.c_str(), *state2);
   // search for newMin
   PairHashTable::HashTable::const_iterator minEntry = Minima.find (*newMin);
   // check if newMin is known in Minima
@@ -49,7 +49,7 @@ StatePairCollector::add (const MyState* const state1, const MyState* const state
   SC_PartitionFunction::Z_Matrix::iterator zIt = Z.find(pairID);
   if(zIt == Z.end())
     {
-      double temp = GlobalParameter::getInstance ()->getBoltzmannWeightTemperature();
+      double temp = vc->params->temperature;// TODO: test if T is in K or C! //GlobalParameter::getInstance ()->getBoltzmannWeightTemperature();
       Z[pairID].initialize(temp);
     }
   //  identify the higher energy state of the current state pair == saddle point

@@ -19,7 +19,6 @@ extern "C"
 #include "SC_PartitionFunction.h"
 #include <algorithm>
 #include <math.h>
-#include "GlobalParameter.h"
 #include "StructureUtils.h"
 #include "WalkGradientHashed.h"
 
@@ -34,12 +33,11 @@ public:
    * ! Collects all pairs of neighbors between the currentMinID and other states.
    * Calculates the partition function.
    * @param rnaSequence the rna sequence.
-   * @param maxNeighbors the maximal number of neighbors which can occur (neighbors of open chain).
    * @param minima set of all minima.
    * @param currentMinID the id of the current minimum which represents the current gradient basin.
    * @param z a container for the partition functions.
    */
-  StatePairCollector (const std::string rnaSequence, size_t maxNeighbors, size_t currentMinID,
+  StatePairCollector (const std::string rnaSequence, size_t currentMinID,
 		      PairHashTable::HashTable& minima, SC_PartitionFunction::Z_Matrix& z,
 		      const size_t maxGradWalkHashed);
   virtual
@@ -49,7 +47,7 @@ public:
    * ! Assign a ID for the local minimum if it is not in the minima set, and add it.
    */
   virtual void
-  add (const MyState* const state1, const MyState* const state2);
+  add (vrna_fold_compound_t *vc, const MyState* const state1, const MyState* const state2);
   /**
    * ! do a gradient walk for the given structure.
    *   @structure a rna-structure as pair table.

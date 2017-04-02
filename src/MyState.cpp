@@ -18,7 +18,7 @@ MyState::MyState (int energy, Structure structure) :
 	this->structure=NULL;
 	if (structure != NULL)
 	{
-		this->structure = (allocopy (structure));
+		this->structure = (vrna_ptable_copy (structure));
 	}
 }
 
@@ -28,7 +28,7 @@ MyState::MyState (struct_en* structureAndEnergy) :
 	this->structure=NULL;
 	if (structureAndEnergy->structure != NULL)
 	{
-		this->structure = (allocopy (structureAndEnergy->structure));
+		this->structure = (vrna_ptable_copy (structureAndEnergy->structure));
 	}
 }
 
@@ -38,7 +38,7 @@ MyState::MyState (const MyState& state) :
 	this->structure=NULL;
 	if (state.structure != NULL)
 	{
-		this->structure = (allocopy (state.structure));
+		this->structure = (vrna_ptable_copy (state.structure));
 	}
 }
 
@@ -47,7 +47,7 @@ MyState::clone () const
 {
 	MyState* newState = new MyState ();
 	newState->energy = this->energy;
-	newState->structure = allocopy (this->structure);
+	newState->structure = vrna_ptable_copy(this->structure);
 	return newState;
 }
 

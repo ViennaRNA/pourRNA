@@ -14,6 +14,7 @@
 extern "C" {
 #include <ViennaRNA/data_structures.h>
 #include <ViennaRNA/fold.h>
+#include <ViennaRNA/move_set.h>
 }
 #include <list>
 #include <unordered_map>
@@ -22,7 +23,6 @@ extern "C" {
 #include "PairHashTable.h"
 #include "PriorityQueue.h"
 #include "StructureUtils.h"
-#include "GlobalParameter.h"
 
 class Flooder
 {
@@ -31,11 +31,10 @@ public:
   /**
    * ! local basin flooder.
    * @param sequence the rna-sequence as "acgu"-string.
-   * @param maxNeighbors the maximal number of neighbors which can occur (neighbors of open chain).
    * @param maxEnergy the maximal energy all states should be below in kcal/mol
    * @param maxToQueue the maximal number of elements the underlying queue is allowed to contain
    */
-  Flooder (std::string sequence, size_t maxNeighbors, double maxEnergy, size_t maxToQueue);
+  Flooder (std::string sequence, double maxEnergy, size_t maxToQueue);
 
   /**
    * ! flood the basin of the given local minimum. Compute the partition function sum.
@@ -44,29 +43,19 @@ public:
    *  @param scSurface a collector which calculates the contact surface.
    */
   int
-  floodBasin (const MyState& localMinState, StateCollector& scBasin, StatePairCollector& scSurface);
+  floodBasin (vrna_fold_compound_t *vc, const MyState& localMinState, StateCollector& scBasin, StatePairCollector& scSurface);
   virtual
   ~Flooder ();
 
 private:
   // ! the rna-sequence in "acgu"-format.
   char* Sequence;
-  //! the maximal number of neighbors which can occur (neighbors of open chain).
-  size_t MaxNeighbors;
   //! the maximal energy all states should be below in 10cal/mol
   int MaxEnergy;
   //! the maximal number of elements the underlying queue is allowed to contain
   size_t MaxStatesToQueue;
   //! states that where considered during the flooding.
   size_t ProcessedStates;
-  //! energy parameter for the ViennaRNA functions (energy_of_..., browseNeighs)
-  paramT & EnergyParameter;
-  //the list of neighbors for one thread.
-  neighborList NeighborList;
-  // ! the encoded sequence. (used by some energy-functions)
-  short *S0;
-  // ! another encoded sequence. (used by some energy-functions)
-  short *S1;
 
 public:
   /**
@@ -84,8 +73,8 @@ public:
    *   The neighbors will be stored in the NeighborList variable.
    *  @param structureEnergy the rna-structure in pair-table format and energy (see ViennaRNA-package).
    */
-  void
-  get_Neighbors_pt (struct_en* structureEnergy);
+  struct_en*
+  get_Neighbors_pt (vrna_fold_compound_t *vc, struct_en* structureEnergy);
 
   /**
    * ! states that where considered during the flooding.

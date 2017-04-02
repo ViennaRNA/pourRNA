@@ -7,33 +7,41 @@
 
 #include "WalkGradientHashed.h"
 
-WalkGradientHashed::WalkGradientHashed (std::string sequence, size_t maxNeighbors, const size_t maxHashSize) :
-    State2min (maxHashSize), EnergyParameter (*GlobalParameter::getInstance ()->getEnergyParameter ())
+WalkGradientHashed::WalkGradientHashed (std::string sequence, const size_t maxHashSize) :
+    State2min (maxHashSize)
 {
-  NeighborList.list = NULL;
-  NeighborList.list_length = 0;
-
-  MaxNeighbors = maxNeighbors;
-
-  //init for browse_neighs function.
-
-  make_pair_matrix (); //is important before encode_sequence.
-  S0 = encode_sequence (sequence.c_str (), 0);
-  S1 = encode_sequence (sequence.c_str (), 1);
 }
 
 WalkGradientHashed::~WalkGradientHashed ()
 {
-  freeNeighborList ();
+}
 
-  free (S0);
-  S0 = NULL;
-  free (S1);
-  S1 = NULL;
+struct_en*
+WalkGradientHashed::get_Neighbors_pt (vrna_fold_compound_t *vc, struct_en* structureEnergy)
+{
+	  //browse_neighs_pt_par_list_alloc_energy (Sequence, structureEnergy, S0, S1, 0, 0, 0, &NeighborList, &EnergyParameter, MaxNeighbors);
+	  vrna_move_t *tmp_neighbors = vrna_neighbors (vc, structureEnergy->structure,  VRNA_MOVESET_DEFAULT);
+	  size_t count = 0;
+	  for(vrna_move_t *m = tmp_neighbors; m->pos_5 != 0; m++)
+		  count++;
+
+	  struct_en* neighbors = (struct_en*)malloc(sizeof(struct_en)*(count+1));
+	  int i = 0;
+	  for(vrna_move_t *m = tmp_neighbors; m->pos_5 != 0; m++, i++){
+		  int energy = vrna_eval_move_pt(vc,structureEnergy->structure,m->pos_5,m->pos_3);
+		  short *pt_neighbor = vrna_ptable_copy(structureEnergy->structure);
+		  vrna_move_apply(pt_neighbor, m);
+		  struct_en * neighbor = &neighbors[i];
+		  neighbor->energy = energy;
+		  neighbor->structure = pt_neighbor;
+	  }
+	  neighbors[i].structure = NULL;
+	  free(tmp_neighbors);
+	  return neighbors;
 }
 
 MyState*
-WalkGradientHashed::walkGradient (char * rnaSequence, const MyState& startState,
+WalkGradientHashed::walkGradient (vrna_fold_compound_t *vc, char * rnaSequence, const MyState& startState,
 				  SpookyHashMap::HashTable& state2min_)
 {
   MyState* minimalNeighbor = (MyState*) startState.clone ();
@@ -61,12 +69,13 @@ WalkGradientHashed::walkGradient (char * rnaSequence, const MyState& startState,
 
       tmpMinimalNeighbor.energy = minimalNeighbor->energy;
       tmpMinimalNeighbor.structure = minimalNeighbor->structure;
-      browse_neighs_pt_par_list_alloc_energy (rnaSequence, &tmpMinimalNeighbor, S0, S1, 0, 0, 0, &NeighborList,
-					      &EnergyParameter, MaxNeighbors);
 
-      for (size_t i = 0; i < NeighborList.list_length; i++)
+
+      struct_en *neighbors = get_Neighbors_pt (vc, &tmpMinimalNeighbor);
+      //browse_neighs_pt_par_list_alloc_energy (rnaSequence, &tmpMinimalNeighbor, S0, S1, 0, 0, 0, &NeighborList, &EnergyParameter, MaxNeighbors);
+
+      for (struct_en *neighbor = neighbors; neighbor->structure != NULL; neighbor++)
 	{
-	  struct_en* neighbor = &NeighborList.list[i];
 	  if (neighbor->energy < minimalNeighbor->energy
 	      || (neighbor->energy == minimalNeighbor->energy
 		  && StructureUtils::IsSmaller (neighbor->structure, minimalNeighbor->structure)))
@@ -75,9 +84,11 @@ WalkGradientHashed::walkGradient (char * rnaSequence, const MyState& startState,
 	      copy_arr (minimalNeighbor->structure, neighbor->structure);
 	      foundBetterNeighbor = true;
 	    }
+
+	  free(neighbor->structure);
 	}
 
-      clearNeighborList ();
+      free(neighbors);
 
     }
   while (foundBetterNeighbor);
@@ -89,9 +100,9 @@ WalkGradientHashed::walkGradient (char * rnaSequence, const MyState& startState,
 }
 
 MyState*
-WalkGradientHashed::walk (char * rnaSequence, const MyState& startState)
+WalkGradientHashed::walk (vrna_fold_compound_t *vc,char * rnaSequence, const MyState& startState)
 {
-  MyState* result = walkGradient (rnaSequence, startState, State2min);
+  MyState* result = walkGradient (vc, rnaSequence, startState, State2min);
   return result;
 }
 

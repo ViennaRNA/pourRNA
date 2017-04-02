@@ -1,4 +1,6 @@
+
 #include "PriorityQueue.h"
+#include "StructureUtils.h"
 
 //////////////////   PRIORITY QUEUE KEY  /////////////////////
 

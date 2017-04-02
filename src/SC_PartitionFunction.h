@@ -19,74 +19,6 @@
 class SC_PartitionFunction : public StateCollector
 {
 public:
-
-<<<<<<< SC_PartitionFunction.h
-  /**
-   * ! set the partition function sum to 0 and calculate the gasconstant (RT)
-   * with the given temperature in degrees Celsius.
-   * @param temperature the temperature in Celsius.
-   * @param storeEnergies decides if the energies of all states will be stored in a vector.
-   */
-  void initialize(double temperature, bool storeEnergies=false);
-
-  virtual void
-  add (const MyState& state);
-
-  virtual
-  ~SC_PartitionFunction ();
-
-  /**
-   * ! returns the partition function.
-   */
-  virtual double
-  getZ () const
-  {
-    return Z;
-  }
-
-  void
-  setZ (double z = 0)
-  {
-    Z = z;
-  }
-
-  const std::vector<int>&
-  getEnergies () const
-  {
-    return Energies;
-  }
-
-  /*!
-   * index pair
-   */
-  typedef std::pair<size_t, size_t> PairID;
-
-  /*!
-   * container for all partition functions to generate
-   * indices are according to minima container
-   * Z(i,i) will hold the basins partition function
-   * Z(i,j) will hold the partition function of the saddle points between minimum i and j
-   */
-  typedef std::map<PairID, SC_PartitionFunction> Z_Matrix;
-
-private:
-  // variable decides if energies should be stored.
-  bool StoreEnergies;
-  // stores the energies of the basin if requested.
-  std::vector<int> Energies;
-  //The partition function sum;
-  double Z;
-  //Units from ELL::LandscapeTopology.
-  // Conversion factor * Joule --> kcal
-  static const double JOULE_TO_KCAL;
-  // Gas constant R = 8.314472
-  // unit : Joule / (Kelvin * mol)
-  static const double GAS_CONSTANT_R;
-  // temperature T = 37 Celsius = 310.15 Kelvin
-  double GAS_CONSTANT_RT;
-  //The Boltzman constant.
-  double kT;
-=======
 	/*! constructor
 	 * @param temperature the temperature to be used to compute Boltzmann weights
 	 * @param storeEnergies whether or not to store a list of all energies added
@@ -177,12 +109,10 @@ protected:
 	double GAS_CONSTANT_RT;
 	//! The temperature scaled "Boltzmann" constant used to compute Boltzmann weights.
 	double kT;
->>>>>>> 1.10
-
 };
 
-SC_PartitionFunction::JOULE_TO_KCAL = 0.000239;
-SC_PartitionFunction::GAS_CONSTANT_R = 8.314472;
+//SC_PartitionFunction::JOULE_TO_KCAL = 0.000239;
+//SC_PartitionFunction::GAS_CONSTANT_R = 8.314472;
 
 #endif /* SC_PARTITIONFUNCTION_H_ */
 

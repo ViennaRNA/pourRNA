@@ -13,9 +13,7 @@
 #include <chrono>
 #include <time.h>
 
-//#include <windows.h>
-
-//using namespace std;
+using namespace std;
 
 //////////////////////////////////////////////////////////////////////////
 int MaximalNeighbors = 0;
@@ -52,7 +50,7 @@ int main( int argc, char* argv[] ){
       size_t maxToStore=50000000;
       size_t maxToHash=50000000;
 
-      string rnaSequence = "GGGAAUUAUUGUUCCCUGAGAGCGGUAGUUCUC";//d33   //boris"GACCGGAAGGUCCGCCUUCC";
+      std::string rnaSequence = "GGGAAUUAUUGUUCCCUGAGAGCGGUAGUUCUC";//d33   //boris"GACCGGAAGGUCCGCCUUCC";
       //"ACUGUAUGCGCGU";
       /* start structure is open chain */
       string openChain (rnaSequence.length (), '.');
