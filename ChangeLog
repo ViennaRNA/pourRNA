@@ -1,0 +1,273 @@
+150605	*src/GlobalParameter.h,
+		*src/MyState.h,
+		*src/PairHashTable.h,
+		*src/ParKin_Explore.cpp,
+		*src/parKin.cpp,
+		*src/StructureUtils.h,
+		*src/TypeID.h: docu extended.
+
+150408	*src/ParKin_Explore.cpp: Print overall partitionsum.
+
+150404	*src/Makefile.am: SC_DotPlot added
+		*src/ParKin_Explore.cpp: new dotplot parameter: generate overall dotplot output if requested
+		*src/ParKin_Explore.cpp: instantiation of ScBasin now parameter dependent (Martin)
+		*src/SC_DotPlot.cpp: BUGFIX : missing index shift when preparing vienna plist data structure (Martin)
+
+150402	*src/SC_PartitionFunction.*: docu extended, Boltzmann weight computation as function, constructor takes temperature (Martin)
+		+src/SC_DotPlot.*: computes base pair probabilities as subclass of SC_PartitionFunction, supports read and write of vienna PS dot plots (Martin)
+		*src/MyState.*: typedef for structure data type (Martin)
+
+150326	*src/RNAkinetics/RateMatrixUtil.cpp,
+		src/ParKin_Explore.cpp: rate normalization corrected.
+
+150310	*src/Flooder.cpp,
+		 src/GlobalParamerter.h,
+		 src/MyState.cpp/.h,
+		 src/ParKin_Explore.cpp,
+		 src/SC_PartitionFunction.h/.cpp: changed initialization -> more ISO conform.
+
+150310	*src/Flooder.cpp,
+		 src/GlobalParamerter.cpp,
+		 src/MyState.h,
+		 src/PairHashTable.h,
+		 src/ParKin_Explore.cpp,
+		 src/parKin.cpp,
+		 src/PriorityQueue.cpp,
+		 src/StateCollector.cpp,
+		 src/WalkGradientHashed.cpp: sorted variables, cleaned imports, fixed memory leak in flooder.
+
+150306	*src/ParKin_Explore.cpp,
+		*src/RNAkinetics/RateMatrixUtil.cpp: new parameter "partitionFunctions" to write partitionFunctions to a file (which enables further clustering strategies).
+
+150224	*src/ParKin_Explore.cpp: dont read parameterfile with turner2004 because its wrong in ViennaRNA2.1.9
+
+150214	*src/ParKin_Explore.cpp: set dangling ends parameter.
+
+150212	*src/ParKin_Explore.cpp: set BoltzmanTemperatur B with general EnergyTemperatur T.
+
+150210	*src/ParKin_Explore.cpp: final structure as parameter. (the exploration stops if this basin is done).
+
+150209	*src/ParKin_Explore.cpp: boltzmann-temperature is a separate parameter.
+
+150206	*src/ParKin_Explore.cpp: new dynamicMaxToHash estimated value, to prevent the system from swapping if large sequences are computed.
+
+150205	*src/ParKin_Explore.cpp: EnergyParameter read corrected. Output start basin.
+
+150203	*src/ParKin_Explore.cpp: description corrected. EnergyParameter read corrected.
+
+150131	*src/ParKin_Explore.cpp: mfe array corrected.
+
+150129	*src/ParKin_Explore.cpp: store energies only if a file is given.
+
+150129	*src/ParKin_Explore.cpp: delete neighborCombinator before update.
+
+150127	*src/ParKin_Explore.cpp: dynamic K filter corrected (selection of the k-th neighbor in each loop)
+
+150126	*unused regions removed.
+
+150125	*BIU and ELL dependency removed.
+
+150123  *src/ParKin_Explore.cpp: scbasin temperature korrekted.
+		*src/RNAkinetics/RateMatrixUtil.cpp: equilibrium vector corrected (indices of minima corrected). 
+
+150122	*src/ParKin_Explore.cpp: korrected dynamic best k filterupdate.
+
+150121	+misc: energy model parameter files (from viennaRNA)
+		+misc/Makefile.am,
+		*Makefile.am, configure.ac: to install the parameter files in the share folder.
+		*src/Flooder.cpp,
+		src/GlobalParameter.cpp,
+		src/ParKin_Explore.cpp,
+		src/SC_PartitionFunction.cpp,
+		src/StatePairCollector.cpp,
+		src/WalkGradientHashed.cpp: Changes with energy parameter. Global parameter with new temperature value.
+		*src/ParKin_Explore.cpp: new temperature value, new energy model options. 
+								 Output equilibrium probability vector for all states.
+
+141223	*src/ParKin_Explore.cpp: dynamic best k filter improved.
+		*src/RNAkinetics/RNA_NeighMinFilter.cpp: moved GreaterByZMatrix class definition in header.
+
+141215	*src/PairHashTable.h,
+		 src/SpookyHash/SpookyHashMap.h: 64bit hash keys.
+		*src/ParKin_Explore.cpp: new parameter "dynamicBestK" that automatically adjusts the K-Value if the mfe is not in the final minima.
+
+141207	*src/ParKin_Explore.cpp: filterBestK corrected.
+
+141207	*src/RNAkinetics/RNA_NeighMinFilter.cpp: copy of indices adjusted.
+		*src/Flooder.cpp, Flooder.h: changed maxToQueue from int to size_t
+		*src/ParKin_Explore.cpp: adjusted default values, filter initialization corrected.
+
+141202	*src/ParKin_Explore.cpp: rate calculation corrected.
+
+141129	*src/ParKin_Explore.cpp: rate calculation corrected.
+
+141128	*src/ParKin_Explore.cpp: bug with exportEnergies corrected (print energies only once per basin).
+
+141128	*src/ParKin_Explore.cpp: rate calculation corrected.
+
+141126	+src/SC_StoreEnergies.h,
+		 src/SC_StoreEnergies.cpp,
+		 src/Makefile.am: new statecollector for storing the energies of all states.
+	 	*src/SC_PartitionFunction.cpp: adjusted for new statecollector.
+	 	*MyState.h: comment.
+	 	*src/ParKin_Explore.cpp: Energycalculation corrected. New Parameter for energyFile (only for tests!).
+
+141122	*src/Flooder.cpp: maxEnergy deletion of last element changed.
+		*ParKin_Explore.cpp: new parameter deltaE -> maxEnergy = localMin.Energy+deltaE.
+		*parKin.cpp: changed because flooder has been changed.
+
+141109	*src/RNAkinetics/RateMatrixUtil.cpp: print rate matrix with sorted states (by energy).
+		+src/SpookyHash/SpookyV2.cpp,
+		+src/SpookyHash/SpookyV2.h,
+		+src/SpookyHash/SpookyHashMap.h: New HashMap which calculates hashes for arrays. (Function by Bob Jenkins).
+		*src/WalkGradientHashed: uses the new HashMap.
+		*src/StructureUtils.cpp: parameters are const.
+		*src/ParKin_Explore.cpp: Processed States are counted for comparison.
+		*src/Flooder.cpp: Energythreshold is determined.
+		*src/Makefile.am: new HashMap included.
+		
+
+141106	*src/WalkGradientHashed.cpp: stored state instead of string.
+
+141105	*src/Flooder.cpp: maxToStore is renamed to maxToQueue.
+		*src/ParKin_Explore.cpp: new maxEnergy parameter to set a max. flood level.
+		*src/StateCollector.cpp: getMaxEnergy in basin.
+		*src/RNAkinetics/RateMatrixUtil.cpp: new printRateMatrix sorted by energy for better comparison.
+
+141104	*src/ParKin_Explore.cpp,
+		 src/parKin.cpp: initial maxToStore and maxToHash changed.
+
+141007	*src/ParKin_Explore.cpp: indicesOfNeighbors and  reverse minima list removed. --> redundant.
+								 Filter is initialized in main (not in parallel loop).
+		*src/parKin.cpp,
+		 src/StatePairCollector.cpp,
+		 src/RNAkinetics/RNA_NeighMinFilter.cpp: indicesOfNeighbors removed.
+		*src/WalkGradientHashed: less allocation, only copy. -->speedup.
+
+140930	*src/ParKin_Explore.cpp: filtering(indice adjustment) corrected.
+
+140929	*src/StructureUtils.cpp: faster comparison.
+		*src/Flooder.cpp,
+		 src/WalkGradientHashed.cpp: adjusted to new ParKin_ViennaRNA version.
+		*src/MyState.cpp: removed useless output.
+		*src/ParKin_Explore: output of basin sizes and times. Filtering is done in each thread.
+		*src/StatePairCollector: stores number of outer states.
+
+140923	*src/Flooder.cpp,
+		*src/ParKin_Explore.cpp,
+		*src/parKin.cpp,
+		*src/WalkGradientHashed.cpp: maxNeighbors added, to allocate the space for all neighbors only once.
+		*src/MyState.cpp: toString method optimized.
+		*src/StructureUtils.cpp: getStructure method optimized.
+		*StatePairCollector.cpp: faster neighbor id look up.
+		
+
+140921	*src/Flooder.cpp,
+		 src/WalkGradientHashed.cpp: adjusted for new ParkinViennaRNA version which allocates the neighborlist only once.
+		*src/WalkGradientHashed.cpp: allocation for S0,S1 and EnergyParameters only once.
+		*src/TypeID.cpp,
+		 src/StructureUtils,
+		 src/PriorityQueue: format changed.
+		*src/StatePairCollector.cpp,
+		 src/parKin.cpp,
+		 src/ParKin_Explore.cpp: adjusted according to WalkGradient.
+		*src/PairHashTable.h,
+		*src/MyState: modifier, format.
+		*src/RateMatrixUtil: toString method from MyState.
+		
+
+140918	*src/ParKin_Explore.cpp: critical section added.
+
+140916  *src/Flooder.cpp,
+		*src/WalkGradientHashed.cpp: has a new dedicated "neighborList" as replacement for the mapping
+									 from threadID to List, because the ViennaRNA-Lib was changed to
+									 return the list at once.
+		*src/Makefile.am: new class TypeID was added.
+		*src/PairHashTable.h: unused includes removed.
+		*src/ParKin_Explore.cpp: new method for flooding with input and output parameters, to make clear
+								 what variables are used in the omp parallel for loop. This makes the
+								 merge process with the indices easier to understand.
+		*src/StatePairCollector.h: unused includes removed.
+		*src/StructureUtils.cpp: inline removed.
+		+src/TypeID.cpp: new class which is used to assign unique ids to the minima.
+		*README: Issue with heap contention among threads added.
+								 
+
+140909	*src/Flooder.cpp,
+		 src/WalkGradientHashed.cpp: cleaned up parameters.
+		 src/StatePairCollector: comment removed.
+		 src/ParKin_Explore: StopWatch added.
+
+140908	-src/Flooder.cpp: test removed.
+		*src/ParKin_Explore.cpp: cleaned up.
+								 filter enabled.
+								 merged indices from threads correctly.
+		*src/StructureUtils.cpp: comparison corrected.
+		*src/RNAkinetics/RNA_NeighMinFilter: adjusted for multithreaded filtering.
+
+140907	+src/MyState.cpp: new wrapper for ViennaRNA struct_en with destructor.
+		*src/Flooder.cpp,
+		 src/GlobalParameter.cpp,
+		 src/PairHashTable.cpp,
+		 src/parKin.cpp,
+		 src/ParKin_Explore.cpp,
+		 src/PriorityQueue.cpp,
+		 src/StateCollector.cpp,
+		 src/WalkGradientHashed: multithreading optimizations + MyState updates.
+		 *src/StructureUtils: faster equals comparison.
+
+140818	+src/WalkGradientHashed.cpp: finally added.
+		*src/ParKin_Explore.cpp: 	parallelization test.
+									maxThreads parameter.
+		*configure.ac: openMP (default enabled)	
+
+140816	+src/Flooder.cpp,
+		*src/ParKin.cpp,
+		*src/ParKin_Explore.cpp : maxToStore parameter, handle deletion from PriorityQueue!
+		+src/MakeFile.am,
+		*src/StatePairCollector: now with hashed gradientwalk.
+		*src/PriorityQueue.cpp: deletion corrected.
+		*src/StructureUtils.cpp: handle NULL values.
+
+140813 	+ src/GlobalParameter.cpp: 	new global energy parameter -> is faster. 
+									!works only with adjusted move_set.c in ViennaRNA package!
+		* src/Flooder.cpp: now with global parameters.
+		* src/MakeFile.am: with global parameters and with filters.
+		* src/ParKin_Explore: with filters.
+		* src/SC_PartitionFunction.cpp: calculates with floats to be consistent with RNA_Explore.
+		* src/StatePairCollector.cpp: now with global parameters.
+
+140809	* configure.ac: from now on we need also the BIU- and the ELL-library, because we have ParKin_explore.
+		* Flooder.cpp: @author corrected.
+		* src/MakeFile.am: ParKin_explore added.
+		* src/StructureUtils.cpp: equal comparison handles NULL.
+		+ src/ParKin_Explore.cpp:	new tool which calculates the rate matrix, 
+									with a flooder that is only based on the viennaRNA-lib.
+		+ src/RNAkinetics/RateMatrixUtil.cc: function to print the rate matrix.
+		+ src/RNAkinetics/RateMatrixUtil.hh: header for that.
+
+140808	* StatePairCollector.cpp: added own gradient walk. Like this one in ELL.
+		* Flooder.cpp: cleaned up.
+		* parKin.cpp: added initial gradient walk;
+
+140807	* parKin.cpp: cleaned up.
+		* StatePairCollector.cpp: gradient walk calculate correct energies.
+		* Flooder.cpp: improved energy calculation.
+
+140806	* StatePairCollector.cpp: energy recalculation.
+		* StateCollector.cpp, SC_PartitionFunction.cpp: corrected inheritance.
+		* parKin.cpp: cleaned up.
+		* Flooder.cpp: cleaned up. Set Neighborlistlength to 0 after each iteration.
+
+140805	* Flooder.cpp: Comparison improved.
+		* configure.ac: c++11 std. m4 included.
+
+140804	* Flooder.cpp: tests with energy calculation. TODO: find correct parameters.
+
+140802	* rename SC_PartitionFunction, add to makefile.
+
+140801	+ new flooder class and other classes.
+
+140728	+ vienna libraray experiments with neighbor generation.
+
+140721	project start
