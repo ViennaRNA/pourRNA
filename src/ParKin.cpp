@@ -18,6 +18,8 @@
 #include <chrono>
 #include <time.h>
 #include <vector>
+#include <future>
+#include <thread>
 #include <omp.h>
 //basic file operations
 #include <ostream>
@@ -162,7 +164,7 @@ calculateRateMatrix(SC_PartitionFunction::Z_Matrix& z,
 					z_basin = z.at(basinID).getZ();
 				}
 				if (z_basin > 0.0) {
-					double rate_Val = z_transition / (maxNeighNum * z_basin);
+					double rate_Val = z_transition / (/*maxNeighNum * */ z_basin);
 					if (rate_Val > 0.0) {
 						final_Rate.at(to, from) = rate_Val;
 						rateSum += rate_Val;
@@ -260,7 +262,7 @@ int floodBasin(vrna_fold_compound_t *vc, flooderInputParameter* inParameter,
 
 	// perform local basin flooding
 	// SC_PartitionFunction scBasin;
-	myFlooder.floodBasin(vc, *minState, *outParameter->ScBasin, spc);
+	myFlooder.floodBasin(vc, *minState, outParameter->ScBasin, &spc);
 
 	outParameter->PartitionFunctions.insert(
 			std::pair<PairID, SC_PartitionFunction>(
@@ -318,6 +320,173 @@ size_t estimateMaxToHash(size_t numberOfHashMaps, size_t sequenceLength) {
 	size_t numberOfEntries = memInBytes / sizeOfHashEntry;
 	size_t entriesPerHashMap = numberOfEntries / numberOfHashMaps;
 	return entriesPerHashMap;
+}
+
+int merge_results(
+		std::vector<std::pair<flooderInputParameter*, flooderOutputParameter*>> *threadParameter,
+		bool logEnergies, ofstream &energyFile, std::set<int> &addedMinIDs,
+		bool writeDotplot, SC_DotPlot::DotPlot &dotplot,
+		PairHashTable::HashTable &Minima,
+		std::unordered_map<size_t, MyState> &MinimaForReverseSearch,
+		SC_PartitionFunction::Z_Matrix &z, bool dynamicBestK,
+		std::unordered_map<size_t, std::vector<size_t>> &dynamicBestKFilterNeighborList,
+		std::list<size_t> &toDo_List, std::set<size_t> &done_List) {
+	for (int k = 0; k < threadParameter->size(); ++k) {
+		std::pair<flooderInputParameter*, flooderOutputParameter*>* bothParameter;
+		bothParameter = &threadParameter->at(k);
+
+		flooderInputParameter* inParameter = bothParameter->first;
+		flooderOutputParameter* outParameter = bothParameter->second;
+
+		std::cout << "States out of basin: "
+				<< outParameter->Analysis.NumberOfStatesOutOfBasin << std::endl;
+		std::cout << "States in basin: "
+				<< outParameter->Analysis.NumberOfStatesInBasin << std::endl;
+		std::cout << "Energy Threshold: "
+				<< outParameter->Analysis.MaxEnergyThreshold << std::endl;
+		std::cout << "Max Energy in Basin: "
+				<< outParameter->ScBasin->getMaxEnergy() << std::endl;
+		std::cout << "Processed States by flooding: "
+				<< outParameter->Analysis.ProcessedStates << std::endl;
+
+		if (logEnergies) {
+			if (addedMinIDs.find(inParameter->BasinID) == addedMinIDs.end()) {
+				addedMinIDs.insert(inParameter->BasinID);
+
+				const std::vector<int>& energies =
+						outParameter->ScBasin->getEnergies();
+				int energy;
+				for (int m = 0; m < energies.size(); m++) {
+					energy = energies[m];
+					energyFile << energy << " ";
+				}
+			}
+		}
+
+		//sum up dotplot basepair partition sums.
+		if (writeDotplot) {
+			SC_DotPlot::DotPlot tmpDotPlot =
+					((SC_DotPlot*) outParameter->ScBasin)->getBasePairWeightSum();
+			for (SC_DotPlot::DotPlot::iterator it = tmpDotPlot.begin();
+					it != tmpDotPlot.end(); ++it) {
+				SC_DotPlot::DotPlot::iterator entryIt = dotplot.find(it->first);
+				if (entryIt != dotplot.end()) {
+					dotplot[it->first] += it->second;
+				} else {
+					dotplot[it->first] = it->second;
+				}
+			}
+		}
+		PairHashTable::HashTable& localThreadMinima =
+				outParameter->LocalThreadMinima;
+		size_t loopCurrentMinID = inParameter->BasinID;
+
+		//add localMinima to total minima and adjust indices in localPartitionfunctions
+		//and in indicesOfNeighbors if needed.
+
+		std::unordered_map<size_t, size_t> mapOldIndexToNewIndex;
+
+		for (auto minIt = localThreadMinima.begin();
+				minIt != localThreadMinima.end(); minIt++) {
+			size_t oldIndex = minIt->second;
+
+			const MyState& localThreadMin = minIt->first;
+			if (Minima.find(localThreadMin) == Minima.end()) { //if local min is not in total list.
+															   //add new min and set lowest maximal index.
+				size_t lowestMaxIndex = TypeID::value<size_t>();
+
+				Minima.insert( { (localThreadMin), lowestMaxIndex });
+				MinimaForReverseSearch.insert( { lowestMaxIndex,
+						(localThreadMin) });
+			}
+
+			size_t newIndex = Minima.at(localThreadMin);
+
+			//assingn total id to localID.
+			mapOldIndexToNewIndex.insert( { oldIndex, newIndex });
+		}
+
+		SC_PartitionFunction::Z_Matrix& localZ =
+				outParameter->PartitionFunctions;
+		//adjust index in partitionfunction z.
+		for (auto it = localZ.begin(); it != localZ.end(); it++) {
+			if (mapOldIndexToNewIndex.find(it->first.first)
+					!= mapOldIndexToNewIndex.end()
+					&& mapOldIndexToNewIndex.find(it->first.second)
+							!= mapOldIndexToNewIndex.end()) {
+				size_t newFirstIndex = mapOldIndexToNewIndex.at(
+						it->first.first);
+				size_t newSecondIndex = mapOldIndexToNewIndex.at(
+						it->first.second);
+				SC_PartitionFunction::PairID localPairID(newFirstIndex,
+						newSecondIndex);
+				z.insert( { localPairID, it->second });
+			}
+		}
+
+		//fill dynamic Best-k filter list.
+		if (dynamicBestK) {
+			if (dynamicBestKFilterNeighborList.find(loopCurrentMinID)
+					== dynamicBestKFilterNeighborList.end()) {
+				vector<size_t> allNeighboredMinima;
+				size_t currentMinID = localThreadMinima.at(
+						*inParameter->CurrentMinimum);
+				for (auto localMinIt = localThreadMinima.begin();
+						localMinIt != localThreadMinima.end(); ++localMinIt) {
+					if (localMinIt->second != currentMinID) {
+						allNeighboredMinima.push_back(localMinIt->second);
+					}
+				}
+
+				// creating an greaterByZ Object as third parameter of std:: sort method
+				GreaterByZMatrix greaterByZ(localZ, currentMinID);
+
+				// sort bz Z value
+				std::sort(allNeighboredMinima.begin(),
+						allNeighboredMinima.end(), greaterByZ);
+
+				for (int nm = 0; nm < allNeighboredMinima.size(); ++nm) {
+					allNeighboredMinima[nm] =
+							mapOldIndexToNewIndex[allNeighboredMinima.at(nm)];
+				}
+
+				dynamicBestKFilterNeighborList.insert( { loopCurrentMinID,
+						allNeighboredMinima });
+			}
+		}
+
+		//  add all neighbored minima not part of DONE list to toDO_list
+		for (int i = 0; i < outParameter->IndicesOfFilteredMinima.size(); i++) {
+			size_t index = mapOldIndexToNewIndex.at(
+					outParameter->IndicesOfFilteredMinima.at(i));
+			// if the element at the index position is not already in done List, add it to toDo_list
+			if (done_List.find(index) == done_List.end()
+					&& std::find(toDo_List.begin(), toDo_List.end(), index)
+							== toDo_List.end()) {
+				toDo_List.push_back(index);
+			}
+		} // end for
+
+		//clean up (thread specific minima lists)
+		localThreadMinima.clear();
+		mapOldIndexToNewIndex.clear();
+		localZ.clear();
+
+		delete inParameter;
+		delete outParameter;
+
+	} //end merge results.
+	return 0;
+}
+
+int threadFunction(vrna_fold_compound_t *vc,
+		std::vector<std::pair<flooderInputParameter*, flooderOutputParameter*>> *threadParameter) {
+	for (int k = 0; k < threadParameter->size(); ++k) {
+		flooderInputParameter* inParameter = threadParameter->at(k).first;
+		flooderOutputParameter* outParameter = threadParameter->at(k).second;
+		floodBasin(vc, inParameter, outParameter);
+	}
+	return 0;
 }
 
 int main(int argc, char** argv) {
@@ -718,7 +887,7 @@ int main(int argc, char** argv) {
 		///////////   ITERATE EXPLORATIVE LOCAL FLOODING  /////////////
 
 		// initializing the DO list as queue, which contain all states that should be processed
-		std::vector<size_t> toDo_List;
+		std::list<size_t> toDo_List;
 
 		// initializing the List of all states, which had already visited
 		std::set<size_t> done_List;
@@ -732,6 +901,20 @@ int main(int argc, char** argv) {
 				(vc->length + 1) * sizeof(char));
 		float mfeEnergy = vrna_mfe(vc, mfeStructure);
 
+
+		///TODO: simultaneous mfe flooding test
+		/*
+		if(NoFiltersActive){
+		size_t mfeMinID = 2;
+		MyState mfeState(mfeEnergy,vrna_ptable(mfeStructure));
+				Minima.insert( { mfeState, mfeMinID });
+				MinimaForReverseSearch.insert( { mfeMinID, mfeState });
+				toDo_List.push_back(mfeMinID);
+		}
+		*/
+		///////
+
+
 		//init dynamic k-best filter list.
 		std::unordered_map<size_t, std::vector<size_t>> dynamicBestKFilterNeighborList;
 
@@ -740,12 +923,9 @@ int main(int argc, char** argv) {
 			// go through all the elements of toDo_list to get the Neighbors of that
 			while (!toDo_List.empty()) {
 				int listSize = toDo_List.size();
-				int numThreads = std::min(listSize, maxThreads);
+				int numThreads = maxThreads;//std::min(listSize, maxThreads);
 
 				std::cout << "Todo list size: " << listSize << std::endl;
-
-				//create threads for local flooding:
-				std::pair<flooderInputParameter*, flooderOutputParameter*> threadParameter[listSize];
 
 				//init stopwatch for parallel loop:
 				std::chrono::time_point<std::chrono::system_clock>
@@ -757,247 +937,116 @@ int main(int argc, char** argv) {
 					maxToHash = estimateMaxToHash(numThreads,
 							rnaSequence.length());
 
-				//divide todolist in parallel parts.
-//#pragma omp parallel for num_threads(numThreads)
-				for (int k = 0; k < listSize; ++k) {
-					flooderInputParameter* inParameter =
-							new flooderInputParameter();
-					inParameter->BasinID = toDo_List[k];
-					inParameter->CurrentMinimum = &MinimaForReverseSearch.at(
-							toDo_List[k]);
-					inParameter->MaxToHash = maxToHash;
-					inParameter->MaxToQueue = maxToQueue;
-					inParameter->RnaSequence = rnaSequence;
-					inParameter->Filter = neighborFilter;
-					inParameter->MaxEnergy = maxEnergy;
-					inParameter->DeltaE = deltaE;
+				/////// asynchronous method
+				/*
+				 * while todolist not empty
+				 * while not all threads finished
+				 *   for x in threads
+				 *      if x finished
+				 *        merge results and update todolist
+				 *        if todolist not empty
+				 *          start new thread with basin from todo list
+				 *
+				 *
+				 */
 
-					flooderOutputParameter* outParameter =
-							new flooderOutputParameter();
+				//create threads for local flooding:
+				std::vector<
+						std::pair<flooderInputParameter*,
+								flooderOutputParameter*>> threadParameterLists[maxThreads];
 
-					// check what state collector to instantiate
-					if (writeDotplot) {
-						outParameter->ScBasin = new SC_DotPlot(
-								temperatureForBoltzmannWeight, logEnergies);
-					} else {
-						outParameter->ScBasin = new SC_PartitionFunction(
-								temperatureForBoltzmannWeight, logEnergies);
-					}
-
-					floodBasin(vc, inParameter, outParameter);
-
-					threadParameter[k] = std::pair<flooderInputParameter*,
-							flooderOutputParameter*>(inParameter, outParameter);
-				} //end parallel for
-				  //print stopwatch for parallel loop:
-				endParallelLoop = std::chrono::system_clock::now();
-				std::chrono::duration<double> elapsed_seconds_ParallelLoop =
-						endParallelLoop - startParallelLoop;
-				std::cout << "Parallel loop elapsed time: "
-						<< elapsed_seconds_ParallelLoop.count() << "s\n";
-
-				//copy toDo_list to done (was done in parallel for)
-				for (std::vector<size_t>::iterator i = toDo_List.begin();
-						i != toDo_List.end(); i++) {
-					done_List.insert(*i);
-				}
-				toDo_List.clear(); //it was done by the parallel for, and added to done before that.
-
-				//init stopwatch for merging of indices:
-				std::chrono::time_point<std::chrono::system_clock>
-						startIndexMerging, endIndexMerging;
-				startIndexMerging = std::chrono::system_clock::now();
-
-				//merge results.
-				for (int k = 0; k < listSize; ++k) {
-					std::pair<flooderInputParameter*, flooderOutputParameter*>* bothParameter;
-					bothParameter = &threadParameter[k];
-
-					flooderInputParameter* inParameter = bothParameter->first;
-					flooderOutputParameter* outParameter = bothParameter->second;
-
-					std::cout << "States out of basin: "
-							<< outParameter->Analysis.NumberOfStatesOutOfBasin
-							<< std::endl;
-					std::cout << "States in basin: "
-							<< outParameter->Analysis.NumberOfStatesInBasin
-							<< std::endl;
-					std::cout << "Energy Threshold: "
-							<< outParameter->Analysis.MaxEnergyThreshold
-							<< std::endl;
-					std::cout << "Max Energy in Basin: "
-							<< outParameter->ScBasin->getMaxEnergy()
-							<< std::endl;
-					std::cout << "Processed States by flooding: "
-							<< outParameter->Analysis.ProcessedStates
-							<< std::endl;
-
-					if (logEnergies) {
-						if (addedMinIDs.find(inParameter->BasinID)
-								== addedMinIDs.end()) {
-							addedMinIDs.insert(inParameter->BasinID);
-
-							const std::vector<int>& energies =
-									outParameter->ScBasin->getEnergies();
-							for (int m = 0; m < energies.size(); m++) {
-								energy = energies[m];
-								energyFile << energy << " ";
+				std::future<int> v[maxThreads];
+				//std::cout << "Waiting..." << std::flush;
+				bool finish = false;
+				//v[0].wait();
+				while (!finish) {
+					finish = true;
+					for (int index = 0; index < maxThreads; index++) {
+						bool res = true;
+						try{
+							if(v[index].valid()){
+						res = v[index].wait_for(std::chrono::nanoseconds(1))
+								== std::future_status::ready;
+						//v[index].get();
 							}
+						}catch(std::future_error e){
+							//std::cout << "thread not ready!\n" << e.what();
+							finish = false;
+							res = false;
 						}
-					}
+						//std::cout << "" << index << ' ' << res << '\n' << std::flush;
+						if (!res) {
+							finish = false;
+						} else {
+							//finished -> merge result and create a new thread
+							//TODO merge result
+							std::vector<
+									std::pair<flooderInputParameter*,
+											flooderOutputParameter*>>* threadParameter =
+									&threadParameterLists[index];
+							if (threadParameter->size() > 0) {
+								merge_results(threadParameter, logEnergies,
+										energyFile, addedMinIDs, writeDotplot,
+										dotplot, Minima, MinimaForReverseSearch,
+										z, dynamicBestK,
+										dynamicBestKFilterNeighborList,
+										toDo_List, done_List);
 
-					//sum up dotplot basepair partition sums.
-					if (writeDotplot) {
-						SC_DotPlot::DotPlot tmpDotPlot =
-								((SC_DotPlot*) outParameter->ScBasin)->getBasePairWeightSum();
-						for (SC_DotPlot::DotPlot::iterator it =
-								tmpDotPlot.begin(); it != tmpDotPlot.end();
-								++it) {
-							SC_DotPlot::DotPlot::iterator entryIt =
-									dotplot.find(it->first);
-							if (entryIt != dotplot.end()) {
-								dotplot[it->first] += it->second;
-							} else {
-								dotplot[it->first] = it->second;
+								threadParameter->clear();
 							}
-						}
-					}
-					PairHashTable::HashTable& localThreadMinima =
-							outParameter->LocalThreadMinima;
-					size_t loopCurrentMinID = inParameter->BasinID;
+							if (!toDo_List.empty()) {
+								finish = false;
+								//TODO create a new thread
+								int listSize = toDo_List.size();
+								int fractionPerThread = int(
+										ceil(listSize / float(numThreads)));
+								fractionPerThread = min(fractionPerThread,
+										listSize);
 
-					//add localMinima to total minima and adjust indices in localPartitionfunctions
-					//and in indicesOfNeighbors if needed.
+								//create parameter lists for each thread
+								threadParameter->clear();
+								for (int k = 0; k < fractionPerThread; ++k) {
+									size_t minID = toDo_List.front();
+									done_List.insert(minID);
+									toDo_List.pop_front();
+									// TODO create inParameter before starting the thread!
+									// make a list as big as the number of threads and clean the entry before the replacement and in the end.
 
-					std::unordered_map<size_t, size_t> mapOldIndexToNewIndex;
+									flooderInputParameter* inParameter =
+											new flooderInputParameter();
+									inParameter->BasinID = minID;
+									inParameter->CurrentMinimum =
+											&MinimaForReverseSearch.at(minID);
+									inParameter->MaxToHash = maxToHash;
+									inParameter->MaxToQueue = maxToQueue;
+									inParameter->RnaSequence = rnaSequence;
+									inParameter->Filter = neighborFilter;
+									inParameter->MaxEnergy = maxEnergy;
+									inParameter->DeltaE = deltaE;
 
-					for (auto minIt = localThreadMinima.begin();
-							minIt != localThreadMinima.end(); minIt++) {
-						size_t oldIndex = minIt->second;
+									flooderOutputParameter* outParameter =
+											new flooderOutputParameter();
 
-						const MyState& localThreadMin = minIt->first;
-						if (Minima.find(localThreadMin) == Minima.end()) { //if local min is not in total list.
-																		   //add new min and set lowest maximal index.
-							size_t lowestMaxIndex = TypeID::value<size_t>();
-
-							Minima.insert(
-									{ (localThreadMin), lowestMaxIndex });
-							MinimaForReverseSearch.insert( { lowestMaxIndex,
-									(localThreadMin) });
-						}
-
-						size_t newIndex = Minima.at(localThreadMin);
-
-						//assingn total id to localID.
-						mapOldIndexToNewIndex.insert( { oldIndex, newIndex });
-					}
-
-					SC_PartitionFunction::Z_Matrix& localZ =
-							outParameter->PartitionFunctions;
-					//adjust index in partitionfunction z.
-					for (auto it = localZ.begin(); it != localZ.end(); it++) {
-						if (mapOldIndexToNewIndex.find(it->first.first)
-								!= mapOldIndexToNewIndex.end()
-								&& mapOldIndexToNewIndex.find(it->first.second)
-										!= mapOldIndexToNewIndex.end()) {
-							size_t newFirstIndex = mapOldIndexToNewIndex.at(
-									it->first.first);
-							size_t newSecondIndex = mapOldIndexToNewIndex.at(
-									it->first.second);
-							SC_PartitionFunction::PairID localPairID(
-									newFirstIndex, newSecondIndex);
-							z.insert( { localPairID, it->second });
-						}
-					}
-
-					//fill dynamic Best-k filter list.
-					if (dynamicBestK) {
-						if (dynamicBestKFilterNeighborList.find(
-								loopCurrentMinID)
-								== dynamicBestKFilterNeighborList.end()) {
-							vector<size_t> allNeighboredMinima;
-							size_t currentMinID = localThreadMinima.at(
-									*inParameter->CurrentMinimum);
-							for (auto localMinIt = localThreadMinima.begin();
-									localMinIt != localThreadMinima.end();
-									++localMinIt) {
-								if (localMinIt->second != currentMinID) {
-									allNeighboredMinima.push_back(
-											localMinIt->second);
+									// check what state collector to instantiate
+									if (writeDotplot) {
+										outParameter->ScBasin = new SC_DotPlot(
+												temperatureForBoltzmannWeight,
+												logEnergies);
+									} else {
+										outParameter->ScBasin =
+												new SC_PartitionFunction(
+														temperatureForBoltzmannWeight,
+														logEnergies);
+									}
+									threadParameter->push_back(
+											std::pair<flooderInputParameter*,
+													flooderOutputParameter*>(
+													inParameter, outParameter));
 								}
+								//threadFunction( vc, threadParameter);
+								v[index] = std::async(std::launch::async, threadFunction, vc, threadParameter);
 							}
-
-							// creating an greaterByZ Object as third parameter of std:: sort method
-							GreaterByZMatrix greaterByZ(localZ, currentMinID);
-
-							// sort bz Z value
-							std::sort(allNeighboredMinima.begin(),
-									allNeighboredMinima.end(), greaterByZ);
-
-							for (int nm = 0; nm < allNeighboredMinima.size();
-									++nm) {
-								allNeighboredMinima[nm] =
-										mapOldIndexToNewIndex[allNeighboredMinima.at(
-												nm)];
-							}
-
-							dynamicBestKFilterNeighborList.insert( {
-									loopCurrentMinID, allNeighboredMinima });
 						}
-					}
-
-					//  add all neighbored minima not part of DONE list to toDO_list
-					for (int i = 0;
-							i < outParameter->IndicesOfFilteredMinima.size();
-							i++) {
-						size_t index = mapOldIndexToNewIndex.at(
-								outParameter->IndicesOfFilteredMinima.at(i));
-						// if the element at the index position is not already in done List, add it to toDo_list
-						if (done_List.find(index) == done_List.end()
-								&& std::find(toDo_List.begin(), toDo_List.end(),
-										index) == toDo_List.end()) {
-							toDo_List.push_back(index);
-						}
-					} // end for
-
-					//clean up (thread specific minima lists)
-					localThreadMinima.clear();
-					mapOldIndexToNewIndex.clear();
-					localZ.clear();
-
-					delete inParameter;
-					delete outParameter;
-
-				} //end merge results.
-
-				//print stopwatch for index merging:
-				endIndexMerging = std::chrono::system_clock::now();
-				std::chrono::duration<double> elapsed_seconds_IndexMerging =
-						endIndexMerging - startIndexMerging;
-				std::cout << "Index merging elapsed time: "
-						<< elapsed_seconds_IndexMerging.count() << "s\n";
-
-				//search for the final structure (if given in parameters) and stop the exploration
-				// if the according basin is done.
-				if (rna_final_str.compare("") != 0) {
-					bool finalStructureDone = false;
-					//check if final structure is explored and break the loop.
-					short * finalStructurePT = vrna_ptable(
-							rna_final_str.c_str());
-					for (auto doneIt = done_List.begin();
-							doneIt != done_List.end(); ++doneIt) {
-						if (StructureUtils::IsEqual(
-								MinimaForReverseSearch[*doneIt].structure,
-								finalStructurePT)) {
-							//final structure found
-							finalStructureDone = true;
-							break;
-						}
-					}
-					free(finalStructurePT);
-					finalStructurePT = NULL;
-					if (finalStructureDone) {
-						break;
 					}
 				}
 			} // end while

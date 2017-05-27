@@ -27,12 +27,15 @@ WalkGradientHashed::get_Neighbors_pt (vrna_fold_compound_t *vc, struct_en* struc
 
 	  struct_en* neighbors = (struct_en*)malloc(sizeof(struct_en)*(count+1));
 	  int i = 0;
+	  int energy;
+	  short *pt_neighbor;
+	  struct_en * neighbor;
 	  for(vrna_move_t *m = tmp_neighbors; m->pos_5 != 0; m++, i++){
-		  int energy = vrna_eval_move_pt(vc,structureEnergy->structure,m->pos_5,m->pos_3);
-		  short *pt_neighbor = vrna_ptable_copy(structureEnergy->structure);
+		  energy = vrna_eval_move_pt(vc,structureEnergy->structure,m->pos_5,m->pos_3);
+		  pt_neighbor = vrna_ptable_copy(structureEnergy->structure);
 		  vrna_move_apply(pt_neighbor, m);
-		  struct_en * neighbor = &neighbors[i];
-		  neighbor->energy = energy;
+		  neighbor = &neighbors[i];
+		  neighbor->energy = structureEnergy->energy + energy;
 		  neighbor->structure = pt_neighbor;
 	  }
 	  neighbors[i].structure = NULL;

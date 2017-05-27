@@ -43,7 +43,7 @@ public:
    *  @param scSurface a collector which calculates the contact surface.
    */
   int
-  floodBasin (vrna_fold_compound_t *vc, const MyState& localMinState, StateCollector& scBasin, StatePairCollector& scSurface);
+  floodBasin (vrna_fold_compound_t *vc, const MyState& localMinState, StateCollector* scBasin, StatePairCollector* scSurface);
   virtual
   ~Flooder ();
 
