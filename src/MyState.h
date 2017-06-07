@@ -16,50 +16,47 @@ extern "C" {
 #include <ViennaRNA/structure_utils.h>
 }
 #include <string>
+#include "StructureUtils.h"
 
 /**
  * ! wrapper class for struct_en
  * with clone function and
  * destructor to clean up.
  */
-class MyState
-{
+class MyState {
 public:
 
 	//! type of structure representation
 	typedef short* Structure;
 
-	MyState ();
-	MyState (int energy, short* structure);
-	MyState (struct_en* state);
-	MyState (const MyState& state);
+	MyState();
+	MyState(int energy, short* structure);
+	MyState(struct_en* state);
+	MyState(const MyState& state);
+	//! less comparison based on E and using the lexicographical order
+	//! of s as tiebreaker
+	bool
+	operator<(const MyState& toCompare) const;
 	MyState*
-	clone () const;
+	clone() const;
 	std::string
-	toString () const;
-	~MyState ();
+	toString() const;
+	~MyState();
 
-	int
-	getEnergy () const
-	{
+	int getEnergy() const {
 		return energy;
 	}
 
-	void
-	setEnergy (int energy)
-	{
+	void setEnergy(int energy) {
 		this->energy = energy;
 	}
 
 	const Structure &
-	getStructure () const
-	{
+	getStructure() const {
 		return structure;
 	}
 
-	void
-	setStructure (Structure structure)
-	{
+	void setStructure(Structure structure) {
 		this->structure = structure;
 	}
 

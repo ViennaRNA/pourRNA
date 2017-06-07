@@ -26,7 +26,7 @@ extern "C" {
 /*!
  * index pair
  */
-typedef std::pair<size_t, size_t> PairID;
+//typedef std::pair<size_t, size_t> PairID;
 
 /*!
  * This is an abstract interface implemented by Neighbor minimum Filtering
@@ -180,8 +180,8 @@ public:
   bool
   operator () (const size_t x, const size_t y)
   {
-    double Zx = Z.find (PairID (curRow, x))->second.getZ ();
-    double Zy = Z.find (PairID (curRow, y))->second.getZ ();
+    double Zx = Z.find (SC_PartitionFunction::PairID(curRow, x))->second.getZ ();
+    double Zy = Z.find (SC_PartitionFunction::PairID(curRow, y))->second.getZ ();
     return (Zx > Zy);
 
   }

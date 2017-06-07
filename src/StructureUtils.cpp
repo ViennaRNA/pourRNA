@@ -33,11 +33,11 @@ std::string StructureUtils::getStructure(short * pair_table) {
 bool StructureUtils::IsSmaller(short * a, short * b) {
 	//rule: "." > ")" > "(".
 	if (a != NULL && b != NULL) {
+		short encodedCharacterInA;
+		short encodedCharacterInB;
 		//encoding: "."=2, ")"=1, "(" = 0.
 		for (int i = 1; i <= a[0]; i++) {
 			if (a[i] != b[i]) {
-				short encodedCharacterInA;
-				short encodedCharacterInB;
 				if (a[i] == 0) {
 					encodedCharacterInA = 2; //="."
 				} else if (a[i] < i) {

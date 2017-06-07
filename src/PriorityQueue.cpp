@@ -39,9 +39,16 @@ QueueKey::operator < (const QueueKey& k2) const
   if (QueueState.energy < k2.QueueState.energy)
     return true;
   if (QueueState.energy == k2.QueueState.energy
-      && StructureUtils::IsSmaller (QueueState.structure, k2.QueueState.structure)) // use compressed sequence as tiebreaker
+      && StructureUtils::IsSmaller (QueueState.structure, k2.QueueState.structure)) // use lexicographic order as tiebreaker
     return true;
   return false;
+}
+
+inline
+bool
+QueueKey::operator == (const QueueKey& k2) const
+{
+  return StructureUtils::IsEqual(QueueState.structure, k2.QueueState.structure); // use lexicographic order as tiebreaker
 }
 
 //////////////////   PRIORITY QUEUE IMPLEMENTATION  /////////////////////

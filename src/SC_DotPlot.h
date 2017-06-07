@@ -9,7 +9,7 @@
 #define SC_DOTPLOT_H_
 
 #include "SC_PartitionFunction.h"
-
+#include <map>
 extern "C" {
 #include <ViennaRNA/utils.h>
 #include <ViennaRNA/PS_dot.h>

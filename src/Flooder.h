@@ -15,6 +15,7 @@ extern "C" {
 #include <ViennaRNA/data_structures.h>
 #include <ViennaRNA/fold.h>
 #include <ViennaRNA/move_set.h>
+#include <ViennaRNA/neighbor.h>
 }
 #include <list>
 #include <unordered_map>
@@ -34,7 +35,7 @@ public:
    * @param maxEnergy the maximal energy all states should be below in kcal/mol
    * @param maxToQueue the maximal number of elements the underlying queue is allowed to contain
    */
-  Flooder (std::string sequence, double maxEnergy, size_t maxToQueue);
+  Flooder (double maxEnergy, size_t maxToQueue);
 
   /**
    * ! flood the basin of the given local minimum. Compute the partition function sum.
@@ -48,8 +49,6 @@ public:
   ~Flooder ();
 
 private:
-  // ! the rna-sequence in "acgu"-format.
-  char* Sequence;
   //! the maximal energy all states should be below in 10cal/mol
   int MaxEnergy;
   //! the maximal number of elements the underlying queue is allowed to contain
@@ -74,7 +73,7 @@ public:
    *  @param structureEnergy the rna-structure in pair-table format and energy (see ViennaRNA-package).
    */
   struct_en*
-  get_Neighbors_pt (vrna_fold_compound_t *vc, struct_en* structureEnergy);
+  get_Neighbors_pt (vrna_fold_compound_t *vc, const MyState* structureEnergy, size_t *numberOfNeighbors);
 
   /**
    * ! states that where considered during the flooding.

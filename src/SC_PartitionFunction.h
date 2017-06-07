@@ -84,6 +84,7 @@ public:
 	 */
 	typedef std::pair<size_t, size_t> PairID;
 
+
 	/*!
 	 * container for all partition functions to generate
 	 * indices are according to minima container

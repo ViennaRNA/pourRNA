@@ -42,6 +42,17 @@ MyState::MyState (const MyState& state) :
 	}
 }
 
+bool
+MyState::operator < (const MyState& s) const
+{
+  if (s.energy < s.energy)
+    return true;
+  if (s.energy ==s.energy
+      && StructureUtils::IsSmaller (s.structure, s.structure)) // use lexicographic order as tiebreaker
+    return true;
+  return false;
+}
+
 MyState*
 MyState::clone () const
 {

@@ -15,6 +15,8 @@ public:
   //! of s as tiebreaker
   bool
   operator< (const QueueKey& toCompare) const;
+  bool
+  operator == (const QueueKey& toCompare) const;
 
   QueueKey ();
   QueueKey (const MyState& state);

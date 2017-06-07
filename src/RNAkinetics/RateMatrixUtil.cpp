@@ -186,10 +186,8 @@ printZMatrixSorted (const SC_PartitionFunction::Z_Matrix& z, size_t maxNeighbors
 	  rowMinID = originalMinima.at (*sortedMinimaIDs[r].second);
 	  //in Z-Matrix: from i to j.
 	  //in final_Rate: from j to i !
-	  SC_PartitionFunction::PairID transitionID =
-	    { nextMinID, rowMinID };
-	  SC_PartitionFunction::PairID reverseTransitionID =
-	    { rowMinID, nextMinID };
+	  SC_PartitionFunction::PairID transitionID = SC_PartitionFunction::PairID(nextMinID, rowMinID);
+	  SC_PartitionFunction::PairID reverseTransitionID =SC_PartitionFunction::PairID(rowMinID, nextMinID);
 
 	  double z_transition = 0;
 	  double z_reverseTransition = 0;
@@ -251,7 +249,7 @@ printEquilibriumDensities (SC_PartitionFunction::Z_Matrix& z,
   for (size_t c = 0; c < sortedMinimaIDs.size (); c++)
     {
       nextMinID = originalMinima.at (*sortedMinimaIDs[c].second);
-      sumZb += z[SC_PartitionFunction::PairID (nextMinID, nextMinID)].getZ ();
+      sumZb += z[SC_PartitionFunction::PairID(nextMinID, nextMinID)].getZ ();
     }
   double equilibriumDensity;
   out << "(";
@@ -260,7 +258,7 @@ printEquilibriumDensities (SC_PartitionFunction::Z_Matrix& z,
   for (size_t c = 0; c < sortedMinimaIDs.size (); c++)
     {
       nextMinID = originalMinima.at (*sortedMinimaIDs[c].second);
-      equilibriumDensity = z[SC_PartitionFunction::PairID (nextMinID, nextMinID)].getZ () / sumZb;
+      equilibriumDensity = z[SC_PartitionFunction::PairID(nextMinID, nextMinID)].getZ () / sumZb;
       // print probability and state
       sstmp << equilibriumDensity;
       // print spacer if needed

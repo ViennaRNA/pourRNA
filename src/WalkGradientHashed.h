@@ -31,11 +31,10 @@ class WalkGradientHashed
 public:
   /**
    * ! Initialize the gradient walk.
-   * @param sequence the rna-sequence (ACGT).
    * @param maxNeighbors the maximal number of neighbors which can occur (neighbors of open chain).
    * @param maxHashSize is the maximal number of states which will be stored.
    */
-  WalkGradientHashed (std::string sequence, const size_t maxHashSize = 10000);
+  WalkGradientHashed (const size_t maxHashSize = 10000);
   /**
    * ! Clean up.
    */
@@ -43,7 +42,7 @@ public:
   ~WalkGradientHashed ();
 
   struct_en*
-  get_Neighbors_pt (vrna_fold_compound_t *vc, struct_en* structureEnergy);
+  convert_moves_to_neighbors (vrna_fold_compound_t *vc, struct_en* structureEnergy, vrna_move_t* moves, int moves_count);
   /**
    * ! Start a walk.
    * @param rnaSequence the rna sequence with characters ACGT.
@@ -52,14 +51,14 @@ public:
    * @param state2min a limited hash for the states.
    */
   MyState*
-  walkGradient (vrna_fold_compound_t *vc,char * rnaSequence, const MyState& startState, SpookyHashMap::HashTable & state2min);
+  walkGradient (vrna_fold_compound_t *vc, const MyState& startState, SpookyHashMap::HashTable & state2min);
   /**
    * ! Start a walk by calling the walkGradient function.
    * @param rnaSequence the rna sequence with characters ACGT.
    * @param startState with the initial structure and energy.
    */
   MyState *
-  walk (vrna_fold_compound_t *vc,char * rnaSequence, const MyState& startState);
+  walk (vrna_fold_compound_t *vc, const MyState& startState);
 private:
   // ! to store the minimum for each visited state.
   SpookyHashMap::HashTable State2min;

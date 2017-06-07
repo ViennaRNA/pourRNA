@@ -186,7 +186,7 @@ SC_DotPlot::readDotPlot_PS (std::istream & input)
 	    {
 	      // store base pair probability data
 	      // NOTE: store prob^2 when read from vienna dot plot
-	      bpProb[PairID (i, j)] = prob * prob;
+	      bpProb[SC_PartitionFunction::PairID(i, j)] = prob * prob;
 	    }
 	}
     }

@@ -22,7 +22,7 @@ public:
       std::size_t
       operator() (const MyState& k) const
 	{
-	  return SpookyHash::Hash64(k.structure,k.structure[0]+1,0);
+	  return SpookyHash::Hash64(k.structure,sizeof(short)*(k.structure[0] + 1),0);
 	}
     };
 

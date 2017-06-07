@@ -21,6 +21,7 @@ extern "C"
 #include <math.h>
 #include "StructureUtils.h"
 #include "WalkGradientHashed.h"
+#include <list>
 
 /**
  * ! This class calculates the partition function for the contact surface.
@@ -32,14 +33,14 @@ public:
   /**
    * ! Collects all pairs of neighbors between the currentMinID and other states.
    * Calculates the partition function.
-   * @param rnaSequence the rna sequence.
    * @param minima set of all minima.
    * @param currentMinID the id of the current minimum which represents the current gradient basin.
    * @param z a container for the partition functions.
+   * @param discoveredMinima queue to report new discovered minima.
    */
-  StatePairCollector (const std::string rnaSequence, size_t currentMinID,
+  StatePairCollector (size_t currentMinID,
 		      PairHashTable::HashTable& minima, SC_PartitionFunction::Z_Matrix& z,
-		      const size_t maxGradWalkHashed);
+		      const size_t maxGradWalkHashed,std::list<MyState> *discoveredMinima);
   virtual
   ~StatePairCollector ();
   /**
@@ -63,8 +64,6 @@ public:
   }
 
 private:
-  // ! the rna sequence for this collector.
-  std::string RNAsequence;
   // ! identifier of the current minimum.
   const size_t CurMinID;
   // ! minima map: structure, index.
@@ -77,6 +76,8 @@ private:
   PairHashTable::HashTable HandledOuterStates;
   // ! number of states which are not in basin, but in the contactsurface.
   size_t NumberOfOuterStates;
+  // ! unique minima queue (ready to flood)
+  std::list<MyState> *DiscoveredMinima;
 
 };
 
