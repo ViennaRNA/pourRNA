@@ -196,7 +196,7 @@ int Flooder::floodBasin(vrna_fold_compound_t *vc, const MyState& localMinState,
 						// get neighbor
 						curNeigh = (MyState*) &n->QueueState;
 						// add to surface reporter
-						scSurface->add(vc, topState, curNeigh);
+						scSurface->add(vc, topState, curNeigh, false);
 					}
 				}
 			}
@@ -211,7 +211,7 @@ int Flooder::floodBasin(vrna_fold_compound_t *vc, const MyState& localMinState,
 						// get neighbor
 						curNeigh = (MyState*) &n->QueueState;
 						// add to surface reporter
-						scSurface->add(vc, curNeigh, topState);
+						scSurface->add(vc, curNeigh, topState, true);
 					}
 				}
 			}

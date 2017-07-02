@@ -76,15 +76,17 @@ size_t getMaximalNeighborsOfAMacroState(SC_PartitionFunction::Z_Matrix& z,
 	size_t countNeighborsForState = 0;
 	for (std::unordered_set<size_t>::iterator from = done_List.begin();
 			from != done_List.end(); from++) {
-		SC_PartitionFunction::PairID basinID = SC_PartitionFunction::PairID(*from, *from);
+		SC_PartitionFunction::PairID basinID = SC_PartitionFunction::PairID(
+				*from, *from);
 		if (z.find(basinID) != z.end()) {
 			countNeighborsForState = 0;
 			bool transitionPartitionsumExists = false;
 			for (std::unordered_set<size_t>::iterator to = std::next(from, 1);
 					to != done_List.end(); to++) {
-				SC_PartitionFunction::PairID transitionID = SC_PartitionFunction::PairID( *from, *to );
+				SC_PartitionFunction::PairID transitionID =
+						SC_PartitionFunction::PairID(*from, *to);
 				SC_PartitionFunction::PairID reverseTransitionID =
-						SC_PartitionFunction::PairID( *to, *from );
+						SC_PartitionFunction::PairID(*to, *from);
 
 				double z_transition = 0;
 				double z_reverseTransition = 0;
@@ -143,10 +145,12 @@ calculateRateMatrix(SC_PartitionFunction::Z_Matrix& z,
 				//compute the rate from row-state two column-state
 				//in Z-Matrix: from i to j.
 				//in final_Rate: from j to i !
-				SC_PartitionFunction::PairID transitionID = SC_PartitionFunction::PairID(fromOrig, toOrig);
-				SC_PartitionFunction::PairID reverseTransitionID =SC_PartitionFunction::PairID(toOrig,
-						fromOrig);
-				SC_PartitionFunction::PairID basinID = SC_PartitionFunction::PairID(fromOrig, fromOrig);
+				SC_PartitionFunction::PairID transitionID =
+						SC_PartitionFunction::PairID(fromOrig, toOrig);
+				SC_PartitionFunction::PairID reverseTransitionID =
+						SC_PartitionFunction::PairID(toOrig, fromOrig);
+				SC_PartitionFunction::PairID basinID =
+						SC_PartitionFunction::PairID(fromOrig, fromOrig);
 
 				double z_transition = 0;
 				double z_reverseTransition = 0;
@@ -201,6 +205,7 @@ struct flooderInputParameter {
 	MyState* CurrentMinimum;
 	NeighMinFilter* Filter;
 	std::list<MyState> *DiscoveredMinima;
+	double TemperatureForBoltzmannWeight;
 };
 
 struct flooderOutputAnylse {
@@ -250,16 +255,16 @@ int floodBasin(vrna_fold_compound_t *vc, flooderInputParameter* inParameter,
 	// start walking and computing the Partition Function
 
 	// creating the StatePaircollector to manage the state of Pairs between the neighbor basins
-	StatePairCollector spc(loopCurrentLocalMinID,
-			localThreadMinima, outParameter->PartitionFunctions,
-			inParameter->MaxToHash, inParameter->DiscoveredMinima);
+	StatePairCollector spc(loopCurrentLocalMinID, localThreadMinima,
+			outParameter->PartitionFunctions, inParameter->MaxToHash,
+			inParameter->DiscoveredMinima,
+			inParameter->TemperatureForBoltzmannWeight);
 
 	// set the maximal energy as upper floodlevel.
 	double maxEnergy = min(inParameter->MaxEnergy,
 			(inParameter->DeltaE + minState->energy / 100.0));
 
-	Flooder myFlooder(maxEnergy,
-			inParameter->MaxToQueue);
+	Flooder myFlooder(maxEnergy, inParameter->MaxToQueue);
 
 	// perform local basin flooding
 	// SC_PartitionFunction scBasin;
@@ -325,13 +330,13 @@ size_t estimateMaxToHash(size_t numberOfHashMaps, size_t sequenceLength) {
 
 int merge_results(
 		std::vector<std::pair<flooderInputParameter*, flooderOutputParameter*>> *threadParameter,
-		bool logEnergies, ofstream &energyFile, std::unordered_set<int> &addedMinIDs,
-		bool writeDotplot, SC_DotPlot::DotPlot &dotplot,
-		PairHashTable::HashTable &Minima,
+		bool logEnergies, ofstream &energyFile,
+		std::unordered_set<int> &addedMinIDs, bool writeDotplot,
+		SC_DotPlot::DotPlot &dotplot, PairHashTable::HashTable &Minima,
 		std::unordered_map<size_t, MyState> &MinimaForReverseSearch,
 		SC_PartitionFunction::Z_Matrix &z, bool dynamicBestK,
 		std::unordered_map<size_t, std::vector<size_t>> &dynamicBestKFilterNeighborList,
-		std::list<size_t> &toDo_List, std::unordered_set<size_t> &done_List) {
+		std::list<size_t> &toDo_List, std::unordered_set<size_t> &done_List, bool verbose) {
 	for (int k = 0; k < threadParameter->size(); ++k) {
 		std::pair<flooderInputParameter*, flooderOutputParameter*>* bothParameter;
 		bothParameter = &threadParameter->at(k);
@@ -339,16 +344,20 @@ int merge_results(
 		flooderInputParameter* inParameter = bothParameter->first;
 		flooderOutputParameter* outParameter = bothParameter->second;
 
-		std::cout << "States out of basin: "
-				<< outParameter->Analysis.NumberOfStatesOutOfBasin << std::endl;
-		std::cout << "States in basin: "
-				<< outParameter->Analysis.NumberOfStatesInBasin << std::endl;
-		std::cout << "Energy Threshold: "
-				<< outParameter->Analysis.MaxEnergyThreshold << std::endl;
-		std::cout << "Max Energy in Basin: "
-				<< outParameter->ScBasin->getMaxEnergy() << std::endl;
-		std::cout << "Processed States by flooding: "
-				<< outParameter->Analysis.ProcessedStates << std::endl;
+		if (verbose) {
+			std::cout << "States out of basin: "
+					<< outParameter->Analysis.NumberOfStatesOutOfBasin
+					<< std::endl;
+			std::cout << "States in basin: "
+					<< outParameter->Analysis.NumberOfStatesInBasin
+					<< std::endl;
+			std::cout << "Energy Threshold: "
+					<< outParameter->Analysis.MaxEnergyThreshold << std::endl;
+			std::cout << "Max Energy in Basin: "
+					<< outParameter->ScBasin->getMaxEnergy() << std::endl;
+			std::cout << "Processed States by flooding: "
+					<< outParameter->Analysis.ProcessedStates << std::endl;
+		}
 
 		if (logEnergies) {
 			if (addedMinIDs.find(inParameter->BasinID) == addedMinIDs.end()) {
@@ -419,8 +428,9 @@ int merge_results(
 						it->first.first);
 				size_t newSecondIndex = mapOldIndexToNewIndex.at(
 						it->first.second);
-				SC_PartitionFunction::PairID localPairID = SC_PartitionFunction::PairID(newFirstIndex,
-						newSecondIndex);
+				SC_PartitionFunction::PairID localPairID =
+						SC_PartitionFunction::PairID(newFirstIndex,
+								newSecondIndex);
 				z.insert( { localPairID, it->second });
 			}
 		}
@@ -545,6 +555,8 @@ int main(int argc, char** argv) {
 
 	// How to treat \"dangling end\" energies for bases adjacent to helices in free ends and multi-loops
 	int danglingEnd = 2;
+
+	bool verbose = false;
 
 // parameter: path to file for energy model that is placed in the share/misc folder of this build.
 // (set by th "M" parameter: 0=Turner2004,1=Turner1999,2=Andronescu2007)
@@ -758,7 +770,9 @@ int main(int argc, char** argv) {
 			int energyModelNumber = out_Parser.getIntVal("M");
 			if (energyModelNumber >= 0 || energyModelNumber <= 2) {
 				// Get the last position of '/'
-				std::string aux(argv[0]);
+				char buf[UINT16_MAX];
+				readlink("/proc/self/exe", buf, UINT16_MAX);
+				std::string aux(buf); //(argv[0]);
 				// get '/' or '\\' depending on unix/mac or windows.
 #if defined(_WIN32) || defined(WIN32)
 				int pos = aux.rfind ('\\');
@@ -780,9 +794,12 @@ int main(int argc, char** argv) {
 				case 0:
 					energyModelFile = path + shareFolder
 							+ "/rna_turner2004.par";
-					// read_parameter_file (energyModelFile.c_str ());
-					// todo: read the file if the reader has been fixed in ViennaRNA
-					// this is not the case in ViennaRNA 2.1.9!
+					//printf("%s \n",energyModelFile.c_str());
+					read_parameter_file(energyModelFile.c_str());
+					/*TODO: find out why the default setting of viennaRNA 2.3.5
+					        produces different results than the results after
+					        reading the default file
+					*/
 					break;
 				case 1:
 					energyModelFile = path + shareFolder
@@ -801,6 +818,10 @@ int main(int argc, char** argv) {
 			}
 		}
 
+		if (out_Parser.argExist("v")) {
+			verbose = out_Parser.getBoolVal("v");
+		}
+
 		vrna_md_t md;
 		vrna_md_set_default(&md);
 		md.circ = circ;
@@ -811,8 +832,6 @@ int main(int argc, char** argv) {
 		char * sequence = (char *) rnaSequence.c_str();
 		vrna_fold_compound_t *vc = vrna_fold_compound(sequence, &md,
 		VRNA_OPTION_MFE | VRNA_OPTION_PF);
-
-		//TODO: distinguish T for boltzmann weight and T for energy!
 
 		// set best K filter if required
 		// create an filter Object type NeighMinFilter as first filtering Technique
@@ -848,24 +867,27 @@ int main(int argc, char** argv) {
 
 		// start walking to find gradient basin minimum for start state
 		short * rnaStructurePT = vrna_ptable(rna_start_str.c_str());
-		printf("%s\n", rna_start_str.c_str());
+		//printf("%s\n", rna_start_str.c_str());
 		int energy = vrna_eval_structure_pt(vc, rnaStructurePT);
 		MyState startState(energy, rnaStructurePT);
 
 		//init stopwatch for initial walk:
 		std::chrono::time_point<std::chrono::system_clock> startInitialWalk,
 				endInitialWalk;
-		startInitialWalk = std::chrono::system_clock::now();
+		if (verbose)
+			startInitialWalk = std::chrono::system_clock::now();
 
-		MyState* startStateMinimum =
-				WalkGradientHashed(maxToHash).walk(vc, startState);
+		MyState* startStateMinimum = WalkGradientHashed(maxToHash).walk(vc,
+				startState);
 
-		//print stopwatch for initial walk:
-		endInitialWalk = std::chrono::system_clock::now();
-		std::chrono::duration<double> elapsed_seconds_InitialWalk =
-				endInitialWalk - startInitialWalk;
-		std::cout << "Initial Walk elapsed time: "
-				<< elapsed_seconds_InitialWalk.count() << "s\n";
+		if (verbose) {
+			//print stopwatch for initial walk:
+			endInitialWalk = std::chrono::system_clock::now();
+			std::chrono::duration<double> elapsed_seconds_InitialWalk =
+					endInitialWalk - startInitialWalk;
+			std::cout << "Initial Walk elapsed time: "
+					<< elapsed_seconds_InitialWalk.count() << "s\n";
+		}
 
 		// add current minimum to set of minima and store its index
 		size_t currentMinID = 0;
@@ -901,28 +923,18 @@ int main(int argc, char** argv) {
 				(vc->length + 1) * sizeof(char));
 		float mfeEnergy = vrna_mfe(vc, mfeStructure);
 
-		///TODO: simultaneous mfe flooding test
-		/*
-		 if(NoFiltersActive){
-		 size_t mfeMinID = 2;
-		 MyState mfeState(mfeEnergy,vrna_ptable(mfeStructure));
-		 Minima.insert( { mfeState, mfeMinID });
-		 MinimaForReverseSearch.insert( { mfeMinID, mfeState });
-		 toDo_List.push_back(mfeMinID);
-		 }
-		 */
-		///////
 		//init dynamic k-best filter list.
 		std::unordered_map<size_t, std::vector<size_t>> dynamicBestKFilterNeighborList;
 
-		do    //start dynamic best k filter loop.
+		do		//start dynamic best k filter loop.
 		{
 			// go through all the elements of toDo_list to get the Neighbors of that
 			while (!toDo_List.empty()) {
 				int listSize = toDo_List.size();
 				int numThreads = maxThreads;   //std::min(listSize, maxThreads);
 
-				std::cout << "Todo list size: " << listSize << std::endl;
+				if (verbose)
+					std::cout << "Todo list size: " << listSize << std::endl;
 
 				//set dynamic maxToHash
 				if (dynamicMaxToHash)
@@ -937,7 +949,7 @@ int main(int argc, char** argv) {
 				 *      if x finished
 				 *        merge results and update todolist
 				 *        if todolist not empty
-				 *          start new thread with basin from todo list
+				 *          start new thread with basin from todolist
 				 *
 				 *
 				 */
@@ -975,34 +987,36 @@ int main(int argc, char** argv) {
 							finish = false;
 							//test if new discovered minima are on the stack (pull all available minima)
 							//TODO: warning! This kind of asynchroneous flooding disables some Filter Options.
-							while (!discoveredMinimaForEachThread[index].empty()) {
-								MyState newMin =
-										discoveredMinimaForEachThread[index].front();
-								//start flooding. TODO
-								if (Minima.find(newMin) == Minima.end()) { //if local min is not in total list.
-																		   //add new min and set lowest maximal index.
-									size_t lowestMaxIndex =
-											TypeID::value<size_t>();
+							if (!enableBestKFilter && !enableDeltaMinEFilter) {
+								while (!discoveredMinimaForEachThread[index].empty()) {
+									MyState newMin =
+											discoveredMinimaForEachThread[index].front();
+									//start flooding.
+									if (Minima.find(newMin) == Minima.end()) { //if local min is not in total list.
+																			   //add new min and set lowest maximal index.
+										size_t lowestMaxIndex = TypeID::value<
+												size_t>();
 
-									Minima.insert( { newMin, lowestMaxIndex });
-									MinimaForReverseSearch.insert( {
-											lowestMaxIndex, newMin });
+										Minima.insert(
+												{ newMin, lowestMaxIndex });
+										MinimaForReverseSearch.insert( {
+												lowestMaxIndex, newMin });
 
-									// if the element at the index position is not already in done List, add it to toDo_list
-									if (done_List.find(lowestMaxIndex)
-											== done_List.end()
-											&& std::find(toDo_List.begin(),
-													toDo_List.end(),
-													lowestMaxIndex)
-													== toDo_List.end()) {
-										toDo_List.push_back(lowestMaxIndex);
+										// if the element at the index position is not already in done List, add it to toDo_list
+										if (done_List.find(lowestMaxIndex)
+												== done_List.end()
+												&& std::find(toDo_List.begin(),
+														toDo_List.end(),
+														lowestMaxIndex)
+														== toDo_List.end()) {
+											toDo_List.push_back(lowestMaxIndex);
+										}
 									}
+									discoveredMinimaForEachThread[index].pop_front();
 								}
-								discoveredMinimaForEachThread[index].pop_front();
 							}
 						} else {
 							//finished -> merge result and create a new thread
-							//TODO merge result
 							std::vector<
 									std::pair<flooderInputParameter*,
 											flooderOutputParameter*>>* threadParameter =
@@ -1013,13 +1027,13 @@ int main(int argc, char** argv) {
 										dotplot, Minima, MinimaForReverseSearch,
 										z, dynamicBestK,
 										dynamicBestKFilterNeighborList,
-										toDo_List, done_List);
+										toDo_List, done_List, verbose);
 
 								threadParameter->clear();
 							}
 							if (!toDo_List.empty()) {
 								finish = false;
-								//TODO create a new thread
+								//create a new thread
 								int listSize = toDo_List.size();
 								int fractionPerThread = int(
 										ceil(listSize / float(numThreads)));
@@ -1033,7 +1047,7 @@ int main(int argc, char** argv) {
 									size_t minID = toDo_List.front();
 									done_List.insert(minID);
 									toDo_List.pop_front();
-									// TODO create inParameter before starting the thread!
+									// create inParameter before starting the thread!
 									// make a list as big as the number of threads and clean the entry before the replacement and in the end.
 
 									flooderInputParameter* inParameter =
@@ -1048,6 +1062,8 @@ int main(int argc, char** argv) {
 									inParameter->DeltaE = deltaE;
 									inParameter->DiscoveredMinima =
 											&discoveredMinimaForEachThread[index];
+									inParameter->TemperatureForBoltzmannWeight =
+											temperatureForBoltzmannWeight;
 
 									flooderOutputParameter* outParameter =
 											new flooderOutputParameter();
@@ -1329,15 +1345,15 @@ void writeDescription(biu::OptionMap & allowed, std::string & info) {
 
 	allowed.push_back(
 			biu::COption("maxEnergy", true, biu::COption::DOUBLE,
-					"Sets the maximum energy that a state is allowed to have to be considered by the flooder.",
+					"Sets the maximum energy that a state is allowed to have to be considered by the flooder (in kcal/mol).",
 					"9999"));
 	allowed.push_back(
 			biu::COption("deltaE", true, biu::COption::DOUBLE,
-					"Set the maximum energy difference that states in a basin can have w.r.t. the local minimum.",
+					"Set the maximum energy difference that states in a basin can have w.r.t. the local minimum (in 10kcal/mol).",
 					"9999"));
 	allowed.push_back(
 			biu::COption("T", true, biu::COption::INT,
-					"Set the temperature for the free energy calculation. (If \"T\" is set and \"B\" not, \"B\" is equals \"T\").",
+					"Set the temperature for the free energy calculation (in °C). (If \"T\" is set and \"B\" not, \"B\" is equals \"T\").",
 					"37"));
 	allowed.push_back(
 			biu::COption("d", true, biu::COption::INT,
@@ -1345,7 +1361,8 @@ void writeDescription(biu::OptionMap & allowed, std::string & info) {
 					"2"));
 	allowed.push_back(
 			biu::COption("B", true, biu::COption::INT,
-					"Set the temperature for the Boltzmann weight.", "37"));
+					"Set the temperature for the Boltzmann weight (in °C).",
+					"37"));
 	allowed.push_back(
 			biu::COption("M", true, biu::COption::INT,
 					"Set the energy model. 0=Turner model 2004, 1=Turner model 1999, 2=Andronescu model, 2007",
@@ -1368,6 +1385,8 @@ void writeDescription(biu::OptionMap & allowed, std::string & info) {
 			biu::COption("maxThreads", true, biu::COption::INT,
 					"Sets the maximum number of threads for parallelized computation.",
 					"1"));
+	allowed.push_back(
+			biu::COption("v", true, biu::COption::BOOL, "Verbose"));
 
 }		// end function
 
