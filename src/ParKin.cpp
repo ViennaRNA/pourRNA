@@ -33,6 +33,7 @@ extern "C" {
 #include <ViennaRNA/read_epars.h>
 #include <ViennaRNA/eval.h>
 #include <ViennaRNA/data_structures.h>
+#include <ViennaRNA/utils/structures.h>
 }
 #include "BIUlibPart/OptionParser.h"
 #include "BIUlibPart/MatrixSparse.hh"
@@ -560,7 +561,7 @@ int main(int argc, char** argv) {
 
 // parameter: path to file for energy model that is placed in the share/misc folder of this build.
 // (set by th "M" parameter: 0=Turner2004,1=Turner1999,2=Andronescu2007)
-	std::string energyModelFile;
+	std::string energyModelFile = "";
 	/*
 	 * estimate the maxToHash parameter. The estimate depends on the available memory and the number of threads.
 	 * This estimation may slow down the computation, but it will be faster than with a swapping system.
@@ -575,7 +576,7 @@ int main(int argc, char** argv) {
 	biu::OptionMap allowed_Arg;
 
 // information string
-	std::string info;
+	std::string info = "";
 
 	writeDescription(allowed_Arg, info);
 
@@ -770,8 +771,11 @@ int main(int argc, char** argv) {
 			int energyModelNumber = out_Parser.getIntVal("M");
 			if (energyModelNumber >= 0 || energyModelNumber <= 2) {
 				// Get the last position of '/'
-				char buf[UINT16_MAX];
-				readlink("/proc/self/exe", buf, UINT16_MAX);
+				char buf[UINT16_MAX] = "";
+				ssize_t res = readlink("/proc/self/exe", buf, UINT16_MAX);
+				if(res == -1){
+				  fprintf(stderr,"Error: could not read /proc/self/exe");
+				}
 				std::string aux(buf); //(argv[0]);
 				// get '/' or '\\' depending on unix/mac or windows.
 #if defined(_WIN32) || defined(WIN32)
@@ -986,7 +990,7 @@ int main(int argc, char** argv) {
 						if (!res) {
 							finish = false;
 							//test if new discovered minima are on the stack (pull all available minima)
-							//TODO: warning! This kind of asynchroneous flooding disables some Filter Options.
+							//TODO: warning! This kind of asynchronous flooding disables some Filter Options.
 							if (!enableBestKFilter && !enableDeltaMinEFilter) {
 								while (!discoveredMinimaForEachThread[index].empty()) {
 									MyState newMin =

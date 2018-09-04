@@ -75,6 +75,7 @@ WalkGradientHashed::walkGradient(vrna_fold_compound_t *vc,
 		currentStructure.energy = minimalNeighbor->energy;
 		copy_arr(currentStructure.structure, minimalNeighbor->structure);
 
+		/*
 		if (tmp_neighbors != NULL && minimal_move_index >= 0) {
 			vrna_move_t curr_move = tmp_neighbors[minimal_move_index];
 			int size_new_neighbors = 0;
@@ -85,7 +86,9 @@ WalkGradientHashed::walkGradient(vrna_fold_compound_t *vc,
 			free(tmp_neighbors);
 			size_neighbors = size_new_neighbors;
 			tmp_neighbors = new_neighbors;
-		} else {
+		} else */
+		{
+			free(tmp_neighbors);
 			tmp_neighbors = vrna_neighbors(vc, currentStructure.structure,
 					VRNA_MOVESET_DEFAULT);
 			size_neighbors = 0;

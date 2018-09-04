@@ -56,6 +56,7 @@ void StatePairCollector::add(vrna_fold_compound_t *vc,
 		Z[pairID].add(*state2);
 	} else {
 		// update Z matrix with non-basin state
+		//TODO: compute the contact surface only once!
 		Z[pairID].add(*state1);
 		NumberOfOuterStates++;
 	}
