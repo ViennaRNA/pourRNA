@@ -5,6 +5,11 @@
  *      Author: Gregor Entzian
  */
 
+
+extern "C" {
+//#include <ViennaRNA/utils/structures.h>
+#include <ViennaRNA/data_structures.h>
+}
 #include "MyState.h"
 
 MyState::MyState () :
@@ -18,7 +23,7 @@ MyState::MyState (int energy, Structure structure) :
 	this->structure=NULL;
 	if (structure != NULL)
 	{
-		this->structure = (vrna_ptable_copy (structure));
+		this->structure = vrna_ptable_copy (structure);
 	}
 }
 

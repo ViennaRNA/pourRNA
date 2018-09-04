@@ -13,7 +13,6 @@
 #include <iostream>
 extern "C" {
 #include <ViennaRNA/move_set.h>
-#include <ViennaRNA/structure_utils.h>
 }
 #include <string>
 #include "StructureUtils.h"
