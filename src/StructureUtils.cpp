@@ -31,27 +31,27 @@ std::string StructureUtils::getStructure(short * pair_table) {
 }
 
 bool StructureUtils::IsSmaller(short * a, short * b) {
-	//rule: "." > ")" > "(".
+	//rule: "." < "(" < ")".
 	if (a != NULL && b != NULL) {
 		short encodedCharacterInA;
 		short encodedCharacterInB;
-		//encoding: "."=2, ")"=1, "(" = 0.
+		//encoding: "."=0, ")"=2, "(" = 1.
 		for (int i = 1; i <= a[0]; i++) {
 			if (a[i] != b[i]) {
 				if (a[i] == 0) {
-					encodedCharacterInA = 2; //="."
+					encodedCharacterInA = 0; //="."
 				} else if (a[i] < i) {
-					encodedCharacterInA = 1; //=")"
+					encodedCharacterInA = 2; //=")"
 				} else {
-					encodedCharacterInA = 0; //="("
+					encodedCharacterInA = 1; //="("
 				}
 
 				if (b[i] == 0) {
-					encodedCharacterInB = 2; //="."
+					encodedCharacterInB = 0; //="."
 				} else if (b[i] < i) {
-					encodedCharacterInB = 1; //=")"
+					encodedCharacterInB = 2; //=")"
 				} else {
-					encodedCharacterInB = 0; //="("
+					encodedCharacterInB = 1; //="("
 				}
 
 				if (encodedCharacterInA != encodedCharacterInB) {
@@ -67,25 +67,25 @@ bool StructureUtils::IsSmaller(short * a, short * b) {
 
 bool StructureUtils::IsGreater(short * a, short * b) {
 	if (a != NULL && b != NULL) {
-		//encoding: "."=2, ")"=1, "(" = 0.
+		//encoding: "."=0, ")"=2, "(" = 1.
 		for (int i = 1; i <= a[0]; i++) {
 			if (a[i] != b[i]) {
 				short encodedCharacterInA;
 				short encodedCharacterInB;
 				if (a[i] == 0) {
-					encodedCharacterInA = 2; //="."
+					encodedCharacterInA = 0; //="."
 				} else if (a[i] < i) {
-					encodedCharacterInA = 1; //=")"
+					encodedCharacterInA = 2; //=")"
 				} else {
-					encodedCharacterInA = 0; //="("
+					encodedCharacterInA = 1; //="("
 				}
 
 				if (b[i] == 0) {
-					encodedCharacterInB = 2; //="."
+					encodedCharacterInB = 0; //="."
 				} else if (b[i] < i) {
-					encodedCharacterInB = 1; //=")"
+					encodedCharacterInB = 2; //=")"
 				} else {
-					encodedCharacterInB = 0; //="("
+					encodedCharacterInB = 1; //="("
 				}
 				if (encodedCharacterInA != encodedCharacterInB) {
 					return encodedCharacterInA > encodedCharacterInB;
