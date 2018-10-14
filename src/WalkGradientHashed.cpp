@@ -41,7 +41,7 @@ WalkGradientHashed::convert_moves_to_neighbors(vrna_fold_compound_t *vc,
 MyState*
 WalkGradientHashed::walkGradient(vrna_fold_compound_t *vc,
 		const MyState& startState, SpookyHashMap::HashTable& state2min_) {
-	MyState* minimalNeighbor = (MyState*) startState.clone();
+	MyState* minimalNeighbor = new MyState(startState);
 	struct_en currentStructure;
 	currentStructure.structure = vrna_ptable_copy(minimalNeighbor->structure);
 
