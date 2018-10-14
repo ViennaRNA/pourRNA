@@ -22,6 +22,7 @@ extern "C"
 #include "StructureUtils.h"
 #include "WalkGradientHashed.h"
 #include <list>
+#include "Concurrent_Queue.h"
 
 /**
  * ! This class calculates the partition function for the contact surface.
@@ -41,7 +42,7 @@ public:
    */
   StatePairCollector (size_t currentMinID,
 		      PairHashTable::HashTable& minima, SC_PartitionFunction::Z_Matrix& z,
-		      const size_t maxGradWalkHashed,std::list<MyState> *discoveredMinima, double boltzmannWeightTemperature);
+		      const size_t maxGradWalkHashed,Concurrent_Queue<MyState> *discoveredMinima, double boltzmannWeightTemperature);
   virtual
   ~StatePairCollector ();
   /**
@@ -80,7 +81,7 @@ private:
   // ! number of states which are not in basin, but in the contactsurface.
   size_t NumberOfOuterStates;
   // ! unique minima queue (ready to flood)
-  std::list<MyState> *DiscoveredMinima;
+  Concurrent_Queue<MyState> *DiscoveredMinima;
 
 };
 

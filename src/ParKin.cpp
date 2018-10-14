@@ -30,7 +30,8 @@
 extern "C" {
 #include <ViennaRNA/move_set.h>
 #include <ViennaRNA/fold.h>
-#include <ViennaRNA/read_epars.h>
+//#include <ViennaRNA/read_epars.h>
+#include <ViennaRNA/params/io.h>
 #include <ViennaRNA/eval.h>
 #include <ViennaRNA/data_structures.h>
 #include <ViennaRNA/utils/structures.h>
@@ -42,6 +43,8 @@ extern "C" {
 #include "Flooder.h"
 #include "TypeID.h"
 #include "SC_DotPlot.h"
+
+#include "Concurrent_Queue.h"
 
 /*! Exception class for exceptions thrown during argument and input parsing.
  */
@@ -205,8 +208,12 @@ struct flooderInputParameter {
 	size_t BasinID;
 	MyState* CurrentMinimum;
 	NeighMinFilter* Filter;
-	std::list<MyState> *DiscoveredMinima;
+	Concurrent_Queue<MyState> *DiscoveredMinima;
 	double TemperatureForBoltzmannWeight;
+  ~flooderInputParameter() {
+    if (CurrentMinimum != NULL)
+      delete CurrentMinimum;
+  }
 };
 
 struct flooderOutputAnylse {
@@ -248,7 +255,7 @@ int floodBasin(vrna_fold_compound_t *vc, flooderInputParameter* inParameter,
 	// initializing set, which contains the NEighbors indices  of current state
 	size_t loopCurrentLocalMinID = 0;
 
-	MyState* minState = inParameter->CurrentMinimum;
+	MyState* minState = new MyState(*inParameter->CurrentMinimum); //TODO: create new instance! (cleaned if localThreadMinima is cleaned)
 	//set local id to zero because of the statePairCollector id-assign-method.
 
 	localThreadMinima.insert( { *minState, loopCurrentLocalMinID });
@@ -289,7 +296,7 @@ int floodBasin(vrna_fold_compound_t *vc, flooderInputParameter* inParameter,
 				outParameter->PartitionFunctions, loopCurrentLocalMinID,
 				*minState, outParameter->IndicesOfFilteredMinima);
 	}
-
+  delete minState;
 	//add features for analysis.
 	outParameter->Analysis.NumberOfStatesInBasin =
 			outParameter->ScBasin->size();
@@ -406,9 +413,9 @@ int merge_results(
 															   //add new min and set lowest maximal index.
 				size_t lowestMaxIndex = TypeID::value<size_t>();
 
-				Minima.insert( { (localThreadMin), lowestMaxIndex });
+				Minima.insert( { MyState(localThreadMin), lowestMaxIndex });
 				MinimaForReverseSearch.insert( { lowestMaxIndex,
-						(localThreadMin) });
+				  MyState(localThreadMin) });
 			}
 
 			size_t newIndex = Minima.at(localThreadMin);
@@ -828,14 +835,17 @@ int main(int argc, char** argv) {
 
 		vrna_md_t md;
 		vrna_md_set_default(&md);
-		md.circ = circ;
-		md.uniq_ML = 1; /* in case we need M1 arrays */
+		md.circ = 0;
+		//md.uniq_ML = 1; /* in case we need M1 arrays */
+		md.noLP = 0;
+		md.gquad = 0;
+		md.noGU = 0;
 		md.compute_bpp = 0;
 		md.temperature = temperatureForEnergy;
 		md.dangles = danglingEnd;
 		char * sequence = (char *) rnaSequence.c_str();
 		vrna_fold_compound_t *vc = vrna_fold_compound(sequence, &md,
-		VRNA_OPTION_MFE | VRNA_OPTION_PF);
+		VRNA_OPTION_MFE); // | VRNA_OPTION_PF);
 
 		// set best K filter if required
 		// create an filter Object type NeighMinFilter as first filtering Technique
@@ -962,7 +972,7 @@ int main(int argc, char** argv) {
 				std::vector<
 						std::pair<flooderInputParameter*,
 								flooderOutputParameter*>> threadParameterLists[maxThreads];
-				std::list<MyState> discoveredMinimaForEachThread[maxThreads];
+				Concurrent_Queue<MyState> discoveredMinimaForEachThread[maxThreads];
 
 				std::future<int> v[maxThreads];
 
@@ -994,7 +1004,7 @@ int main(int argc, char** argv) {
 							if (!enableBestKFilter && !enableDeltaMinEFilter) {
 								while (!discoveredMinimaForEachThread[index].empty()) {
 									MyState newMin =
-											discoveredMinimaForEachThread[index].front();
+											discoveredMinimaForEachThread[index].pop();
 									//start flooding.
 									if (Minima.find(newMin) == Minima.end()) { //if local min is not in total list.
 																			   //add new min and set lowest maximal index.
@@ -1016,7 +1026,7 @@ int main(int argc, char** argv) {
 											toDo_List.push_back(lowestMaxIndex);
 										}
 									}
-									discoveredMinimaForEachThread[index].pop_front();
+									//discoveredMinimaForEachThread[index].pop_front();
 								}
 							}
 						} else {
@@ -1058,7 +1068,7 @@ int main(int argc, char** argv) {
 											new flooderInputParameter();
 									inParameter->BasinID = minID;
 									inParameter->CurrentMinimum =
-											&MinimaForReverseSearch.at(minID);
+											new MyState(MinimaForReverseSearch.at(minID));
 									inParameter->MaxToHash = maxToHash;
 									inParameter->MaxToQueue = maxToQueue;
 									inParameter->Filter = neighborFilter;

@@ -9,7 +9,7 @@
 
 StatePairCollector::StatePairCollector(size_t currentMinID,
 		PairHashTable::HashTable& minima, SC_PartitionFunction::Z_Matrix& z,
-		const size_t maxGradWalkHashed, std::list<MyState> *discoveredMinima,
+		const size_t maxGradWalkHashed, Concurrent_Queue<MyState> *discoveredMinima,
 		double boltzmannWeightTemperature) :
 		CurMinID(currentMinID), Minima(minima), Z(z), GradWalk(
 				maxGradWalkHashed), NumberOfOuterStates(0), DiscoveredMinima(
@@ -35,7 +35,7 @@ void StatePairCollector::add(vrna_fold_compound_t *vc,
 		neighborMinID = Minima.size();
 		Minima.insert( { MyState(*newMin), neighborMinID });
 		if (DiscoveredMinima != NULL)
-			DiscoveredMinima->push_back((*newMin));
+			DiscoveredMinima->push((*newMin));
 
 	} else {
 		// get index of newMin in Minima
@@ -47,7 +47,7 @@ void StatePairCollector::add(vrna_fold_compound_t *vc,
 	SC_PartitionFunction::PairID pairID = { CurMinID, neighborMinID };
 	SC_PartitionFunction::Z_Matrix::iterator zIt = Z.find(pairID);
 	if (zIt == Z.end()) {
-		// TODO: test if T is in K or C! //GlobalParameter::getInstance ()->getBoltzmannWeightTemperature();
+		// vc->params->temperature is in Celsius.
 		Z[pairID].initialize(vc->params->temperature);
 	}
 

@@ -21,6 +21,7 @@ parKin_SOURCES =	SpookyHash/SpookyV2.h \
 					RNAkinetics/RNA_NeighMinFilter.cpp \
 					TypeID.h \
 					TypeID.cpp \
+					Concurrent_Queue.h \
 					MyState.h \
 					MyState.cpp \
 					PriorityQueue.h \
