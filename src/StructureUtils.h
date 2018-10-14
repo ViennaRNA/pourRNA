@@ -57,6 +57,7 @@ public:
    * @param structure the dot-bracket structure.
    */
   static bool IsValidStructure(std::string structure);
+
 };
 
 #endif /* STRUCTUREUTILS_H_ */

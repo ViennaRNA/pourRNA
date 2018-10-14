@@ -35,23 +35,23 @@ bool StructureUtils::IsSmaller(short * a, short * b) {
 	if (a != NULL && b != NULL) {
 		short encodedCharacterInA;
 		short encodedCharacterInB;
-		//encoding: "."=0, ")"=2, "(" = 1.
+		//ascii-lexicographic sort ( < ) < . (like in rna-subopt)
 		for (int i = 1; i <= a[0]; i++) {
 			if (a[i] != b[i]) {
 				if (a[i] == 0) {
-					encodedCharacterInA = 0; //="."
+					encodedCharacterInA = 2; //="."
 				} else if (a[i] < i) {
-					encodedCharacterInA = 2; //=")"
+					encodedCharacterInA = 1; //=")"
 				} else {
-					encodedCharacterInA = 1; //="("
+					encodedCharacterInA = 0; //="("
 				}
 
 				if (b[i] == 0) {
-					encodedCharacterInB = 0; //="."
+					encodedCharacterInB = 2; //="."
 				} else if (b[i] < i) {
-					encodedCharacterInB = 2; //=")"
+					encodedCharacterInB = 1; //=")"
 				} else {
-					encodedCharacterInB = 1; //="("
+					encodedCharacterInB = 0; //="("
 				}
 
 				if (encodedCharacterInA != encodedCharacterInB) {
@@ -61,7 +61,7 @@ bool StructureUtils::IsSmaller(short * a, short * b) {
 		}
 	}
 
-	return 0;
+	return false;
 
 }
 
@@ -73,19 +73,19 @@ bool StructureUtils::IsGreater(short * a, short * b) {
 				short encodedCharacterInA;
 				short encodedCharacterInB;
 				if (a[i] == 0) {
-					encodedCharacterInA = 0; //="."
+					encodedCharacterInA = 2; //="."
 				} else if (a[i] < i) {
-					encodedCharacterInA = 2; //=")"
+					encodedCharacterInA = 1; //=")"
 				} else {
-					encodedCharacterInA = 1; //="("
+					encodedCharacterInA = 0; //="("
 				}
 
 				if (b[i] == 0) {
-					encodedCharacterInB = 0; //="."
+					encodedCharacterInB = 2; //="."
 				} else if (b[i] < i) {
-					encodedCharacterInB = 2; //=")"
+					encodedCharacterInB = 1; //=")"
 				} else {
-					encodedCharacterInB = 1; //="("
+					encodedCharacterInB = 0; //="("
 				}
 				if (encodedCharacterInA != encodedCharacterInB) {
 					return encodedCharacterInA > encodedCharacterInB;
@@ -93,7 +93,7 @@ bool StructureUtils::IsGreater(short * a, short * b) {
 			}
 		}
 	}
-	return 0;
+	return false;
 }
 
 bool StructureUtils::IsEqual(const short * a, const short * b) {
