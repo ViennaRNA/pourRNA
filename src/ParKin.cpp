@@ -1360,7 +1360,7 @@ void writeDescription(biu::OptionMap & allowed, std::string & info) {
 	allowed.push_back(
 			biu::COption("maxEnergy", true, biu::COption::DOUBLE,
 					"Sets the maximum energy that a state is allowed to have to be considered by the flooder (in kcal/mol).",
-					"9999"));
+					"5"));
 	allowed.push_back(
 			biu::COption("deltaE", true, biu::COption::DOUBLE,
 					"Set the maximum energy difference that states in a basin can have w.r.t. the local minimum (in 10kcal/mol).",
@@ -1390,7 +1390,7 @@ void writeDescription(biu::OptionMap & allowed, std::string & info) {
 					"File to store all energies."));
 	allowed.push_back(
 			biu::COption("partitionFunctions", true, biu::COption::STRING,
-					"If provided, the partitionfunction matrix will be written to the given file name."));
+					"If provided, the partition function matrix will be written to the given file name."));
 	allowed.push_back(
 			biu::COption("dotPlot", true, biu::COption::STRING,
 					"If provided, the dotPlot will be written to the given file name. \
