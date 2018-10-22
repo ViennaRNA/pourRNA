@@ -229,6 +229,82 @@ printZMatrixSorted (const SC_PartitionFunction::Z_Matrix& z, size_t maxNeighbors
 }
 
 void
+print_number_of_rates (const SC_PartitionFunction::Z_Matrix& z,
+        const std::unordered_map<size_t, MyState>& minimaMap,
+        const PairHashTable::HashTable& originalMinima, std::ostream& out)
+{
+  const size_t LEAD = 6;
+
+  std::vector<std::pair<size_t, MyState*>> sortedMinimaIDs;
+  for (auto it = minimaMap.begin (); it != minimaMap.end (); it++)
+    {
+      sortedMinimaIDs.push_back (std::pair<size_t, MyState*> (it->first, (MyState*) &(it->second)));
+    }
+
+  std::sort (sortedMinimaIDs.begin (), sortedMinimaIDs.end (), less_second ());
+  size_t count_rates = 0;
+  size_t nextMinID;
+  // print only non-empty rates
+  for (size_t c = 0; c < sortedMinimaIDs.size (); c++)
+    {
+      MyState min = *sortedMinimaIDs[c].second;
+      nextMinID = originalMinima.at (min);
+     // out << "\n" << std::setw (LEAD) << c << " [" << min.toString () << "] :";
+
+      bool bPrinted = false;
+      size_t rowMinID;
+      std::stringstream sstmp;
+      sstmp << std::scientific;
+      for (size_t r = 0; r < sortedMinimaIDs.size (); r++)
+  {
+    rowMinID = originalMinima.at (*sortedMinimaIDs[r].second);
+    //in Z-Matrix: from i to j.
+    //in final_Rate: from j to i !
+    SC_PartitionFunction::PairID transitionID = SC_PartitionFunction::PairID(nextMinID, rowMinID);
+    SC_PartitionFunction::PairID reverseTransitionID =SC_PartitionFunction::PairID(rowMinID, nextMinID);
+
+    double z_transition = 0;
+    double z_reverseTransition = 0;
+    auto tmpIt = z.find (transitionID);
+    bool bExists = false;
+    if (tmpIt != z.end ())
+      {
+        //z_transition = tmpIt->second.getZ ();
+        bExists = true;
+      }
+    tmpIt = z.find (reverseTransitionID);
+    if (tmpIt != z.end ())
+      {
+       // z_reverseTransition = tmpIt->second.getZ ();
+        bExists = true;
+      }
+    //max is important if filters are applied! Otherwise it should be equal.
+    //z_transition = std::max (z_transition, z_reverseTransition);
+   // if (nextMinID != rowMinID)
+   //   { // compute correct transition to another state.
+   //     z_transition = z_transition / maxNeighbors;
+   //   }
+
+    if (bExists)
+      {
+        count_rates += 1;
+        //sstmp << " " << r << " = " << z_transition << ",";
+        //bPrinted = true;
+      }
+  }
+   //   if (bPrinted)
+  //{ //remove last comma.
+  //  sstmp.seekp (-1, sstmp.cur);
+  //  sstmp << " ";
+  //  out << sstmp.str ();
+  //}
+    }
+  out << "number of rates: " << count_rates << std::endl;
+  out << std::endl;
+
+}
+
+void
 printEquilibriumDensities (SC_PartitionFunction::Z_Matrix& z,
 			   const std::unordered_map<size_t, MyState>& finalMinima,
 			   const PairHashTable::HashTable& originalMinima, std::ostream& out)

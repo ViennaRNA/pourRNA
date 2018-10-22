@@ -46,6 +46,17 @@ printRateMatrixSorted (const biu::MatrixSparseC<double>& R, const std::unordered
 		       std::ostream & out = std::cout);
 
 /**
+ * ! print the number of non-zero rates.
+ * @param R the rateMatrix.
+ * @param minima the indices and structures of the minima.
+ * @param out the outputstream, default is std::cout.
+ */
+void
+print_number_of_rates (const SC_PartitionFunction::Z_Matrix& z,
+        const std::unordered_map<size_t, MyState>& minimaMap,
+        const PairHashTable::HashTable& originalMinima, std::ostream& out);
+
+/**
  * ! print the partitionfunction sparse matrix, sorted.
  * @param z the partitionfunctions.
  * @param maxNeighbors the maximal number of neighbors is used to calculate the correct transition partition sums.

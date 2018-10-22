@@ -1277,6 +1277,8 @@ int main(int argc, char** argv) {
 			}
 		}
 
+		print_number_of_rates (z,final_minima, Minima, std::cout);
+
 		/***********Garbage collection ************/
 		//	delete ScMinimum;
 		vrna_fold_compound_free(vc);
