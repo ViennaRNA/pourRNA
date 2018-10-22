@@ -548,8 +548,13 @@ int main(int argc, char** argv) {
 	/* parameter for writing a postscript-file with a DotPlot
 	 (it contains the base pair probabilities for all structures in the (filtered) energylandscape).*/
 	bool writeDotplot = false;
-	//parameter for writing a postscript-file with a DotPlot.
-	std::string dotPlotFileName = "";
+  //parameter for writing a postscript-file with a DotPlot.
+  std::string dotPlotFileName = "";
+	// parameter for writing a postscript dotplot per basin.
+	bool writeDotplotPerBasin = false;
+	// file name prefix for dotplots per basin.
+	//TODO: implement this!
+	std::string dotPlotPerBasinFileName = "";
 
 	// file to store all partition functions.
 	std::string partitionFunctionFileName = "";
@@ -723,6 +728,13 @@ int main(int argc, char** argv) {
 				dotPlotFileName = out_Parser.getStrVal("dotPlot");
 				writeDotplot = true;
 			}
+		}
+
+		if(out_Parser.argExist("dotPlot_per_basin")){
+		  if(out_Parser.getStrVal("dotPlot_per_basin").size() != 0){
+		    dotPlotPerBasinFileName = out_Parser.getStrVal("dotPlot_per_basin");
+		    writeDotplotPerBasin = true;
+		  }
 		}
 
 		if (out_Parser.argExist("transProb")) {
@@ -1240,19 +1252,22 @@ int main(int argc, char** argv) {
 			ptFile.close();
 		}
 
+    double partitionFunctionLandscape = 0;
+    //get partition Sum for the energy landscape.
+    for (size_t i = 0; i < final_minima.size(); i++) {
+      MyState tmpMin = final_minima.at(i);
+      size_t minIndex = Minima.at(tmpMin);
+      partitionFunctionLandscape +=
+          z.at(SC_PartitionFunction::PairID(minIndex, minIndex)).getZ();
+    }
+    std::cout << "The overall partition function is: "
+        << partitionFunctionLandscape << std::endl;
+
 		//dotplot
 		if (writeDotplot) {
-			double partitionSumLandscape = 0;
-			//get partition Sum for the energy landscape.
-			for (size_t i = 0; i < final_minima.size(); i++) {
-				MyState tmpMin = final_minima.at(i);
-				size_t minIndex = Minima.at(tmpMin);
-				partitionSumLandscape +=
-						z.at(SC_PartitionFunction::PairID(minIndex, minIndex)).getZ();
-			}
 			SC_DotPlot::DotPlot normalizedDotplot =
 					SC_DotPlot::getBasePairProbabilities(dotplot,
-							partitionSumLandscape);
+							partitionFunctionLandscape);
 			bool dotplotWritten = SC_DotPlot::writeDotPlot_PS(dotPlotFileName,
 					rnaSequence, normalizedDotplot);
 			if (!dotplotWritten) {
@@ -1260,8 +1275,6 @@ int main(int argc, char** argv) {
 						<< "\nWarning: error during the writing of the dot plot file "
 						<< dotPlotFileName << "\n";
 			}
-			std::cout << "The overall partitionfunction is: "
-					<< partitionSumLandscape << std::endl;
 		}
 
 		/***********Garbage collection ************/
@@ -1363,7 +1376,7 @@ void writeDescription(biu::OptionMap & allowed, std::string & info) {
 					"5"));
 	allowed.push_back(
 			biu::COption("deltaE", true, biu::COption::DOUBLE,
-					"Set the maximum energy difference that states in a basin can have w.r.t. the local minimum (in 10kcal/mol).",
+					"Set the maximum energy difference that states in a basin can have w.r.t. the local minimum (in kcal/mol).",
 					"9999"));
 	allowed.push_back(
 			biu::COption("T", true, biu::COption::INT,
@@ -1395,6 +1408,10 @@ void writeDescription(biu::OptionMap & allowed, std::string & info) {
 			biu::COption("dotPlot", true, biu::COption::STRING,
 					"If provided, the dotPlot will be written to the given file name. \
 	  The dotPlot contains the base pair probabilities for all structures in the (filtered) energy landscape."));
+  allowed.push_back(
+      biu::COption("dotPlot_per_basin", true, biu::COption::STRING,
+          "Creates a dotplot for each gradient basin in the enrgy landscape. It shows the Maximum Expected Accuracy (MEA) structure \
+           in the upper right triangle and the basin representative in the lower left triangle"));
 	allowed.push_back(
 			biu::COption("maxThreads", true, biu::COption::INT,
 					"Sets the maximum number of threads for parallelized computation.",
