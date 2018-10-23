@@ -11,15 +11,9 @@ To configure, compile and install do the following steps:
   
 Dependencies:
   - ViennaRNA library
-  - Energy Landscape Library
-  - BIU Library
   
 Known issues:
-  - ParKin runs with maxThreads > 1 and is slower than with one thread, it could be that it runs on Windows.
-    The problem is called Memory Contention. To solve this, one could use Linux where multiple allocations
-    on the heap memory are allowed. Another way is to re-implement this tool with dedicated heaps for each thread.
-    One could use HeapCreate from the Windows API or another HeapManager. The main function is the browseNeighs
-    function from the ViennaRNA library, which is used in the floodalgorithm and in the gradientwalk.
+  ---
 
 In case you run into problems, please contact us!
   
