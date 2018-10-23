@@ -7,342 +7,306 @@
 
 #include "RateMatrixUtil.h"
 
-void
-printRateMatrix (const biu::MatrixSparseC<double>& R, const std::unordered_map<size_t, MyState> & minimaMap,
-		 std::ostream & out, const bool noZeros)
-{
-  assertbiu(R.numColumns () == R.numRows (), "R is no square matrix");
-  assertbiu(R.numRows () <= minimaMap.size (), "less minima than rates");
+void printRateMatrix(const biu::MatrixSparseC<double>& R,
+    const std::unordered_map<size_t, MyState> & minimaMap, std::ostream & out,
+    const bool noZeros) {
+  assertbiu(R.numColumns() == R.numRows(), "R is no square matrix");
+  assertbiu(R.numRows() <= minimaMap.size(), "less minima than rates");
 
   const size_t LEAD = 6;
 
-  if (noZeros)
-    {
+  if (noZeros) {
 
-      out << std::scientific << "\n from : to\n";
+    out << std::scientific << "\n from : to\n";
 
-      // print only non-empty rates
-      for (size_t c = 0; c < R.numColumns (); c++)
-	{
-	  out << "\n" << std::setw (LEAD) << c << " [" << minimaMap.at (c).toString () << "] :";
+    // print only non-empty rates
+    for (size_t c = 0; c < R.numColumns(); c++) {
+      out << "\n" << std::setw(LEAD) << c << " [" << minimaMap.at(c).toString()
+          << "] :";
 
-	  const biu::MatrixSparseC<double>::EntryMap col = R.columnValues (c);
-	  biu::MatrixSparseC<double>::EntryMap::const_iterator row;
-	  for (row = col.begin (); row != col.end (); row++)
-	    {
-	      if (row != col.begin ())
-		{
-		  out << ",";
-		}
-	      out << " " << row->first << " = " << row->second;
-	    }
-	}
-      out << std::endl;
-
+      const biu::MatrixSparseC<double>::EntryMap col = R.columnValues(c);
+      biu::MatrixSparseC<double>::EntryMap::const_iterator row;
+      for (row = col.begin(); row != col.end(); row++) {
+        if (row != col.begin()) {
+          out << ",";
+        }
+        out << " " << row->first << " = " << row->second;
+      }
     }
-  else
-    {
-      const size_t PREC = 6;
-      double delta = 0.1;
-      for (size_t i = 0; i < PREC; i++)
-	delta = delta / 10.0;
+    out << std::endl;
 
-      out << "\n" << std::setw (LEAD) << "from |";
-      for (size_t i = 0; i < R.numColumns (); i++)
-	{
-	  out << std::setw (PREC + 3) << i;
-	}
-      out << "\n" << std::setfill ('-') << std::setw (LEAD) << "-";
-      for (size_t i = 0; i < R.numColumns (); i++)
-	{
-	  out << std::setfill ('-') << std::setw (PREC + 3) << "-";
-	}
-      out << "\n" << std::setfill (' ') << "to 0 |";
-      for (size_t from = 0; from < R.numColumns (); from++)
-	{
-	  if (noZeros && std::abs (R.at (0, from)) < delta)
-	    {
-	      out << std::setw (PREC + 3) << " ";
-	    }
-	  else
-	    {
-	      out << std::fixed << std::setprecision (PREC) << std::setw (PREC + 3) << R.at (0, from);
-	    }
-	}
-      for (size_t to = 1; to < R.numRows (); to++)
-	{
-	  out << "\n" << std::setw (LEAD - 2) << to << " |";
-	  for (size_t from = 0; from < R.numColumns (); from++)
-	    {
-	      if (noZeros && std::abs (R.at (to, from)) < delta)
-		{
-		  out << std::setw (PREC + 3) << " ";
-		}
-	      else
-		{
-		  out << std::fixed << std::setprecision (PREC) << std::setw (PREC + 3) << R.at (to, from);
-		}
-	    }
-	}
-      out << std::endl;
+  } else {
+    const size_t PREC = 6;
+    double delta = 0.1;
+    for (size_t i = 0; i < PREC; i++)
+      delta = delta / 10.0;
+
+    out << "\n" << std::setw(LEAD) << "from |";
+    for (size_t i = 0; i < R.numColumns(); i++) {
+      out << std::setw(PREC + 3) << i;
     }
+    out << "\n" << std::setfill('-') << std::setw(LEAD) << "-";
+    for (size_t i = 0; i < R.numColumns(); i++) {
+      out << std::setfill('-') << std::setw(PREC + 3) << "-";
+    }
+    out << "\n" << std::setfill(' ') << "to 0 |";
+    for (size_t from = 0; from < R.numColumns(); from++) {
+      if (noZeros && std::abs(R.at(0, from)) < delta) {
+        out << std::setw(PREC + 3) << " ";
+      } else {
+        out << std::fixed << std::setprecision(PREC) << std::setw(PREC + 3)
+            << R.at(0, from);
+      }
+    }
+    for (size_t to = 1; to < R.numRows(); to++) {
+      out << "\n" << std::setw(LEAD - 2) << to << " |";
+      for (size_t from = 0; from < R.numColumns(); from++) {
+        if (noZeros && std::abs(R.at(to, from)) < delta) {
+          out << std::setw(PREC + 3) << " ";
+        } else {
+          out << std::fixed << std::setprecision(PREC) << std::setw(PREC + 3)
+              << R.at(to, from);
+        }
+      }
+    }
+    out << std::endl;
+  }
 }
 
-struct less_second
-{
+struct less_second {
   typedef std::pair<size_t, MyState*> type;
-  bool
-  operator () (type const& a, type const& b) const
-  {
+  bool operator ()(type const& a, type const& b) const {
     // check if
     // - smaller energy or
     // - equal energy and smaller string representation
-    return (a.second->getEnergy () < b.second->getEnergy ())
-	|| (a.second->getEnergy () == b.second->getEnergy ()
-	    && StructureUtils::IsSmaller (a.second->structure, b.second->structure));
+    return (a.second->getEnergy() < b.second->getEnergy())
+        || (a.second->getEnergy() == b.second->getEnergy()
+            && StructureUtils::IsSmaller(a.second->structure,
+                b.second->structure));
   }
 };
 
-void
-printRateMatrixSorted (const biu::MatrixSparseC<double>& R, const std::unordered_map<size_t, MyState>& minimaMap,
-		       std::ostream& out)
-{
-  assertbiu(R.numColumns () == R.numRows (), "R is no square matrix");
-  assertbiu(R.numRows () <= minimaMap.size (), "less minima than rates");
+void printRateMatrixSorted(const biu::MatrixSparseC<double>& R,
+    const std::unordered_map<size_t, MyState>& minimaMap, std::ostream& out) {
+  assertbiu(R.numColumns() == R.numRows(), "R is no square matrix");
+  assertbiu(R.numRows() <= minimaMap.size(), "less minima than rates");
 
   const size_t LEAD = 6;
 
   std::vector<std::pair<size_t, MyState*>> sortedMinimaIDs;
-  for (auto it = minimaMap.begin (); it != minimaMap.end (); it++)
-    {
-      sortedMinimaIDs.push_back (std::pair<size_t, MyState*> (it->first, (MyState*) &(it->second)));
-    }
+  for (auto it = minimaMap.begin(); it != minimaMap.end(); it++) {
+    sortedMinimaIDs.push_back(
+        std::pair<size_t, MyState*>(it->first, (MyState*) &(it->second)));
+  }
 
-  std::sort (sortedMinimaIDs.begin (), sortedMinimaIDs.end (), less_second ());
+  std::sort(sortedMinimaIDs.begin(), sortedMinimaIDs.end(), less_second());
 
   out << std::scientific << "\n from : to\n";
   size_t nextMinID;
   // print only non-empty rates
-  for (size_t c = 0; c < sortedMinimaIDs.size (); c++)
-    {
-      nextMinID = sortedMinimaIDs[c].first;
-      out << "\n" << std::setw (LEAD) << c << " [" << minimaMap.at (nextMinID).toString () << "] :";
+  for (size_t c = 0; c < sortedMinimaIDs.size(); c++) {
+    nextMinID = sortedMinimaIDs[c].first;
+    out << "\n" << std::setw(LEAD) << c << " ["
+        << minimaMap.at(nextMinID).toString() << "] :";
 
-      std::vector<double> columnVector = R.columnVec (nextMinID);
-      bool bPrinted = false;
-      size_t rowMinID;
-      std::stringstream sstmp;
-      sstmp << std::scientific;
-      for (size_t r = 0; r < sortedMinimaIDs.size (); r++)
-	{
-	  rowMinID = sortedMinimaIDs[r].first;
-	  if (columnVector[rowMinID] != 0.0)
-	    {
-	      sstmp << " " << r << " = " << columnVector[rowMinID] << ",";
-	      bPrinted = true;
-	    }
-	}
-      if (bPrinted)
-	{ //remove last comma.
-	  sstmp.seekp (-1, sstmp.cur);
-	  sstmp << " ";
-	  out << sstmp.str ();
-	}
+    std::vector<double> columnVector = R.columnVec(nextMinID);
+    bool bPrinted = false;
+    size_t rowMinID;
+    std::stringstream sstmp;
+    sstmp << std::scientific;
+    for (size_t r = 0; r < sortedMinimaIDs.size(); r++) {
+      rowMinID = sortedMinimaIDs[r].first;
+      if (columnVector[rowMinID] != 0.0) {
+        sstmp << " " << r << " = " << columnVector[rowMinID] << ",";
+        bPrinted = true;
+      }
     }
+    if (bPrinted) { //remove last comma.
+      sstmp.seekp(-1, sstmp.cur);
+      sstmp << " ";
+      out << sstmp.str();
+    }
+  }
   out << std::endl;
 
 }
 
-void
-printZMatrixSorted (const SC_PartitionFunction::Z_Matrix& z, size_t maxNeighbors,
-		    const std::unordered_map<size_t, MyState>& minimaMap,
-		    const PairHashTable::HashTable& originalMinima, std::ostream& out)
-{
+void printZMatrixSorted(const SC_PartitionFunction::Z_Matrix& z,
+    size_t maxNeighbors, const std::unordered_map<size_t, MyState>& minimaMap,
+    const PairHashTable::HashTable& originalMinima, std::ostream& out) {
   const size_t LEAD = 6;
 
   std::vector<std::pair<size_t, MyState*>> sortedMinimaIDs;
-  for (auto it = minimaMap.begin (); it != minimaMap.end (); it++)
-    {
-      sortedMinimaIDs.push_back (std::pair<size_t, MyState*> (it->first, (MyState*) &(it->second)));
-    }
+  for (auto it = minimaMap.begin(); it != minimaMap.end(); it++) {
+    sortedMinimaIDs.push_back(
+        std::pair<size_t, MyState*>(it->first, (MyState*) &(it->second)));
+  }
 
-  std::sort (sortedMinimaIDs.begin (), sortedMinimaIDs.end (), less_second ());
+  std::sort(sortedMinimaIDs.begin(), sortedMinimaIDs.end(), less_second());
 
-  out << std::scientific << "# max. neighbors: " << maxNeighbors <<"\n from : to\n";
+  out << std::scientific << "# max. neighbors: " << maxNeighbors
+      << "\n from : to\n";
   size_t nextMinID;
   // print only non-empty rates
-  for (size_t c = 0; c < sortedMinimaIDs.size (); c++)
-    {
-      MyState min = *sortedMinimaIDs[c].second;
-      nextMinID = originalMinima.at (min);
-      out << "\n" << std::setw (LEAD) << c << " [" << min.toString () << "] :";
+  for (size_t c = 0; c < sortedMinimaIDs.size(); c++) {
+    MyState min = *sortedMinimaIDs[c].second;
+    nextMinID = originalMinima.at(min);
+    out << "\n" << std::setw(LEAD) << c << " [" << min.toString() << "] :";
 
-      bool bPrinted = false;
-      size_t rowMinID;
-      std::stringstream sstmp;
-      sstmp << std::scientific;
-      for (size_t r = 0; r < sortedMinimaIDs.size (); r++)
-	{
-	  rowMinID = originalMinima.at (*sortedMinimaIDs[r].second);
-	  //in Z-Matrix: from i to j.
-	  //in final_Rate: from j to i !
-	  SC_PartitionFunction::PairID transitionID = SC_PartitionFunction::PairID(nextMinID, rowMinID);
-	  SC_PartitionFunction::PairID reverseTransitionID =SC_PartitionFunction::PairID(rowMinID, nextMinID);
+    bool bPrinted = false;
+    size_t rowMinID;
+    std::stringstream sstmp;
+    sstmp << std::scientific;
+    for (size_t r = 0; r < sortedMinimaIDs.size(); r++) {
+      rowMinID = originalMinima.at(*sortedMinimaIDs[r].second);
+      //in Z-Matrix: from i to j.
+      //in final_Rate: from j to i !
+      SC_PartitionFunction::PairID transitionID = SC_PartitionFunction::PairID(
+          nextMinID, rowMinID);
+      SC_PartitionFunction::PairID reverseTransitionID =
+          SC_PartitionFunction::PairID(rowMinID, nextMinID);
 
-	  double z_transition = 0;
-	  double z_reverseTransition = 0;
-	  auto tmpIt = z.find (transitionID);
-	  bool bExists = false;
-	  if (tmpIt != z.end ())
-	    {
-	      z_transition = tmpIt->second.getZ ();
-	      bExists = true;
-	    }
-	  tmpIt = z.find (reverseTransitionID);
-	  if (tmpIt != z.end ())
-	    {
-	      z_reverseTransition = tmpIt->second.getZ ();
-	      bExists = true;
-	    }
-	  //max is important if filters are applied! Otherwise it should be equal.
-	  z_transition = std::max (z_transition, z_reverseTransition);
-	 // if (nextMinID != rowMinID)
-	 //   { // compute correct transition to another state.
-	 //     z_transition = z_transition / maxNeighbors;
-	 //   }
+      double z_transition = 0;
+      double z_reverseTransition = 0;
+      auto tmpIt = z.find(transitionID);
+      bool bExists = false;
+      if (tmpIt != z.end()) {
+        z_transition = tmpIt->second.getZ();
+        bExists = true;
+      }
+      tmpIt = z.find(reverseTransitionID);
+      if (tmpIt != z.end()) {
+        z_reverseTransition = tmpIt->second.getZ();
+        bExists = true;
+      }
+      //max is important if filters are applied! Otherwise it should be equal.
+      z_transition = std::max(z_transition, z_reverseTransition);
+      // if (nextMinID != rowMinID)
+      //   { // compute correct transition to another state.
+      //     z_transition = z_transition / maxNeighbors;
+      //   }
 
-	  if (bExists)
-	    {
-	      sstmp << " " << r << " = " << z_transition << ",";
-	      bPrinted = true;
-	    }
-	}
-      if (bPrinted)
-	{ //remove last comma.
-	  sstmp.seekp (-1, sstmp.cur);
-	  sstmp << " ";
-	  out << sstmp.str ();
-	}
+      if (bExists) {
+        sstmp << " " << r << " = " << z_transition << ",";
+        bPrinted = true;
+      }
     }
+    if (bPrinted) { //remove last comma.
+      sstmp.seekp(-1, sstmp.cur);
+      sstmp << " ";
+      out << sstmp.str();
+    }
+  }
   out << std::endl;
 
 }
 
-void
-print_number_of_rates (const SC_PartitionFunction::Z_Matrix& z,
-        const std::unordered_map<size_t, MyState>& minimaMap,
-        const PairHashTable::HashTable& originalMinima, std::ostream& out)
-{
+void print_number_of_rates(const SC_PartitionFunction::Z_Matrix& z,
+    const std::unordered_map<size_t, MyState>& minimaMap,
+    const PairHashTable::HashTable& originalMinima, std::ostream& out) {
   const size_t LEAD = 6;
 
   std::vector<std::pair<size_t, MyState*>> sortedMinimaIDs;
-  for (auto it = minimaMap.begin (); it != minimaMap.end (); it++)
-    {
-      sortedMinimaIDs.push_back (std::pair<size_t, MyState*> (it->first, (MyState*) &(it->second)));
-    }
+  for (auto it = minimaMap.begin(); it != minimaMap.end(); it++) {
+    sortedMinimaIDs.push_back(
+        std::pair<size_t, MyState*>(it->first, (MyState*) &(it->second)));
+  }
 
-  std::sort (sortedMinimaIDs.begin (), sortedMinimaIDs.end (), less_second ());
+  std::sort(sortedMinimaIDs.begin(), sortedMinimaIDs.end(), less_second());
   size_t count_rates = 0;
   size_t nextMinID;
   // print only non-empty rates
-  for (size_t c = 0; c < sortedMinimaIDs.size (); c++)
-    {
-      MyState min = *sortedMinimaIDs[c].second;
-      nextMinID = originalMinima.at (min);
-     // out << "\n" << std::setw (LEAD) << c << " [" << min.toString () << "] :";
+  for (size_t c = 0; c < sortedMinimaIDs.size(); c++) {
+    MyState min = *sortedMinimaIDs[c].second;
+    nextMinID = originalMinima.at(min);
+    // out << "\n" << std::setw (LEAD) << c << " [" << min.toString () << "] :";
 
-      bool bPrinted = false;
-      size_t rowMinID;
-      std::stringstream sstmp;
-      sstmp << std::scientific;
-      for (size_t r = 0; r < sortedMinimaIDs.size (); r++)
-  {
-    rowMinID = originalMinima.at (*sortedMinimaIDs[r].second);
-    //in Z-Matrix: from i to j.
-    //in final_Rate: from j to i !
-    SC_PartitionFunction::PairID transitionID = SC_PartitionFunction::PairID(nextMinID, rowMinID);
-    SC_PartitionFunction::PairID reverseTransitionID =SC_PartitionFunction::PairID(rowMinID, nextMinID);
+    bool bPrinted = false;
+    size_t rowMinID;
+    std::stringstream sstmp;
+    sstmp << std::scientific;
+    for (size_t r = 0; r < sortedMinimaIDs.size(); r++) {
+      rowMinID = originalMinima.at(*sortedMinimaIDs[r].second);
+      //in Z-Matrix: from i to j.
+      //in final_Rate: from j to i !
+      SC_PartitionFunction::PairID transitionID = SC_PartitionFunction::PairID(
+          nextMinID, rowMinID);
+      SC_PartitionFunction::PairID reverseTransitionID =
+          SC_PartitionFunction::PairID(rowMinID, nextMinID);
 
-    double z_transition = 0;
-    double z_reverseTransition = 0;
-    auto tmpIt = z.find (transitionID);
-    bool bExists = false;
-    if (tmpIt != z.end ())
-      {
+      double z_transition = 0;
+      double z_reverseTransition = 0;
+      auto tmpIt = z.find(transitionID);
+      bool bExists = false;
+      if (tmpIt != z.end()) {
         //z_transition = tmpIt->second.getZ ();
         bExists = true;
       }
-    tmpIt = z.find (reverseTransitionID);
-    if (tmpIt != z.end ())
-      {
-       // z_reverseTransition = tmpIt->second.getZ ();
+      tmpIt = z.find(reverseTransitionID);
+      if (tmpIt != z.end()) {
+        // z_reverseTransition = tmpIt->second.getZ ();
         bExists = true;
       }
-    //max is important if filters are applied! Otherwise it should be equal.
-    //z_transition = std::max (z_transition, z_reverseTransition);
-   // if (nextMinID != rowMinID)
-   //   { // compute correct transition to another state.
-   //     z_transition = z_transition / maxNeighbors;
-   //   }
+      //max is important if filters are applied! Otherwise it should be equal.
+      //z_transition = std::max (z_transition, z_reverseTransition);
+      // if (nextMinID != rowMinID)
+      //   { // compute correct transition to another state.
+      //     z_transition = z_transition / maxNeighbors;
+      //   }
 
-    if (bExists)
-      {
+      if (bExists) {
         count_rates += 1;
         //sstmp << " " << r << " = " << z_transition << ",";
         //bPrinted = true;
       }
-  }
-   //   if (bPrinted)
-  //{ //remove last comma.
-  //  sstmp.seekp (-1, sstmp.cur);
-  //  sstmp << " ";
-  //  out << sstmp.str ();
-  //}
     }
+    //   if (bPrinted)
+    //{ //remove last comma.
+    //  sstmp.seekp (-1, sstmp.cur);
+    //  sstmp << " ";
+    //  out << sstmp.str ();
+    //}
+  }
   out << "number of rates: " << count_rates << std::endl;
   out << std::endl;
 
 }
 
-void
-printEquilibriumDensities (SC_PartitionFunction::Z_Matrix& z,
-			   const std::unordered_map<size_t, MyState>& finalMinima,
-			   const PairHashTable::HashTable& originalMinima, std::ostream& out)
-{
+void printEquilibriumDensities(SC_PartitionFunction::Z_Matrix& z,
+    const std::unordered_map<size_t, MyState>& finalMinima,
+    const PairHashTable::HashTable& originalMinima, std::ostream& out) {
   out << "Equilibrium Densities:" << std::endl;
 
   std::vector<std::pair<size_t, MyState*>> sortedMinimaIDs;
-  for (auto it = finalMinima.begin (); it != finalMinima.end (); it++)
-    {
-      sortedMinimaIDs.push_back (std::pair<size_t, MyState*> (it->first, (MyState*) &(it->second)));
-    }
+  for (auto it = finalMinima.begin(); it != finalMinima.end(); it++) {
+    sortedMinimaIDs.push_back(
+        std::pair<size_t, MyState*>(it->first, (MyState*) &(it->second)));
+  }
 
-  std::sort (sortedMinimaIDs.begin (), sortedMinimaIDs.end (), less_second ());
+  std::sort(sortedMinimaIDs.begin(), sortedMinimaIDs.end(), less_second());
 
   size_t nextMinID;
   double sumZb = 0;
   // calc. sum of all basin partition functions.
-  for (size_t c = 0; c < sortedMinimaIDs.size (); c++)
-    {
-      nextMinID = originalMinima.at (*sortedMinimaIDs[c].second);
-      sumZb += z[SC_PartitionFunction::PairID(nextMinID, nextMinID)].getZ ();
-    }
+  for (size_t c = 0; c < sortedMinimaIDs.size(); c++) {
+    nextMinID = originalMinima.at(*sortedMinimaIDs[c].second);
+    sumZb += z[SC_PartitionFunction::PairID(nextMinID, nextMinID)].getZ();
+  }
   double equilibriumDensity;
   out << "(";
   std::stringstream sstmp;
   sstmp << std::scientific;
-  for (size_t c = 0; c < sortedMinimaIDs.size (); c++)
-    {
-      nextMinID = originalMinima.at (*sortedMinimaIDs[c].second);
-      equilibriumDensity = z[SC_PartitionFunction::PairID(nextMinID, nextMinID)].getZ () / sumZb;
-      // print probability and state
-      sstmp << equilibriumDensity;
-      // print spacer if needed
+  for (size_t c = 0; c < sortedMinimaIDs.size(); c++) {
+    nextMinID = originalMinima.at(*sortedMinimaIDs[c].second);
+    equilibriumDensity =
+        z[SC_PartitionFunction::PairID(nextMinID, nextMinID)].getZ() / sumZb;
+    // print probability and state
+    sstmp << equilibriumDensity;
+    // print spacer if needed
 
-      if (c < sortedMinimaIDs.size () - 1)
-	{
-	  sstmp << ", ";
-	}
+    if (c < sortedMinimaIDs.size() - 1) {
+      sstmp << ", ";
     }
-  out << sstmp.str () << ")" << std::endl;
+  }
+  out << sstmp.str() << ")" << std::endl;
 }
