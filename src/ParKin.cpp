@@ -543,6 +543,8 @@ int main(int argc, char** argv) {
 	bool enableDeltaMinEFilter = false;
 	// file to store all energies.
 	std::string energyFileName = "";
+	// binary rates file
+	std::string binary_rates_file = "";
 	// this bool tells the flooder if it should store energies. (not recommended for large sequences!)
 	bool logEnergies = false;
 	/* parameter for writing a postscript-file with a DotPlot
@@ -710,6 +712,13 @@ int main(int argc, char** argv) {
 				logEnergies = true;
 			}
 		}
+
+    if (out_Parser.argExist("binary_rates_file")) {
+      // set output file name for energies.
+      if (out_Parser.getStrVal("binary_rates_file").size() != 0) {
+        binary_rates_file = out_Parser.getStrVal("binary_rates_file");
+      }
+    }
 
 		//partitionFunctions
 		if (out_Parser.argExist("partitionFunctions")) {
@@ -1277,8 +1286,11 @@ int main(int argc, char** argv) {
 			}
 		}
 
-		print_number_of_rates (z,final_minima, Minima, std::cout);
+		print_number_of_rates (*final_Rate,final_minima, Minima, std::cout);
 
+		if(!binary_rates_file.empty()){
+		  write_binary_rates_file(binary_rates_file, *final_Rate,final_minima, Minima);
+		}
 		/***********Garbage collection ************/
 		//	delete ScMinimum;
 		vrna_fold_compound_free(vc);
@@ -1403,6 +1415,9 @@ void writeDescription(biu::OptionMap & allowed, std::string & info) {
 	allowed.push_back(
 			biu::COption("energyFile", true, biu::COption::STRING,
 					"File to store all energies."));
+  allowed.push_back(
+      biu::COption("binary_rates_file", true, biu::COption::STRING,
+          "File to store all rates in a treekin readable format."));
 	allowed.push_back(
 			biu::COption("partitionFunctions", true, biu::COption::STRING,
 					"If provided, the partition function matrix will be written to the given file name."));
