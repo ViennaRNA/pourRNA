@@ -188,14 +188,14 @@ void print_number_of_rates(const biu::MatrixSparseC<double>& R,
 
   size_t count_rates = 0;
   size_t nextMinID;
+  size_t rowMinID;
+  double rate;
   // count only non-empty rates
   for (size_t c = 0; c < minimaMap.size(); c++) {
     MyState min = minimaMap.at(c);
     nextMinID = originalMinima.at(min);
     std::vector<double> columnVector = R.columnVec(nextMinID);
 
-    size_t rowMinID;
-    double rate;
     for (size_t r = 0; r < minimaMap.size(); r++) {
       rowMinID = originalMinima.at(minimaMap.at(r));
       rate = columnVector[rowMinID];
@@ -203,9 +203,9 @@ void print_number_of_rates(const biu::MatrixSparseC<double>& R,
         count_rates += 1;
       }
     }
-    out << "number of rates: " << count_rates << std::endl;
-    out << std::endl;
   }
+  out << "number of rates: " << count_rates << std::endl;
+  out << std::endl;
 }
 
 void printZMatrixSorted(const SC_PartitionFunction::Z_Matrix& z,
