@@ -163,14 +163,12 @@ void write_binary_rates_file(std::string rates_file,
   // print only non-empty rates
   double rate = 0.0;
   for (size_t c = 0; c < sortedMinimaIDs.size(); c++) {
-    MyState min = *sortedMinimaIDs[c].second;
-    nextMinID = originalMinima.at(min);
+//MyState min = *sortedMinimaIDs[c].second;
+    nextMinID = sortedMinimaIDs[c].first; //originalMinima.at(min);
 
-    std::vector<double> columnVector = R.columnVec(nextMinID);
+    std::vector<double> columnVector = R.rowVec(nextMinID);
     bool bPrinted = false;
     size_t rowMinID;
-    std::stringstream sstmp;
-    sstmp << std::scientific;
     for (size_t r = 0; r < sortedMinimaIDs.size(); r++) {
       rowMinID = sortedMinimaIDs[r].first;
       rate = columnVector[rowMinID];
