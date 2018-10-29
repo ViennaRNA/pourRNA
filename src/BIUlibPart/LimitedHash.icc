@@ -28,7 +28,7 @@ namespace biu
 	 	, hash2Check( &hashObject2 )
 	{
 		assertbiu( maxSize <= hashObject1.max_size(), "maximal size is too large");
-		assertbiu( maxSize > 1, "maxSize has to be at least 1");
+		assertbiu( maxSize >= 1, "maxSize has to be at least 1");
 	}
 	
 	///////////////////////////////////////////////////////////////////////////
