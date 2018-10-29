@@ -8,8 +8,8 @@
 #include "WalkGradientHashed.h"
 
 WalkGradientHashed::WalkGradientHashed(
-		const size_t maxHashSize) :
-		State2min(maxHashSize) {
+		unsigned int move_set, const size_t maxHashSize) :
+		Move_set(move_set), State2min(maxHashSize) {
 }
 
 WalkGradientHashed::~WalkGradientHashed() {
@@ -26,8 +26,7 @@ WalkGradientHashed::convert_moves_to_neighbors(vrna_fold_compound_t *vc,
 	short *pt_neighbor;
 	struct_en * neighbor;
 	for (vrna_move_t *m = moves; m->pos_5 != 0; m++, i++) {
-		energy = vrna_eval_move_pt(vc, structureEnergy->structure, m->pos_5,
-				m->pos_3);
+		energy = vrna_eval_move_shift_pt(vc, m, structureEnergy->structure); //vrna_eval_move_pt(vc, structureEnergy->structure, m->pos_5, m->pos_3);
 		pt_neighbor = vrna_ptable_copy(structureEnergy->structure);
 		vrna_move_apply(pt_neighbor, m);
 		neighbor = &neighbors[i];
@@ -90,7 +89,7 @@ WalkGradientHashed::walkGradient(vrna_fold_compound_t *vc,
 		{
 			free(tmp_neighbors);
 			tmp_neighbors = vrna_neighbors(vc, currentStructure.structure,
-					VRNA_MOVESET_DEFAULT);
+					this->Move_set);
 			size_neighbors = 0;
 			for (vrna_move_t *m = tmp_neighbors; m->pos_5 != 0; m++)
 				size_neighbors++;
@@ -125,8 +124,7 @@ WalkGradientHashed::walkGradient(vrna_fold_compound_t *vc,
 
 		int move_energy;
 		for (vrna_move_t *m = tmp_neighbors; m->pos_5 != 0; m++, move_index++) {
-			move_energy = vrna_eval_move_pt(vc, currentStructure.structure,
-					m->pos_5, m->pos_3);
+			move_energy = vrna_eval_move_shift_pt(vc, m, currentStructure.structure); //vrna_eval_move_pt(vc, currentStructure.structure, m->pos_5, m->pos_3);
 			currentNeighbor.energy = currentStructure.energy + move_energy;
 			if (currentNeighbor.energy <= minimalNeighbor->energy) {
 				//...compare also the structure

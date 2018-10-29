@@ -34,8 +34,9 @@ public:
    * @param sequence the rna-sequence as "acgu"-string.
    * @param maxEnergy the maximal energy all states should be below in kcal/mol
    * @param maxToQueue the maximal number of elements the underlying queue is allowed to contain
+   * @param the move set (see vrna_package neighbor.h)
    */
-  Flooder (double maxEnergy, size_t maxToQueue);
+  Flooder (double maxEnergy, size_t maxToQueue, unsigned int move_set);
 
   /**
    * ! flood the basin of the given local minimum. Compute the partition function sum.
@@ -55,10 +56,11 @@ private:
   size_t MaxStatesToQueue;
   //! states that where considered during the flooding.
   size_t ProcessedStates;
-
+  //! the move set for neighbor generation
+  unsigned int Move_set;
 public:
   /**
-   * ! returns the finial energy threshold that has been changed if
+   * ! returns the final energy threshold that has been changed if
    * states from the priority queue are removed (in kcal/mol).
    */
   double

@@ -60,12 +60,12 @@ int main( int argc, char* argv[] ){
       float energy = round (energy_of_structure (rnaSequence.c_str (), rnaStructure.c_str (), 0) * 100);
       const size_t maxNeighbors = getMaxNeighborNumber(rnaSequence);
       //flooder test:
-      Flooder * myFlooder = new Flooder (rnaSequence, maxNeighbors, 9999, maxToStore);
+      Flooder * myFlooder = new Flooder (99999,99999999,VRNA_MOVESET_DEFAULT);
       short * rnaStructurePT = make_pair_table (rnaStructure.c_str ());
       //openChain="........((.......)).";
       MyState startState (energy, rnaStructurePT);
       // start walking to find gradient basin minimum for start state
-      MyState* currentMin = WalkGradientHashed (rnaSequence, maxToHash).walk ((char*) rnaSequence.c_str (),
+      MyState* currentMin = WalkGradientHashed (VRNA_MOVESET_DEFAULT, maxToHash).walk ((char*) rnaSequence.c_str (),
 									   startState);
       size_t currentMinID = 0;
       PairHashTable::HashTable Minima;
@@ -75,7 +75,7 @@ int main( int argc, char* argv[] ){
       SC_PartitionFunction::Z_Matrix z;
       SC_PartitionFunction scBasin = z[SC_PartitionFunction::PairID (currentMinID, currentMinID)];
       StatePairCollector* spc = new StatePairCollector (rnaSequence, maxNeighbors, currentMinID, Minima, z,
-                                                        maxToHash);
+                                                        maxToHash, VRNA_MOVESET_DEFAULT);
 
 
       //init stopwatch:

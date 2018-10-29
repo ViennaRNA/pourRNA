@@ -10,9 +10,9 @@
 StatePairCollector::StatePairCollector(size_t currentMinID,
 		PairHashTable::HashTable& minima, SC_PartitionFunction::Z_Matrix& z,
 		const size_t maxGradWalkHashed, Concurrent_Queue<MyState> *discoveredMinima,
-		double boltzmannWeightTemperature) :
+		double boltzmannWeightTemperature, unsigned int move_set) :
 		CurMinID(currentMinID), Minima(minima), Z(z), GradWalk(
-				maxGradWalkHashed), NumberOfOuterStates(0), DiscoveredMinima(
+		    move_set, maxGradWalkHashed), NumberOfOuterStates(0), DiscoveredMinima(
 				discoveredMinima), BoltzmannWeightTemperature(
 				boltzmannWeightTemperature) {
 

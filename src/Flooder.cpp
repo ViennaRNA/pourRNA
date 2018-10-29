@@ -13,9 +13,9 @@ extern "C" {
 }
 
 //energy*100 --> convert from kcal/mol to 10cal/mol (the ViennaRNA internal integer format for energies)
-Flooder::Flooder( double maxEnergy, size_t maxToQueue) :
+Flooder::Flooder( double maxEnergy, size_t maxToQueue, unsigned int move_set) :
 		 MaxEnergy(maxEnergy * 100.0), MaxStatesToQueue(
-				maxToQueue), ProcessedStates(0) {
+				maxToQueue), ProcessedStates(0), Move_set(move_set) {
 
 }
 
@@ -27,7 +27,7 @@ Flooder::get_Neighbors_pt(vrna_fold_compound_t *vc,
 		const MyState* structureEnergy, size_t *numberOfNeighbors) {
 	//browse_neighs_pt_par_list_alloc_energy (Sequence, structureEnergy, S0, S1, 0, 0, 0, &NeighborList, &EnergyParameter, MaxNeighbors);
 	vrna_move_t *tmp_neighbors = vrna_neighbors(vc, structureEnergy->structure,
-			VRNA_MOVESET_DEFAULT);
+	    this->Move_set);
 	size_t count = 0;
 	for (vrna_move_t *m = tmp_neighbors; m->pos_5 != 0; m++)
 		count++;
@@ -39,8 +39,7 @@ Flooder::get_Neighbors_pt(vrna_fold_compound_t *vc,
 	short *pt_neighbor;
 	struct_en * neighbor;
 	for (vrna_move_t *m = tmp_neighbors; m->pos_5 != 0; m++, i++) {
-		energy = vrna_eval_move_pt(vc, structureEnergy->structure, m->pos_5,
-				m->pos_3);
+		energy = vrna_eval_move_shift_pt(vc, m, structureEnergy->structure); // vrna_eval_move_pt(vc, structureEnergy->structure, m->pos_5,m->pos_3);
 		pt_neighbor = vrna_ptable_copy(structureEnergy->structure);
 		vrna_move_apply(pt_neighbor, m);
 		neighbor = &neighbors[i];
