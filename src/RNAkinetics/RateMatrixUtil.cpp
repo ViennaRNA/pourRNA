@@ -191,13 +191,11 @@ void print_number_of_rates(const biu::MatrixSparseC<double>& R,
   size_t rowMinID;
   double rate;
   // count only non-empty rates
-  for (size_t c = 0; c < minimaMap.size(); c++) {
-    MyState min = minimaMap.at(c);
-    nextMinID = originalMinima.at(min);
+  for (auto it = minimaMap.begin(); it != minimaMap.end(); it++){
+    nextMinID = it->first;
     std::vector<double> columnVector = R.columnVec(nextMinID);
-
-    for (size_t r = 0; r < minimaMap.size(); r++) {
-      rowMinID = originalMinima.at(minimaMap.at(r));
+    for (auto it_r = minimaMap.begin(); it_r != minimaMap.end(); it_r++){
+      rowMinID = it_r->first;
       rate = columnVector[rowMinID];
       if (rate != 0.0) {
         count_rates += 1;
