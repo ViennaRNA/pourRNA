@@ -206,6 +206,7 @@ void print_number_of_rates(const SC_PartitionFunction::Z_Matrix& z,
     const PairHashTable::HashTable& originalMinima, std::ostream& out) {
   const size_t LEAD = 6;
 
+  /*
   std::vector<std::pair<size_t, MyState*>> sortedMinimaIDs;
   for (auto it = minimaMap.begin(); it != minimaMap.end(); it++) {
     sortedMinimaIDs.push_back(
@@ -213,11 +214,12 @@ void print_number_of_rates(const SC_PartitionFunction::Z_Matrix& z,
   }
 
   std::sort(sortedMinimaIDs.begin(), sortedMinimaIDs.end(), less_second());
+  */
   size_t count_rates = 0;
   size_t nextMinID;
   // print only non-empty rates
-  for (size_t c = 0; c < sortedMinimaIDs.size(); c++) {
-    MyState min = *sortedMinimaIDs[c].second;
+  for (size_t c = 0; c < minimaMap.size(); c++) {
+    MyState min = minimaMap.at(c);
     nextMinID = originalMinima.at(min);
     // out << "\n" << std::setw (LEAD) << c << " [" << min.toString () << "] :";
 
@@ -225,8 +227,8 @@ void print_number_of_rates(const SC_PartitionFunction::Z_Matrix& z,
     size_t rowMinID;
     std::stringstream sstmp;
     sstmp << std::scientific;
-    for (size_t r = 0; r < sortedMinimaIDs.size(); r++) {
-      rowMinID = originalMinima.at(*sortedMinimaIDs[r].second);
+    for (size_t r = 0; r < minimaMap.size(); r++) {
+      rowMinID = originalMinima.at(minimaMap.at(r));
       //in Z-Matrix: from i to j.
       //in final_Rate: from j to i !
       SC_PartitionFunction::PairID transitionID = SC_PartitionFunction::PairID(
