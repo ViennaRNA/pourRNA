@@ -41,7 +41,7 @@ printRateMatrix (const biu::MatrixSparseC<double>& R, const std::unordered_map<s
  * @param minima the indices and structures of the minima.
  * @param out the outputstream, default is std::cout.
  */
-void
+PairHashTable::HashTable*
 printRateMatrixSorted (const biu::MatrixSparseC<double>& R, const std::unordered_map<size_t, MyState>& minima,
 		       std::ostream & out = std::cout);
 

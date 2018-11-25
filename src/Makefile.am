@@ -32,6 +32,8 @@ parKin_SOURCES =	SpookyHash/SpookyV2.h \
 					StructureUtils.h \
 					StructureUtils.cpp \
 					PairHashTable.h \
+					Concurrent_Pair_Hash_Map.h \
+					PairHashMap.h \
                     SC_PartitionFunction.h \
                     SC_PartitionFunction.cpp \
                     SC_DotPlot.h \

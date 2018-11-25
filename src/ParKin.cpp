@@ -46,6 +46,7 @@ extern "C" {
 #include "SC_DotPlot.h"
 
 #include "Concurrent_Queue.h"
+#include "PairHashMap.h"
 
 /*! Exception class for exceptions thrown during argument and input parsing.
  */
@@ -212,6 +213,7 @@ struct flooderInputParameter {
 	Concurrent_Queue<MyState> *DiscoveredMinima;
 	double TemperatureForBoltzmannWeight;
 	unsigned int Move_set;
+	PairHashMap::HashMap* All_Saddles;
   ~flooderInputParameter() {
     if (CurrentMinimum != NULL)
       delete CurrentMinimum;
@@ -269,7 +271,9 @@ int floodBasin(vrna_fold_compound_t *vc, flooderInputParameter* inParameter,
 			outParameter->PartitionFunctions, inParameter->MaxToHash,
 			inParameter->DiscoveredMinima,
 			inParameter->TemperatureForBoltzmannWeight,
-			inParameter->Move_set);
+			inParameter->Move_set,
+			*inParameter->All_Saddles
+	);
 
 	// set the maximal energy as upper floodlevel.
 	double maxEnergy = min(inParameter->MaxEnergy,
@@ -512,6 +516,9 @@ int threadFunction(vrna_fold_compound_t *vc,
 }
 
 int main(int argc, char** argv) {
+
+  PairHashMap::HashMap all_saddles;
+
 	//init stopwatch:
 	std::chrono::time_point<std::chrono::system_clock> start, end;
 	start = std::chrono::system_clock::now();
@@ -1125,6 +1132,7 @@ int main(int argc, char** argv) {
 									inParameter->TemperatureForBoltzmannWeight =
 											temperatureForBoltzmannWeight;
 									inParameter->Move_set = move_set;
+									inParameter->All_Saddles = &all_saddles;
 
 									flooderOutputParameter* outParameter =
 											new flooderOutputParameter();
@@ -1271,7 +1279,7 @@ int main(int argc, char** argv) {
 
 		// Print the Final rate matrix of the States in Final minima set.
 		// printRateMatrix (*final_Rate, final_minima, *transOut, true);
-		printRateMatrixSorted(*final_Rate, final_minima, *transOut);
+		PairHashTable::HashTable* sorted_min_and_output_ids = printRateMatrixSorted(*final_Rate, final_minima, *transOut);
 		std::cout << std::endl;
 		printEquilibriumDensities(z, final_minima, Minima, *transOut);
 		std::cout << std::endl;
@@ -1317,8 +1325,27 @@ int main(int argc, char** argv) {
 		if(!binary_rates_file.empty()){
 		  write_binary_rates_file(binary_rates_file, *final_Rate,final_minima, Minima);
 		}
+
+		/**
+		 * print saddles
+		 * */
+	  std::printf("id_from, loc_min_from, loc_min_from_energy, id_to, loc_min_to, loc_min_to_energy, saddle, saddle_energy\n");
+	  for(auto it = all_saddles.begin(); it != all_saddles.end(); it++){
+	    const std::pair<MyState,MyState>& from_to = it->first;
+	    double saddle_height = it->second.energy/100.0;
+	    std::string s1 = from_to.first.toString();
+	    std::string s2 = from_to.second.toString();
+	    std::string saddle = it->second.toString();
+	    size_t id_from = sorted_min_and_output_ids->at(from_to.first);
+	    size_t id_to = sorted_min_and_output_ids->at(from_to.second);
+	    std::printf("%ld, %s, %.2f, %ld, %s, %.2f, %s, %.2f\n", id_from, s1.c_str(), from_to.first.energy/100.0,
+	        id_to, s2.c_str(), from_to.second.energy/100.0, saddle.c_str(), saddle_height);
+	  }
+
+
 		/***********Garbage collection ************/
-		//	delete ScMinimum;
+		delete sorted_min_and_output_ids;
+	  //	delete ScMinimum;
 		vrna_fold_compound_free(vc);
 		if (mfeStructure != NULL)
 			free(mfeStructure);
@@ -1342,6 +1369,7 @@ int main(int argc, char** argv) {
 		std::cerr << "\n\n ERORR : " << ex.what() << "\n" << std::endl;
 		return_Value = -1;
 	}
+
 
 //print stopwatch:
 	end = std::chrono::system_clock::now();

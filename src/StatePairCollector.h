@@ -23,6 +23,11 @@ extern "C" {
 #include <list>
 #include "Concurrent_Queue.h"
 
+#include "PairHashMap.h"
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+
 /**
  * ! This class calculates the partition function for the contact surface.
  *   The partition function will be updated, when a statepair is added.
@@ -42,7 +47,7 @@ public:
   StatePairCollector(size_t currentMinID, PairHashTable::HashTable& minima,
       SC_PartitionFunction::Z_Matrix& z, const size_t maxGradWalkHashed,
       Concurrent_Queue<MyState> *discoveredMinima,
-      double boltzmannWeightTemperature, unsigned int move_set);
+      double boltzmannWeightTemperature, unsigned int move_set, PairHashMap::HashMap& all_saddles);
   virtual
   ~StatePairCollector();
   /**
@@ -82,6 +87,11 @@ private:
   // ! unique minima queue (ready to flood)
   Concurrent_Queue<MyState> *DiscoveredMinima;
 
+  PairHashMap::HashMap& All_Saddles;
+  MyState* current_min;
+
+  std::mutex mutex_;
+  std::condition_variable cond_;
 };
 
 #endif /* STATEPAIRCOLLECTOR_H_ */

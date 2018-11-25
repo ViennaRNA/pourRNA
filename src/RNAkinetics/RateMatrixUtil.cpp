@@ -86,7 +86,7 @@ struct less_second {
   }
 };
 
-void printRateMatrixSorted(const biu::MatrixSparseC<double>& R,
+PairHashTable::HashTable* printRateMatrixSorted(const biu::MatrixSparseC<double>& R,
     const std::unordered_map<size_t, MyState>& minimaMap, std::ostream& out) {
   assertbiu(R.numColumns() == R.numRows(), "R is no square matrix");
   assertbiu(R.numRows() <= minimaMap.size(), "less minima than rates");
@@ -100,7 +100,7 @@ void printRateMatrixSorted(const biu::MatrixSparseC<double>& R,
   }
 
   std::sort(sortedMinimaIDs.begin(), sortedMinimaIDs.end(), less_second());
-
+  PairHashTable::HashTable* states_and_output_ids = new PairHashTable::HashTable();
   out << std::scientific << "\n from : to\n";
   size_t nextMinID;
   // print only non-empty rates
@@ -108,7 +108,7 @@ void printRateMatrixSorted(const biu::MatrixSparseC<double>& R,
     nextMinID = sortedMinimaIDs[c].first;
     out << "\n" << std::setw(LEAD) << c << " ["
         << minimaMap.at(nextMinID).toString() << "] :";
-
+    states_and_output_ids->insert({MyState(minimaMap.at(nextMinID)), c});
     std::vector<double> columnVector = R.columnVec(nextMinID);
     bool bPrinted = false;
     size_t rowMinID;
@@ -129,6 +129,7 @@ void printRateMatrixSorted(const biu::MatrixSparseC<double>& R,
   }
   out << std::endl;
 
+  return states_and_output_ids;
 }
 
 void write_binary_rates_file(std::string rates_file,
@@ -211,7 +212,6 @@ void printZMatrixSorted(const SC_PartitionFunction::Z_Matrix& z,
     const PairHashTable::HashTable& originalMinima, std::ostream& out) {
   const size_t LEAD = 6;
 
-  /*
   std::vector<std::pair<size_t, MyState*>> sortedMinimaIDs;
   for (auto it = minimaMap.begin(); it != minimaMap.end(); it++) {
     sortedMinimaIDs.push_back(
@@ -222,11 +222,10 @@ void printZMatrixSorted(const SC_PartitionFunction::Z_Matrix& z,
 
   out << std::scientific << "# max. neighbors: " << maxNeighbors
   << "\n from : to\n";
-
   size_t nextMinID;
   // print only non-empty rates
-  for (size_t c = 0; c < minimaMap.size(); c++) {
-    MyState min = minimaMap.at(c);
+  for (size_t c = 0; c < sortedMinimaIDs.size(); c++) {
+    MyState min = *sortedMinimaIDs[c].second;
     nextMinID = originalMinima.at(min);
     out << "\n" << std::setw(LEAD) << c << " [" << min.toString() << "] :";
 
@@ -234,8 +233,8 @@ void printZMatrixSorted(const SC_PartitionFunction::Z_Matrix& z,
     size_t rowMinID;
     std::stringstream sstmp;
     sstmp << std::scientific;
-    for (size_t r = 0; r < minimaMap.size(); r++) {
-      rowMinID = originalMinima.at(minimaMap.at(r));
+    for (size_t r = 0; r < sortedMinimaIDs.size(); r++) {
+      rowMinID = originalMinima.at(*sortedMinimaIDs[r].second);
       //in Z-Matrix: from i to j.
       //in final_Rate: from j to i !
       SC_PartitionFunction::PairID transitionID = SC_PartitionFunction::PairID(

@@ -50,12 +50,24 @@ MyState::MyState (const MyState& state) :
 bool
 MyState::operator < (const MyState& s) const
 {
-  if (s.energy < s.energy)
+  if (this->energy < s.energy)
     return true;
-  if (s.energy ==s.energy
-      && StructureUtils::IsSmaller (s.structure, s.structure)) // use lexicographic order as tiebreaker
+  if (this->energy ==s.energy
+      && StructureUtils::IsSmaller (this->structure, s.structure)) // use lexicographic order as tiebreaker
     return true;
   return false;
+}
+
+MyState
+MyState::operator=(MyState toCopy)
+{
+  this->structure=NULL;
+  if (toCopy.structure != NULL)
+  {
+    this->structure = (vrna_ptable_copy (toCopy.structure));
+  }
+  this->energy = toCopy.energy;
+  return *this;
 }
 
 MyState*

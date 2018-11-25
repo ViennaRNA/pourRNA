@@ -36,6 +36,8 @@ public:
 	//! of s as tiebreaker
 	bool
 	operator<(const MyState& toCompare) const;
+	MyState
+	operator=(MyState toCopy);
 	MyState*
 	clone() const;
 	std::string
