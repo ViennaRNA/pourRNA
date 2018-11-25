@@ -35,6 +35,7 @@ extern "C" {
 #include <ViennaRNA/eval.h>
 #include <ViennaRNA/data_structures.h>
 #include <ViennaRNA/utils/structures.h>
+#include <ViennaRNA/neighbor.h>
 }
 #include "BIUlibPart/OptionParser.h"
 #include "BIUlibPart/MatrixSparse.hh"
@@ -139,11 +140,11 @@ calculateRateMatrix(SC_PartitionFunction::Z_Matrix& z,
 	std::unordered_set<size_t>::const_iterator fromIt = done_List.begin();
 	for (size_t from = 0; from < done_List.size(); from++, fromIt++) {
 		// copy according rates
+    size_t fromOrig = *fromIt;
 		toIt = done_List.begin();
 		double rateSum = 0.0;
 		for (size_t to = 0; to < done_List.size(); to++, toIt++) {
 			size_t toOrig = *toIt;
-			size_t fromOrig = *fromIt;
 			// copy non-diagonal entries
 			if (toOrig != fromOrig) {
 				//compute the rate from row-state two column-state
@@ -210,6 +211,7 @@ struct flooderInputParameter {
 	NeighMinFilter* Filter;
 	Concurrent_Queue<MyState> *DiscoveredMinima;
 	double TemperatureForBoltzmannWeight;
+	unsigned int Move_set;
   ~flooderInputParameter() {
     if (CurrentMinimum != NULL)
       delete CurrentMinimum;
@@ -266,13 +268,14 @@ int floodBasin(vrna_fold_compound_t *vc, flooderInputParameter* inParameter,
 	StatePairCollector spc(loopCurrentLocalMinID, localThreadMinima,
 			outParameter->PartitionFunctions, inParameter->MaxToHash,
 			inParameter->DiscoveredMinima,
-			inParameter->TemperatureForBoltzmannWeight);
+			inParameter->TemperatureForBoltzmannWeight,
+			inParameter->Move_set);
 
 	// set the maximal energy as upper floodlevel.
 	double maxEnergy = min(inParameter->MaxEnergy,
 			(inParameter->DeltaE + minState->energy / 100.0));
 
-	Flooder myFlooder(maxEnergy, inParameter->MaxToQueue);
+	Flooder myFlooder(maxEnergy, inParameter->MaxToQueue, inParameter->Move_set);
 
 	// perform local basin flooding
 	// SC_PartitionFunction scBasin;
@@ -525,9 +528,9 @@ int main(int argc, char** argv) {
 // output container for the transition matrix.
 	std::ostream* transOut = &std::cout;
 // the maximal number of elements the underlying queue of the Flooder is allowed to contain.
-	size_t maxToQueue = INT32_MAX;
+	size_t maxToQueue = UINT64_MAX;
 // maximum number of states to be hashed for each gradient walk.
-	size_t maxToHash = INT32_MAX;
+	size_t maxToHash = UINT64_MAX;
 // the maximum energy that a state is allowed to have to be considered by the flooder.
 	double maxEnergy = 9999;
 // the maximum energy difference that states in a basin can have w.r.t. the local minimum.
@@ -543,6 +546,8 @@ int main(int argc, char** argv) {
 	bool enableDeltaMinEFilter = false;
 	// file to store all energies.
 	std::string energyFileName = "";
+	// binary rates file
+	std::string binary_rates_file = "";
 	// this bool tells the flooder if it should store energies. (not recommended for large sequences!)
 	bool logEnergies = false;
 	/* parameter for writing a postscript-file with a DotPlot
@@ -568,7 +573,8 @@ int main(int argc, char** argv) {
 
 	// How to treat \"dangling end\" energies for bases adjacent to helices in free ends and multi-loops
 	int danglingEnd = 2;
-
+	// The move set type (see neighbor.h vrna_package)
+	unsigned int move_set = 0;
 	bool verbose = false;
 
 // parameter: path to file for energy model that is placed in the share/misc folder of this build.
@@ -711,6 +717,13 @@ int main(int argc, char** argv) {
 			}
 		}
 
+    if (out_Parser.argExist("binary_rates_file")) {
+      // set output file name for energies.
+      if (out_Parser.getStrVal("binary_rates_file").size() != 0) {
+        binary_rates_file = out_Parser.getStrVal("binary_rates_file");
+      }
+    }
+
 		//partitionFunctions
 		if (out_Parser.argExist("partitionFunctions")) {
 			// set output file name for partitionfunctions.
@@ -784,6 +797,27 @@ int main(int argc, char** argv) {
 			// set temperature for the boltzmann weight.
 			temperatureForBoltzmannWeight = out_Parser.getIntVal("B");
 		}
+
+		int tmp_move_set = 0;
+    if (out_Parser.argExist("move_set")) {
+      // set the move set integer
+      tmp_move_set = out_Parser.getIntVal("move_set");
+    }
+    // convert the integer to the vrna_type
+    switch(tmp_move_set){
+    case 0:
+      move_set = VRNA_MOVESET_DEFAULT;
+      break;
+    case 1:
+      move_set = VRNA_MOVESET_DEFAULT | VRNA_MOVESET_SHIFT;
+      break;
+    case 2:
+      move_set = VRNA_MOVESET_NO_LP;
+      break;
+    default:
+      move_set = VRNA_MOVESET_DEFAULT;
+    }
+
 
 		if (out_Parser.argExist("M")) {
 			// set energyModel.
@@ -903,7 +937,7 @@ int main(int argc, char** argv) {
 		if (verbose)
 			startInitialWalk = std::chrono::system_clock::now();
 
-		MyState* startStateMinimum = WalkGradientHashed(maxToHash).walk(vc,
+		MyState* startStateMinimum = WalkGradientHashed(move_set, maxToHash).walk(vc,
 				startState);
 
 		if (verbose) {
@@ -1090,6 +1124,7 @@ int main(int argc, char** argv) {
 											&discoveredMinimaForEachThread[index];
 									inParameter->TemperatureForBoltzmannWeight =
 											temperatureForBoltzmannWeight;
+									inParameter->Move_set = move_set;
 
 									flooderOutputParameter* outParameter =
 											new flooderOutputParameter();
@@ -1277,8 +1312,11 @@ int main(int argc, char** argv) {
 			}
 		}
 
-		print_number_of_rates (z,final_minima, Minima, std::cout);
+		print_number_of_rates (*final_Rate,final_minima, Minima, std::cout);
 
+		if(!binary_rates_file.empty()){
+		  write_binary_rates_file(binary_rates_file, *final_Rate,final_minima, Minima);
+		}
 		/***********Garbage collection ************/
 		//	delete ScMinimum;
 		vrna_fold_compound_free(vc);
@@ -1396,13 +1434,19 @@ void writeDescription(biu::OptionMap & allowed, std::string & info) {
 			biu::COption("M", true, biu::COption::INT,
 					"Set the energy model. 0=Turner model 2004, 1=Turner model 1999, 2=Andronescu model, 2007",
 					"0"));
-
+  allowed.push_back(
+      biu::COption("move_set", true, biu::COption::INT,
+          "Move set: 0 = insertion and deletion, 1 = shift moves, 2 = no lonely pair moves.",
+          "0"));
 	allowed.push_back(
 			biu::COption("transProb", true, biu::COption::STRING,
 					"If provided, the transition probability matrix will be written to the given file name or 'STDOUT' when to write to standard output"));
 	allowed.push_back(
 			biu::COption("energyFile", true, biu::COption::STRING,
 					"File to store all energies."));
+  allowed.push_back(
+      biu::COption("binary_rates_file", true, biu::COption::STRING,
+          "File to store all rates in a treekin readable format."));
 	allowed.push_back(
 			biu::COption("partitionFunctions", true, biu::COption::STRING,
 					"If provided, the partition function matrix will be written to the given file name."));

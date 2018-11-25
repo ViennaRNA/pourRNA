@@ -46,13 +46,24 @@ printRateMatrixSorted (const biu::MatrixSparseC<double>& R, const std::unordered
 		       std::ostream & out = std::cout);
 
 /**
+ *  ! write binary rates file.
+ *  first value is the number of states, then the all outgoing rates for state 1, then all for state 2 etc.
+ * @param R the rateMatrix.
+ * @param minima the indices and structures of the minima.
+ * @param originalMinima all unfiltered discovered minima with indices that are consistent with the z matrix.
+ */
+void write_binary_rates_file(std::string rates_file, const biu::MatrixSparseC<double>& R,
+    const std::unordered_map<size_t, MyState>& minimaMap,
+    const PairHashTable::HashTable& originalMinima);
+
+/**
  * ! print the number of non-zero rates.
  * @param R the rateMatrix.
  * @param minima the indices and structures of the minima.
  * @param out the outputstream, default is std::cout.
  */
 void
-print_number_of_rates (const SC_PartitionFunction::Z_Matrix& z,
+print_number_of_rates (const biu::MatrixSparseC<double>& R,
         const std::unordered_map<size_t, MyState>& minimaMap,
         const PairHashTable::HashTable& originalMinima, std::ostream& out);
 

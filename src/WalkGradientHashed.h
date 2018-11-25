@@ -31,10 +31,10 @@ class WalkGradientHashed
 public:
   /**
    * ! Initialize the gradient walk.
-   * @param maxNeighbors the maximal number of neighbors which can occur (neighbors of open chain).
+   * @param the move set for neighbor generation (see vrna_package neighbor.h)
    * @param maxHashSize is the maximal number of states which will be stored.
    */
-  WalkGradientHashed (const size_t maxHashSize = 10000);
+  WalkGradientHashed (unsigned int move_set, const size_t maxHashSize = 10000);
   /**
    * ! Clean up.
    */
@@ -64,7 +64,8 @@ private:
   SpookyHashMap::HashTable State2min;
   // ! the new foldcompound object==> replaces Energy parameters TODO
   vrna_fold_compound_t *VC;
-
+  //! the move set for neighbor generation
+  unsigned int Move_set;
 };
 
 #endif /* WALKGRADIENTHASHED_H_ */
