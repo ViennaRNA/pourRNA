@@ -47,7 +47,8 @@ public:
   StatePairCollector(size_t currentMinID, PairHashTable::HashTable& minima,
       SC_PartitionFunction::Z_Matrix& z, const size_t maxGradWalkHashed,
       Concurrent_Queue<MyState> *discoveredMinima,
-      double boltzmannWeightTemperature, unsigned int move_set, PairHashMap::HashMap& all_saddles);
+      double boltzmannWeightTemperature, unsigned int move_set, PairHashMap::HashMap& all_saddles,
+      std::string& sourceStructure,std::string& targetStructure, int maxBPdist);
   virtual
   ~StatePairCollector();
   /**
@@ -86,6 +87,13 @@ private:
   size_t NumberOfOuterStates;
   // ! unique minima queue (ready to flood)
   Concurrent_Queue<MyState> *DiscoveredMinima;
+
+  char * CurrentStructure;
+  std::string& SourceStructure;
+  std::string& TargetStructure;
+  int MaxBPdist;
+  HashSet::UnorderedHashSet MininaToIgnore;
+
 
   PairHashMap::HashMap& All_Saddles;
   MyState* current_min;

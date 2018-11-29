@@ -214,6 +214,9 @@ struct flooderInputParameter {
 	double TemperatureForBoltzmannWeight;
 	unsigned int Move_set;
 	PairHashMap::HashMap* All_Saddles;
+	int MaxBPdist;
+	std::string SourceStructure;
+	std::string TargetStructure;
   ~flooderInputParameter() {
     if (CurrentMinimum != NULL)
       delete CurrentMinimum;
@@ -272,7 +275,10 @@ int floodBasin(vrna_fold_compound_t *vc, flooderInputParameter* inParameter,
 			inParameter->DiscoveredMinima,
 			inParameter->TemperatureForBoltzmannWeight,
 			inParameter->Move_set,
-			*inParameter->All_Saddles
+			*inParameter->All_Saddles,
+			inParameter->SourceStructure,
+			inParameter->TargetStructure,
+			inParameter->MaxBPdist
 	);
 
 	// set the maximal energy as upper floodlevel.
@@ -294,7 +300,7 @@ int floodBasin(vrna_fold_compound_t *vc, flooderInputParameter* inParameter,
 			it++) {
 		if (it->second != loopCurrentLocalMinID) // add only the neighbors.
 				{
-			outParameter->IndicesOfFilteredMinima.push_back(it->second);
+        outParameter->IndicesOfFilteredMinima.push_back(it->second);
 		}
 	}
 
@@ -551,6 +557,10 @@ int main(int argc, char** argv) {
 // value for min. E filter. -1 = do not filter.
 	double filterValueE = 0;
 	bool enableDeltaMinEFilter = false;
+
+	//max base pair distance filter
+	int maxBPdist = 65536;
+
 	// file to store all energies.
 	std::string energyFileName = "";
 	// binary rates file
@@ -715,6 +725,14 @@ int main(int argc, char** argv) {
 				throw ArgException("you should use at least one thread.");
 			}
 		}
+
+
+    if (out_Parser.argExist("maxBPdist")) {
+      maxBPdist = out_Parser.getIntVal("maxBPdist");
+      if (maxBPdist < 0) {
+        throw ArgException("The base pair distance has to be positive!");
+      }
+    }
 
 		if (out_Parser.argExist("energyFile")) {
 			// set output file name for energies.
@@ -1058,28 +1076,29 @@ int main(int argc, char** argv) {
 								while (!discoveredMinimaForEachThread[index].empty()) {
 									MyState newMin =
 											discoveredMinimaForEachThread[index].pop();
-									//start flooding.
-									if (Minima.find(newMin) == Minima.end()) { //if local min is not in total list.
-																			   //add new min and set lowest maximal index.
-										size_t lowestMaxIndex = TypeID::value<
-												size_t>();
 
-										Minima.insert(
-												{ newMin, lowestMaxIndex });
-										MinimaForReverseSearch.insert( {
-												lowestMaxIndex, newMin });
+                  //start flooding.
+                  if (Minima.find(newMin) == Minima.end()) { //if local min is not in total list.
+                                         //add new min and set lowest maximal index.
+                    size_t lowestMaxIndex = TypeID::value<
+                        size_t>();
 
-										// if the element at the index position is not already in done List, add it to toDo_list
-										if (done_List.find(lowestMaxIndex)
-												== done_List.end()
-												&& std::find(toDo_List.begin(),
-														toDo_List.end(),
-														lowestMaxIndex)
-														== toDo_List.end()) {
-											toDo_List.push_back(lowestMaxIndex);
-										}
-									}
-									//discoveredMinimaForEachThread[index].pop_front();
+                    Minima.insert(
+                        { newMin, lowestMaxIndex });
+                    MinimaForReverseSearch.insert( {
+                        lowestMaxIndex, newMin });
+
+                    // if the element at the index position is not already in done List, add it to toDo_list
+                    if (done_List.find(lowestMaxIndex)
+                        == done_List.end()
+                        && std::find(toDo_List.begin(),
+                            toDo_List.end(),
+                            lowestMaxIndex)
+                            == toDo_List.end()) {
+                      toDo_List.push_back(lowestMaxIndex);
+                    }
+                  }
+                  //discoveredMinimaForEachThread[index].pop_front();
 								}
 							}
 						} else {
@@ -1133,6 +1152,9 @@ int main(int argc, char** argv) {
 											temperatureForBoltzmannWeight;
 									inParameter->Move_set = move_set;
 									inParameter->All_Saddles = &all_saddles;
+									inParameter->MaxBPdist = maxBPdist;
+									inParameter->SourceStructure = rna_start_str;
+									inParameter->TargetStructure = rna_final_str;
 
 									flooderOutputParameter* outParameter =
 											new flooderOutputParameter();
@@ -1490,6 +1512,10 @@ void writeDescription(biu::OptionMap & allowed, std::string & info) {
 			biu::COption("maxThreads", true, biu::COption::INT,
 					"Sets the maximum number of threads for parallelized computation.",
 					"1"));
+	allowed.push_back(
+	      biu::COption("maxBPdist", true, biu::COption::INT,
+	          "Sets the maximum base pair distance for direct neighbor minima to be explored.",
+	          "65536"));
 	allowed.push_back(
 			biu::COption("v", true, biu::COption::BOOL, "Verbose"));
 
