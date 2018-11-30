@@ -98,7 +98,7 @@ optional
 option  "deltaE" -
 "Set the maximum energy difference that states in a basin can have w.r.t. the local minimum (in kcal/mol).\n"
 double
-default="5"
+default="65536"
 optional
 
 option  "maxBPdist" -

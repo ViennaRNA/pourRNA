@@ -604,7 +604,7 @@ main(int  argc,
   // the maximum energy that a state is allowed to have to be considered by the flooder.
   double                                              maxEnergy = 5;
   // the maximum energy difference that states in a basin can have w.r.t. the local minimum.
-  double                                              deltaE = 5;
+  double                                              deltaE = 65536;
   // value for best K filter. -1 = do not filter.
   size_t                                              filterValueK      = 0;
   bool                                                enableBestKFilter = false;
