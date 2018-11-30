@@ -77,8 +77,6 @@ WalkGradientHashed::walkGradient(vrna_fold_compound_t       *vc,
       free(prev_pt);
       free(tmp_neighbors);
       free(currentStructure.structure);
-      //free (minimalNeighbor->structure);
-      //minimalNeighbor->structure = NULL;
       minimalNeighbor = hashed->second.clone();
       return minimalNeighbor;
     }
@@ -86,53 +84,14 @@ WalkGradientHashed::walkGradient(vrna_fold_compound_t       *vc,
     currentStructure.energy = minimalNeighbor->energy;
     copy_arr(currentStructure.structure, minimalNeighbor->structure);
 
-    /*
-     * if (tmp_neighbors != NULL && minimal_move_index >= 0) {
-     * vrna_move_t curr_move = tmp_neighbors[minimal_move_index];
-     * int size_new_neighbors = 0;
-     * vrna_move_t *new_neighbors = vrna_neighbors_successive(vc,
-     *    &curr_move, prev_pt, tmp_neighbors, size_neighbors,
-     *    &size_new_neighbors, VRNA_MOVESET_DEFAULT);
-     * vrna_move_apply(prev_pt, &curr_move);
-     * free(tmp_neighbors);
-     * size_neighbors = size_new_neighbors;
-     * tmp_neighbors = new_neighbors;
-     * } else */
-    {
-      free(tmp_neighbors);
-      tmp_neighbors = vrna_neighbors(vc, currentStructure.structure,
-                                     this->Move_set);
-      size_neighbors = 0;
-      for (vrna_move_t *m = tmp_neighbors; m->pos_5 != 0; m++)
-        size_neighbors++;
-    }
+    free(tmp_neighbors);
+    tmp_neighbors = vrna_neighbors(vc, currentStructure.structure,
+                                   this->Move_set);
+    size_neighbors = 0;
+    for (vrna_move_t *m = tmp_neighbors; m->pos_5 != 0; m++)
+      size_neighbors++;
 
     size_t move_index = 0;
-    //copy_arr(prev_pt,tmpMinimalNeighbor.structure);
-    /*
-     * struct_en *neighbors = convert_moves_to_neighbors(vc, &currentStructure,
-     *  tmp_neighbors, size_neighbors);
-     *
-     *
-     *
-     * for (struct_en *neighbor = neighbors; neighbor->structure != NULL;
-     *  neighbor++, move_index++) {
-     * if (neighbor->energy < minimalNeighbor->energy
-     || (neighbor->energy == minimalNeighbor->energy
-     ||       && StructureUtils::IsSmaller(neighbor->structure,
-     ||           minimalNeighbor->structure))) {
-     || minimalNeighbor->energy = neighbor->energy;
-     || copy_arr(minimalNeighbor->structure, neighbor->structure);
-     || foundBetterNeighbor = true;
-     || minimal_move_index = move_index;
-     ||||||}
-     ||
-     ||||||free(neighbor->structure);
-     ||||||}
-     ||
-     ||||||free(neighbors);
-     */
-
     int move_energy;
     for (vrna_move_t *m = tmp_neighbors; m->pos_5 != 0; m++, move_index++) {
       move_energy             = vrna_eval_move_shift_pt(vc, m, currentStructure.structure); //vrna_eval_move_pt(vc, currentStructure.structure, m->pos_5, m->pos_3);
