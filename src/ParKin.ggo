@@ -1,0 +1,187 @@
+
+
+# Name of your program
+package "ParKin" # don't use package if you're using automake
+
+purpose "Explore RNA energy landscapes"
+
+#usage "ParKin [options]\n"
+version "0.1"   # don't use version if you're using automake
+
+
+# command line options passed to gengetopt
+args "--file-name=ParKin_cmdl --include-getopt --default-optional --func-name=ParKin_cmdline_parser --arg-struct-name=ParKin_args_info"
+
+
+description   "ParKin takes an RNA sequence as input and explores the landscape topology locally. \
+This means the flooding algorithm will be applied for each gradient basin. \
+The partition function for the basin and also for the transitions to neighbored minima will \
+be calculated during the flooding. This approach consumes more computations than \
+global flooding, because the contact surface for two neighbored states is calculated twice. \
+The advantage of ParKin is, that the filtering techniques can be calculated locally. \
+The filters are used to prune non-relevant transitions directly after flooding a gradient basin. \
+As a result, the transition rates for the filtered landscape topology can be calculated faster \
+than with global approaches. The advantage increases with increasing size of the energy landscape.\n"
+
+
+# Options
+section "General Options"
+
+option  "seq" -
+"The RNA sequence of the molecule\n"
+string
+optional
+default="ACUGUAUGCGCGU"
+
+option  "startStr" -
+"the start structure of the exploration defining the first gradient basin; defaults to the open chain\n"
+string
+optional
+
+option  "start-structure-file" -
+"File with start structures (one per line)\n"
+string
+optional
+
+option  "finalStr" -
+"the final structure of the exploration defining the last gradient basin\n"
+string
+optional
+
+option  "maxThreads" -
+"Sets the maximum number of threads for parallelized computation.\n"
+int
+optional
+
+
+section "Filter"
+
+option  "filterBestK" -
+"reduces outgoing transitions to the best K for each gradient basin\n"
+int
+optional
+
+option  "dynamicBestK" -
+"Increases K if the MFE structure is not explored.\n"
+flag
+off
+
+option  "filterMinE" -
+"reduces outgoing transitions to the Neighbor minima, which have\
+ Energy lower than current (E(minima)+filterValue) for each gradient basin\n"
+double
+optional
+
+option  "maxToQueue" -
+"Sets the maximum number of states to be stored in the priority queue of the flooder.\n"
+int
+optional
+
+option  "maxToHash" -
+"Sets the maximum number of states to be hashed for a gradient walk.\n"
+int
+optional
+
+option  "dynamicMaxToHash" -
+"Sets the dynamicMaxToHash variable for estimating the maximal number of states \
+to be hashed in a gradient walk, by considering the maximal available physical memory \
+and the number of threads. This reduces the probability of swapping.\n"
+flag
+off
+
+option  "maxEnergy" -
+"Sets the maximum energy that a state is allowed to have to be considered by the flooder (in kcal/mol).\n"
+double
+default="5"
+optional
+
+option  "deltaE" -
+"Set the maximum energy difference that states in a basin can have w.r.t. the local minimum (in kcal/mol).\n"
+double
+default="5"
+optional
+
+option  "maxBPdist" -
+"Sets the maximum base pair distance for direct neighbor minima to be explored. \
+Needs a start structure and a final structure in order to work. For all discovered \
+minima m holds: bp_dist(m, startStr) + bp_dist(m, finalStr) < maxBPdist.\n"
+int
+default="65536"
+optional
+
+
+section "RNA model parameters"
+
+option  "temperature" T
+"Set the temperature for the free energy calculation (in °C). (If \"T\" is set and \"B\" not, \"B\" is equals \"T\").\n"
+double
+default="37"
+optional
+
+option  "dangling-end" d
+"How to treat \"dangling end\" energies for bases adjacent to helices in free ends and multi-loops.\n"
+int
+default="2"
+optional
+
+option  "boltzmann-temp" B
+"Set the temperature for the Boltzmann weight (in °C).\n"
+double
+default="37"
+optional
+
+option  "energy-model" M
+"Set the energy model. 0=Turner model 2004, 1=Turner model 1999, 2=Andronescu model, 2007\n"
+int
+default="0"
+optional
+
+option  "move-set" -
+"Move set: 0 = insertion and deletion, 1 = shift moves, 2 = no lonely pair moves.\n"
+int
+default="0"
+optional
+
+
+section "Output files"
+
+option  "transProb" -
+"If provided, the transition probability matrix will be written to the given \
+file name or 'STDOUT' when to write to standard output\n"
+string
+optional
+
+option  "energyFile" -
+"File to store all energies.\n"
+string
+optional
+
+option  "binary-rates-file" -
+"File to store all rates in a treekin readable format.\n"
+string
+optional
+
+option  "partitionFunctions" -
+"If provided, the partition function matrix will be written to the given file name.\n"
+string
+optional
+
+option  "dotPlot" -
+"If provided, the dotPlot will be written to the given file name. \
+The dotPlot contains the base pair probabilities for all structures in the (filtered) energy landscape.\n"
+string
+optional
+
+option  "dotPlot-per-basin" -
+"Creates a dotplot for each gradient basin in the enrgy landscape. It shows the Maximum Expected Accuracy (MEA) \
+structure in the upper right triangle and the basin representative in the lower left triangle.\n"
+string
+optional
+
+option  "verbose" v
+"Verbose.\n"
+flag
+off
+
+
+

@@ -27,6 +27,7 @@
 #include <iostream>
 #include <unistd.h>
 extern "C" {
+#include "ParKin_cmdl.h"
 #include <ViennaRNA/move_set.h>
 #include <ViennaRNA/fold.h>
 //#include <ViennaRNA/read_epars.h>
@@ -36,7 +37,6 @@ extern "C" {
 #include <ViennaRNA/utils/structures.h>
 #include <ViennaRNA/neighbor.h>
 }
-#include "BIUlibPart/OptionParser.h"
 #include "BIUlibPart/MatrixSparse.hh"
 #include "RNAkinetics/RateMatrixUtil.h"
 #include "RNAkinetics/RNA_NeighMinFilter.h"
@@ -211,22 +211,6 @@ calculateRateMatrix(SC_PartitionFunction::Z_Matrix& z,
   }   // end for
   return final_Rate;
 }
-
-
-/* !AllowedArgument function to check the given input arguments
- * @param allowed, type OptionMap, which is list of possible options for the parameter list.
- *  allowed parameter is container of given input, any given input will be pushed back
- *  to allowed param, each input of type biu::COption will contain parameters indicated type
- *  of the input value. e.g "seq" as Sequence or "str" as Structure etc. and if it is optional
- *  or not .In addition description of each input of type biu::COption. all the input parameters
- *  of type biu::COption that allowed param contains, will be extracted during Parsing the parameters
- *  phase using biu::COption_Parser object.
- *
- * @param infos, contains some description about the possible options.
- */
-void
-writeDescription(biu::OptionMap & allowed,
-                 std::string &    infos);
 
 
 struct flooderInputParameter {
@@ -522,7 +506,7 @@ merge_results(std::vector<std::pair<flooderInputParameter *,
           if (localMinIt->second != currentMinID)
             allNeighboredMinima.push_back(localMinIt->second);
 
-         // creating an greaterByZ Object as third parameter of std:: sort method
+        // creating an greaterByZ Object as third parameter of std:: sort method
         GreaterByZMatrix greaterByZ(localZ, currentMinID);
 
         // sort bz Z value
@@ -614,13 +598,13 @@ main(int  argc,
   // output container for the transition matrix.
   std::ostream                                        *transOut = &std::cout;
   // the maximal number of elements the underlying queue of the Flooder is allowed to contain.
-  size_t                                              maxToQueue = UINT64_MAX;
+  size_t                                              maxToQueue = UINT32_MAX;
   // maximum number of states to be hashed for each gradient walk.
-  size_t                                              maxToHash = UINT64_MAX;
+  size_t                                              maxToHash = UINT32_MAX;
   // the maximum energy that a state is allowed to have to be considered by the flooder.
-  double                                              maxEnergy = 9999;
+  double                                              maxEnergy = 5;
   // the maximum energy difference that states in a basin can have w.r.t. the local minimum.
-  double                                              deltaE = 9999;
+  double                                              deltaE = 5;
   // value for best K filter. -1 = do not filter.
   size_t                                              filterValueK      = 0;
   bool                                                enableBestKFilter = false;
@@ -676,58 +660,45 @@ main(int  argc,
    * The main purpose for this parameter is, that it reduces the probability that the system will crash if too much
    * memory is used with large sequences.
    */
-  bool            dynamicMaxToHash = false;
+  bool                    dynamicMaxToHash = false;
 
   //---------------------------- Parsing the Parameters---------------------------------
 
-  // to map the allowed arguments.
-  biu::OptionMap  allowed_Arg;
-
-  // information string
-  std::string     info = "";
-
-  writeDescription(allowed_Arg, info);
-
-  // To parse the Program Arguments
-
-  biu::COptionParser out_Parser = biu::COptionParser(allowed_Arg, argc, argv,
-                                                     info);
-
+  struct ParKin_args_info args_info;
   // check if there is any unparseable argument
-  if (out_Parser.noErrors()) {
-    // show the help output
-    if (out_Parser.getBoolVal("help")) {
-      out_Parser.coutUsage();
-      return 0;
-    }
-  } else {
-    return -1;
-  }
+  if (ParKin_cmdline_parser(argc, argv, &args_info) != 0)
+    exit(1);
 
   try {
     // parse sequence
-    std::string rnaSequence = out_Parser.getStrVal("seq");
-    if (rnaSequence.size() == 0) {
+    std::string rnaSequence = "";
+    if (!args_info.seq_given) {
       throw ArgException("No RNA sequence given");
-    } else if (!StructureUtils::IsValidSequence(rnaSequence)) {
-      error_Mas << "Sequence " << rnaSequence << " is no valid Sequence ";
-      throw ArgException(error_Mas.str());
+    } else {
+      rnaSequence = std::string(args_info.seq_arg);
+      if (!StructureUtils::IsValidSequence(rnaSequence)) {
+        error_Mas << "Sequence " << rnaSequence << " is no valid Sequence ";
+        throw ArgException(error_Mas.str());
+      }
     }
 
     // parse structure
-    std::string rna_start_str = out_Parser.getStrVal("startStr");
-    if (rna_start_str.size() == 0) {
+    std::string rna_start_str = "";
+    if (!args_info.startStr_given) {
       // initialize open chain structure
       rna_start_str = std::string(rnaSequence.size(), '.');
-    } else if (!StructureUtils::IsValidStructure(rna_start_str)) {
-      error_Mas << " start Structure " << rna_start_str
-                << " is no valid structure";
-      throw ArgException(error_Mas.str());
+    } else {
+      rna_start_str = std::string(args_info.startStr_arg);
+      if (!StructureUtils::IsValidStructure(rna_start_str)) {
+        error_Mas << " start Structure " << rna_start_str
+                  << " is no valid structure";
+        throw ArgException(error_Mas.str());
+      }
     }
 
     std::string rna_final_str = "";
-    if (out_Parser.argExist("finalStr")) {
-      rna_final_str = out_Parser.getStrVal("finalStr");
+    if (args_info.finalStr_given) {
+      rna_final_str = args_info.finalStr_arg;
       if (!StructureUtils::IsValidStructure(rna_final_str)
           || rna_final_str.size() == 0) {
         error_Mas << " final Structure " << rna_final_str
@@ -736,15 +707,16 @@ main(int  argc,
       }
     }
 
-    std::string             start_structure_file = out_Parser.getStrVal("start_structure_file");
-    std::list<std::string>  start_structure_list;
-    if (start_structure_file.size() != 0) {
-      std::ifstream infile(start_structure_file);
-      std::string   line;
-      while (std::getline(infile, line))
-        if (StructureUtils::IsValidStructure(line))
-          start_structure_list.push_back(line);
-
+    std::list<std::string> start_structure_list;
+    if (args_info.start_structure_file_given) {
+      std::string start_structure_file = args_info.start_structure_file_arg;
+      if (start_structure_file.size() != 0) {
+        std::ifstream infile(start_structure_file);
+        std::string   line;
+        while (std::getline(infile, line))
+          if (StructureUtils::IsValidStructure(line))
+            start_structure_list.push_back(line);
+      }
     }
 
     // container for all partition functions to generate
@@ -758,125 +730,108 @@ main(int  argc,
     std::unordered_map<size_t, MyState> MinimaForReverseSearch;
 
     // set best K filter if required
-    if (out_Parser.argExist("filterBestK")) {
-      filterValueK      = out_Parser.getIntVal("filterBestK");
+    if (args_info.filterBestK_given) {
+      filterValueK      = args_info.filterBestK_arg;
       enableBestKFilter = true;
     }
 
     // set dynamic best K filter if required
-    if (out_Parser.argExist("dynamicBestK"))
-      dynamicBestK = out_Parser.getBoolVal("dynamicBestK");
+    if (args_info.dynamicBestK_given)
+      dynamicBestK = true;
 
     // set Energy filter if required
-    if (out_Parser.argExist("filterMinE")) {
-      filterValueE          = out_Parser.getDoubleVal("filterMinE");
+    if (args_info.filterMinE_given) {
+      filterValueE          = args_info.filterMinE_arg;
       enableDeltaMinEFilter = true;
     }
 
     // set maxToStore variable for the states in each gradient basin.
-    if (out_Parser.argExist("maxToQueue"))
-      maxToQueue = out_Parser.getIntVal("maxToQueue");
+    if (args_info.maxToQueue_given)
+      maxToQueue = args_info.maxToQueue_arg;
 
     // set maxToHash variable for the states to be hashed in a gradient walk.
-    if (out_Parser.argExist("maxToHash"))
-      maxToHash = out_Parser.getIntVal("maxToHash");
+    if (args_info.maxToHash_given)
+      maxToHash = args_info.maxToHash_arg;
 
     // set dynamicMaxToHash variable for estimating the maximal number of states to be hashed in a gradient walk,
     // by considering the maximal available physical memory.
-    if (out_Parser.argExist("dynamicMaxToHash"))
-      dynamicMaxToHash = out_Parser.getBoolVal("dynamicMaxToHash");
+    if (args_info.dynamicMaxToHash_given)
+      dynamicMaxToHash = true;
 
     // set the maximum energy that a state is allowed to have to be considered by the flooder.
-    if (out_Parser.argExist("maxEnergy"))
-      maxEnergy = out_Parser.getDoubleVal("maxEnergy");
+    if (args_info.maxEnergy_given)
+      maxEnergy = args_info.maxEnergy_arg;
 
     // set the maximum energy difference that states in a basin can have w.r.t. the local minimum.
-    if (out_Parser.argExist("deltaE"))
-      deltaE = out_Parser.getDoubleVal("deltaE");
+    if (args_info.deltaE_given)
+      deltaE = args_info.deltaE_arg;
 
     // set maxThreads for parallelized computation.
     int maxThreads = 1;
-    if (out_Parser.argExist("maxThreads")) {
-      maxThreads = out_Parser.getIntVal("maxThreads");
+    if (args_info.maxThreads_given) {
+      maxThreads = args_info.maxThreads_arg;
       if (maxThreads < 1)
         throw ArgException("you should use at least one thread.");
     }
 
-    if (out_Parser.argExist("maxBPdist")) {
-      maxBPdist = out_Parser.getIntVal("maxBPdist");
+    if (args_info.maxBPdist_given) {
+      maxBPdist = args_info.maxBPdist_arg;
       if (maxBPdist < 0)
         throw ArgException("The base pair distance has to be positive!");
     }
 
-    if (out_Parser.argExist("energyFile")) {
+    if (args_info.energyFile_given) {
       // set output file name for energies.
-      if (out_Parser.getStrVal("energyFile").size() != 0) {
-        energyFileName  = out_Parser.getStrVal("energyFile");
-        logEnergies     = true;
-      }
+      energyFileName  = args_info.energyFile_arg;
+      logEnergies     = true;
     }
 
-    if (out_Parser.argExist("binary_rates_file")) {
+    if (args_info.binary_rates_file_given)
       // set output file name for energies.
-      if (out_Parser.getStrVal("binary_rates_file").size() != 0)
-        binary_rates_file = out_Parser.getStrVal("binary_rates_file");
-    }
+      binary_rates_file = args_info.binary_rates_file_arg;
 
     //partitionFunctions
-    if (out_Parser.argExist("partitionFunctions")) {
+    if (args_info.partitionFunctions_given) {
       // set output file name for partitionfunctions.
-      if (out_Parser.getStrVal("partitionFunctions").size() != 0) {
-        partitionFunctionFileName = out_Parser.getStrVal(
-          "partitionFunctions");
-        writePartitionFunctions = true;
-      }
+      partitionFunctionFileName = args_info.partitionFunctions_arg;
+      writePartitionFunctions   = true;
     }
 
     //dotPlot
-    if (out_Parser.argExist("dotPlot")) {
+    if (args_info.dotPlot_given) {
       // set output file name for dotPlot.
-      if (out_Parser.getStrVal("dotPlot").size() != 0) {
-        dotPlotFileName = out_Parser.getStrVal("dotPlot");
-        writeDotplot    = true;
-      }
+      dotPlotFileName = args_info.dotPlot_arg;
+      writeDotplot    = true;
     }
 
-    if (out_Parser.argExist("dotPlot_per_basin")) {
-      if (out_Parser.getStrVal("dotPlot_per_basin").size() != 0) {
-        dotPlotPerBasinFileName = out_Parser.getStrVal("dotPlot_per_basin");
-        writeDotplotPerBasin    = true;
-      }
+    if (args_info.dotPlot_per_basin_given) {
+      dotPlotPerBasinFileName = args_info.dotPlot_per_basin_arg;
+      writeDotplotPerBasin    = true;
     }
 
-    if (out_Parser.argExist("transProb")) {
+    if (args_info.transProb_given) {
       // set output stream
-      if (out_Parser.getStrVal("transProb").size() == 0) {
-        throw ArgException(
-                "no transition probability output file given but argument present");
-      } else if (out_Parser.getStrVal("transProb").compare("STDOUT")
-                 != 0) {
-        if (out_Parser.getStrVal("out").compare(
-              out_Parser.getStrVal("transProb")) == 0) {
-          transOut = out;
-        } else {
-          transOutFile = new std::ofstream(
-            out_Parser.getStrVal("transProb").c_str(),
-            std::ofstream::out);
-          if (!transOutFile->is_open()) {
-            std::ostringstream oss;
-            oss << "cannot open output file '"
-                << out_Parser.getStrVal("transProb") << "'";
-            throw ArgException(oss.str());
-          }
-
-          transOut = transOutFile;
+      std::string outfile_name = std::string(args_info.transProb_arg);
+      if (outfile_name.compare("STDOUT") == 0) {
+        transOut = out;
+      } else {
+        transOutFile = new std::ofstream(
+          outfile_name.c_str(),
+          std::ofstream::out);
+        if (!transOutFile->is_open()) {
+          std::ostringstream oss;
+          oss << "cannot open output file '"
+              << args_info.transProb_arg << "'";
+          throw ArgException(oss.str());
         }
+
+        transOut = transOutFile;
       }
     }
 
-    if (out_Parser.argExist("d")) {
+    if (args_info.dangling_end_given) {
       // set dangling ends.
-      danglingEnd = out_Parser.getIntVal("d");
+      danglingEnd = args_info.dangling_end_arg;
       if (danglingEnd < 0) {
         std::ostringstream oss;
         oss << "Error: dangling end size must be >= 0 !";
@@ -884,21 +839,21 @@ main(int  argc,
       }
     }
 
-    if (out_Parser.argExist("T")) {
+    if (args_info.temperature_given) {
       // set temperatureForEnergy.
-      temperatureForEnergy = out_Parser.getIntVal("T");
-      if (!out_Parser.argExist("B"))
+      temperatureForEnergy = args_info.temperature_arg;
+      if (!(args_info.boltzmann_temp_given))
         temperatureForBoltzmannWeight = temperatureForEnergy;
     }
 
-    if (out_Parser.argExist("B"))
+    if (args_info.boltzmann_temp_given)
       // set temperature for the boltzmann weight.
-      temperatureForBoltzmannWeight = out_Parser.getIntVal("B");
+      temperatureForBoltzmannWeight = args_info.boltzmann_temp_arg;
 
     int tmp_move_set = 0;
-    if (out_Parser.argExist("move_set"))
+    if (args_info.move_set_given)
       // set the move set integer
-      tmp_move_set = out_Parser.getIntVal("move_set");
+      tmp_move_set = args_info.move_set_arg;
 
     // convert the integer to the vrna_type
     switch (tmp_move_set) {
@@ -916,9 +871,9 @@ main(int  argc,
     }
 
 
-    if (out_Parser.argExist("M")) {
+    if (args_info.energy_model_given) {
       // set energyModel.
-      int energyModelNumber = out_Parser.getIntVal("M");
+      int energyModelNumber = args_info.energy_model_arg;
       if (energyModelNumber >= 0 || energyModelNumber <= 2) {
         // Get the last position of '/'
         char        buf[UINT16_MAX] = "";
@@ -972,8 +927,8 @@ main(int  argc,
       }
     }
 
-    if (out_Parser.argExist("v"))
-      verbose = out_Parser.getBoolVal("v");
+    if (args_info.verbose_given)
+      verbose = true;
 
     vrna_md_t md;
     vrna_md_set_default(&md);
@@ -1595,127 +1550,3 @@ main(int  argc,
             << "elapsed time: " << elapsed_seconds.count() << "s\n";
   return return_Value;
 }   // end main body.
-
-
-/*!writes the description of the program to the "info" string and
- * writes the allowed parameters in the OptionMap "allowed".
- * @param allowed, list of possible options.
- * @param infos contains description of the options.
- */
-void
-writeDescription(biu::OptionMap & allowed,
-                 std::string &    info)
-{
-  std::stringstream info_string;
-
-  //description
-  info_string << "\n"
-              <<
-  "RNA_Expore takes an RNA sequence as input and explores the landscape topology locally. "
-  "This means the flooding algorithm will be applied for each gradient basin. "
-  "The partition function for the basin and also for the transitions to neighbored minima will "
-  "be calculated during the flooding. This approach consumes more computations than "
-  "global flooding, because the contact surface for two neighbored states is calculated twice. "
-  "The advantage of RNA_Explore is, that the filtering techniques can be calculated locally. "
-  "The filters are used to prune non-relevant transitions directly after flooding a gradient basin. "
-  "As a result, the transition rates for the filtered landscape topology can be calculated faster "
-  "than with global approaches. The advantage increases with increasing size of the energy landscape."
-  "      " << "\n";
-
-  info = info_string.str();
-
-  allowed.push_back(
-    biu::COption("seq", false, biu::COption::STRING,
-                 "The RNA sequence of the molecule", "ACUGUAUGCGCGU"));
-  allowed.push_back(
-    biu::COption("startStr", true, biu::COption::STRING,
-                 "the start structure of the exploration defining the first gradient basin; defaults"
-                 " to the open chain"));
-  allowed.push_back(
-    biu::COption("start_structure_file", true, biu::COption::STRING,
-                 "File with start structures (one per line)"));
-  allowed.push_back(
-    biu::COption("finalStr", true, biu::COption::STRING,
-                 "the final structure of the exploration defining the last gradient basin"));
-  allowed.push_back(
-    biu::COption("filterBestK", true, biu::COption::INT,
-                 "reduces outgoing transitions to the best K for each gradient basin"));
-  allowed.push_back(
-    biu::COption("dynamicBestK", true, biu::COption::BOOL,
-                 "Increases K if the MFE structure is not explored."));
-  allowed.push_back(
-    biu::COption("filterMinE", true, biu::COption::DOUBLE,
-                 "reduces outgoing transitions to the Neighbor minima, which have  "
-                 " Energy lower than current (E(minima)+filterValue) for each gradient basin"));
-  allowed.push_back(
-    biu::COption("maxToQueue", true, biu::COption::INT,
-                 "Sets the maximum number of states to be stored in the priority queue of the flooder.",
-                 std::to_string(SIZE_MAX)));
-  allowed.push_back(
-    biu::COption("maxToHash", true, biu::COption::INT,
-                 "Sets the maximum number of states to be hashed for a gradient walk.",
-                 std::to_string(SIZE_MAX)));
-  allowed.push_back(
-    biu::COption("dynamicMaxToHash", true, biu::COption::BOOL,
-                 "Sets the dynamicMaxToHash variable for estimating the maximal number of states to be hashed in a gradient walk, "
-                 "by considering the maximal available physical memory and the number of threads. This reduces the probability of swapping."));
-
-  allowed.push_back(
-    biu::COption("maxEnergy", true, biu::COption::DOUBLE,
-                 "Sets the maximum energy that a state is allowed to have to be considered by the flooder (in kcal/mol).",
-                 "5"));
-  allowed.push_back(
-    biu::COption("deltaE", true, biu::COption::DOUBLE,
-                 "Set the maximum energy difference that states in a basin can have w.r.t. the local minimum (in kcal/mol).",
-                 "9999"));
-  allowed.push_back(
-    biu::COption("T", true, biu::COption::INT,
-                 "Set the temperature for the free energy calculation (in °C). (If \"T\" is set and \"B\" not, \"B\" is equals \"T\").",
-                 "37"));
-  allowed.push_back(
-    biu::COption("d", true, biu::COption::INT,
-                 "How to treat \"dangling end\" energies for bases adjacent to helices in free ends and multi-loops.",
-                 "2"));
-  allowed.push_back(
-    biu::COption("B", true, biu::COption::INT,
-                 "Set the temperature for the Boltzmann weight (in °C).",
-                 "37"));
-  allowed.push_back(
-    biu::COption("M", true, biu::COption::INT,
-                 "Set the energy model. 0=Turner model 2004, 1=Turner model 1999, 2=Andronescu model, 2007",
-                 "0"));
-  allowed.push_back(
-    biu::COption("move_set", true, biu::COption::INT,
-                 "Move set: 0 = insertion and deletion, 1 = shift moves, 2 = no lonely pair moves.",
-                 "0"));
-  allowed.push_back(
-    biu::COption("transProb", true, biu::COption::STRING,
-                 "If provided, the transition probability matrix will be written to the given file name or 'STDOUT' when to write to standard output"));
-  allowed.push_back(
-    biu::COption("energyFile", true, biu::COption::STRING,
-                 "File to store all energies."));
-  allowed.push_back(
-    biu::COption("binary_rates_file", true, biu::COption::STRING,
-                 "File to store all rates in a treekin readable format."));
-  allowed.push_back(
-    biu::COption("partitionFunctions", true, biu::COption::STRING,
-                 "If provided, the partition function matrix will be written to the given file name."));
-  allowed.push_back(
-    biu::COption("dotPlot", true, biu::COption::STRING,
-                 "If provided, the dotPlot will be written to the given file name. \
-	  The dotPlot contains the base pair probabilities for all structures in the (filtered) energy landscape."));
-  allowed.push_back(
-    biu::COption("dotPlot_per_basin", true, biu::COption::STRING,
-                 "Creates a dotplot for each gradient basin in the enrgy landscape. It shows the Maximum Expected Accuracy (MEA) structure \
-           in the upper right triangle and the basin representative in the lower left triangle"));
-  allowed.push_back(
-    biu::COption("maxThreads", true, biu::COption::INT,
-                 "Sets the maximum number of threads for parallelized computation.",
-                 "1"));
-  allowed.push_back(
-    biu::COption("maxBPdist", true, biu::COption::INT,
-                 "Sets the maximum base pair distance for direct neighbor minima to be explored.",
-                 "65536"));
-  allowed.push_back(
-    biu::COption("v", true, biu::COption::BOOL, "Verbose"));
-}   // end function

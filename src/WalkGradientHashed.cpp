@@ -125,12 +125,12 @@ WalkGradientHashed::walkGradient(vrna_fold_compound_t       *vc,
      || copy_arr(minimalNeighbor->structure, neighbor->structure);
      || foundBetterNeighbor = true;
      || minimal_move_index = move_index;
-     ||||}
+     ||||||}
      ||
-     ||||free(neighbor->structure);
-     ||||}
+     ||||||free(neighbor->structure);
+     ||||||}
      ||
-     ||||free(neighbors);
+     ||||||free(neighbors);
      */
 
     int move_energy;

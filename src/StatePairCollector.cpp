@@ -141,15 +141,15 @@ StatePairCollector::add(vrna_fold_compound_t  *vc,
    * //  identify the higher energy state of the current state pair == saddle point
    * if ((state1)->energy < (state2)->energy
    || ((state1)->energy == (state2)->energy && StructureUtils::IsSmaller (state1->structure, state2->structure))) //compare structure to break ties.
-   ||||{
+   ||||||{
    ||// update Z matrix with basin state
-   |||Z[pairID].add (*state2);
-   |||}
-   |||else
-   |||{
+   ||||Z[pairID].add (*state2);
+   ||||}
+   ||||else
+   ||||{
    ||// update Z matrix with non-basin state
-   |||Z[pairID].add (*state1);
-   |||NumberOfOuterStates++;
-   |||}
+   ||||Z[pairID].add (*state1);
+   ||||NumberOfOuterStates++;
+   ||||}
    */
 }
