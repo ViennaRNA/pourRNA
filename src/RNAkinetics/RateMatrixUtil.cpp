@@ -73,33 +73,13 @@ void printRateMatrix(const biu::MatrixSparseC<double>& R,
   }
 }
 
-struct less_second {
-  typedef std::pair<size_t, MyState*> type;
-  bool operator ()(type const& a, type const& b) const {
-    // check if
-    // - smaller energy or
-    // - equal energy and smaller string representation
-    return (a.second->getEnergy() < b.second->getEnergy())
-        || (a.second->getEnergy() == b.second->getEnergy()
-            && StructureUtils::IsSmaller(a.second->structure,
-                b.second->structure));
-  }
-};
-
 PairHashTable::HashTable* printRateMatrixSorted(const biu::MatrixSparseC<double>& R,
-    const std::unordered_map<size_t, MyState>& minimaMap, std::ostream& out) {
+    const std::vector<std::pair<size_t, MyState*>>& sortedMinimaIDs, std::ostream& out) {
   assertbiu(R.numColumns() == R.numRows(), "R is no square matrix");
-  assertbiu(R.numRows() <= minimaMap.size(), "less minima than rates");
+  assertbiu(R.numRows() <= sortedMinimaIDs.size(), "less minima than rates");
 
   const size_t LEAD = 6;
 
-  std::vector<std::pair<size_t, MyState*>> sortedMinimaIDs;
-  for (auto it = minimaMap.begin(); it != minimaMap.end(); it++) {
-    sortedMinimaIDs.push_back(
-        std::pair<size_t, MyState*>(it->first, (MyState*) &(it->second)));
-  }
-
-  std::sort(sortedMinimaIDs.begin(), sortedMinimaIDs.end(), less_second());
   PairHashTable::HashTable* states_and_output_ids = new PairHashTable::HashTable();
   out << std::scientific << "\n from : to\n";
   size_t nextMinID;
@@ -107,8 +87,8 @@ PairHashTable::HashTable* printRateMatrixSorted(const biu::MatrixSparseC<double>
   for (size_t c = 0; c < sortedMinimaIDs.size(); c++) {
     nextMinID = sortedMinimaIDs[c].first;
     out << "\n" << std::setw(LEAD) << c << " ["
-        << minimaMap.at(nextMinID).toString() << "] :";
-    states_and_output_ids->insert({MyState(minimaMap.at(nextMinID)), c});
+        << /*minimaMap.at(nextMinID).toString()*/ sortedMinimaIDs[c].second->toString()  << "] :";
+    states_and_output_ids->insert({MyState( /*minimaMap.at(nextMinID)*/ *sortedMinimaIDs[c].second), c});
     std::vector<double> columnVector = R.columnVec(nextMinID);
     bool bPrinted = false;
     size_t rowMinID;
@@ -134,10 +114,10 @@ PairHashTable::HashTable* printRateMatrixSorted(const biu::MatrixSparseC<double>
 
 void write_binary_rates_file(std::string rates_file,
     const biu::MatrixSparseC<double>& R,
-    const std::unordered_map<size_t, MyState>& minimaMap,
+    const std::vector<std::pair<size_t, MyState*>>& sortedMinimaIDs,
     const PairHashTable::HashTable& originalMinima) {
   assertbiu(R.numColumns() == R.numRows(), "R is no square matrix");
-  assertbiu(R.numRows() <= minimaMap.size(), "less minima than rates");
+  assertbiu(R.numRows() <= sortedMinimaIDs.size(), "less minima than rates");
 
   FILE *BINOUT;
   const char *binfile = rates_file.c_str(); //"rates.bin";
@@ -147,14 +127,6 @@ void write_binary_rates_file(std::string rates_file,
     fprintf(stderr, "could not open file pointer 4 binary outfile\n");
     exit(101);
   }
-
-  std::vector<std::pair<size_t, MyState*>> sortedMinimaIDs;
-  for (auto it = minimaMap.begin(); it != minimaMap.end(); it++) {
-    sortedMinimaIDs.push_back(
-        std::pair<size_t, MyState*>(it->first, (MyState*) &(it->second)));
-  }
-
-  std::sort(sortedMinimaIDs.begin(), sortedMinimaIDs.end(), less_second());
 
   size_t n = sortedMinimaIDs.size();
   /* first write dim to file */
@@ -208,17 +180,9 @@ void print_number_of_rates(const biu::MatrixSparseC<double>& R,
 }
 
 void printZMatrixSorted(const SC_PartitionFunction::Z_Matrix& z,
-    size_t maxNeighbors, const std::unordered_map<size_t, MyState>& minimaMap,
+    size_t maxNeighbors, const std::vector<std::pair<size_t, MyState*>>& sortedMinimaIDs,
     const PairHashTable::HashTable& originalMinima, std::ostream& out) {
   const size_t LEAD = 6;
-
-  std::vector<std::pair<size_t, MyState*>> sortedMinimaIDs;
-  for (auto it = minimaMap.begin(); it != minimaMap.end(); it++) {
-    sortedMinimaIDs.push_back(
-        std::pair<size_t, MyState*>(it->first, (MyState*) &(it->second)));
-  }
-
-  std::sort(sortedMinimaIDs.begin(), sortedMinimaIDs.end(), less_second());
 
   out << std::scientific << "# max. neighbors: " << maxNeighbors
   << "\n from : to\n";
@@ -278,17 +242,9 @@ void printZMatrixSorted(const SC_PartitionFunction::Z_Matrix& z,
 }
 
 void printEquilibriumDensities(SC_PartitionFunction::Z_Matrix& z,
-    const std::unordered_map<size_t, MyState>& finalMinima,
+    const std::vector<std::pair<size_t, MyState*>>& sortedMinimaIDs,
     const PairHashTable::HashTable& originalMinima, std::ostream& out) {
   out << "Equilibrium Densities:" << std::endl;
-
-  std::vector<std::pair<size_t, MyState*>> sortedMinimaIDs;
-  for (auto it = finalMinima.begin(); it != finalMinima.end(); it++) {
-    sortedMinimaIDs.push_back(
-        std::pair<size_t, MyState*>(it->first, (MyState*) &(it->second)));
-  }
-
-  std::sort(sortedMinimaIDs.begin(), sortedMinimaIDs.end(), less_second());
 
   size_t nextMinID;
   double sumZb = 0;

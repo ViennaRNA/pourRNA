@@ -23,6 +23,7 @@ extern "C" {
 #include <sstream>
 #include <cmath>
 #include "../PairHashTable.h"
+#include <vector>
 
 /**
  * ! print the rate matrix.
@@ -42,7 +43,7 @@ printRateMatrix (const biu::MatrixSparseC<double>& R, const std::unordered_map<s
  * @param out the outputstream, default is std::cout.
  */
 PairHashTable::HashTable*
-printRateMatrixSorted (const biu::MatrixSparseC<double>& R, const std::unordered_map<size_t, MyState>& minima,
+printRateMatrixSorted (const biu::MatrixSparseC<double>& R, const std::vector<std::pair<size_t, MyState*>>& sortedMinimaIDs,
 		       std::ostream & out = std::cout);
 
 /**
@@ -53,7 +54,7 @@ printRateMatrixSorted (const biu::MatrixSparseC<double>& R, const std::unordered
  * @param originalMinima all unfiltered discovered minima with indices that are consistent with the z matrix.
  */
 void write_binary_rates_file(std::string rates_file, const biu::MatrixSparseC<double>& R,
-    const std::unordered_map<size_t, MyState>& minimaMap,
+    const std::vector<std::pair<size_t, MyState*>>& sortedMinimaIDs,
     const PairHashTable::HashTable& originalMinima);
 
 /**
@@ -76,7 +77,7 @@ print_number_of_rates (const biu::MatrixSparseC<double>& R,
  * @param out the outputstream, default is std::cout.
  */
 void
-printZMatrixSorted (const SC_PartitionFunction::Z_Matrix& z, size_t maxNeighbors, const std::unordered_map<size_t, MyState>& minimaMap,
+printZMatrixSorted (const SC_PartitionFunction::Z_Matrix& z, size_t maxNeighbors, const std::vector<std::pair<size_t, MyState*>>& sortedMinimaIDs,
 		    const PairHashTable::HashTable& originalMinima, std::ostream& out = std::cout);
 
 /**
@@ -88,7 +89,7 @@ printZMatrixSorted (const SC_PartitionFunction::Z_Matrix& z, size_t maxNeighbors
  */
 void
 printEquilibriumDensities (SC_PartitionFunction::Z_Matrix& z,
-			   const std::unordered_map<size_t, MyState>& finalMinima,
+			   const std::vector<std::pair<size_t, MyState*>>& sortedMinimaIDs,
 			   const PairHashTable::HashTable& originalMinima, std::ostream& out);
 
 #endif /*RATEMATRIXUTIL_H_*/

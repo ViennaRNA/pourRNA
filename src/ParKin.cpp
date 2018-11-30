@@ -25,7 +25,6 @@
 #include <ostream>
 #include <string>
 #include <iostream>
-#include <fstream>
 #include <unistd.h>
 extern "C" {
 #include <ViennaRNA/move_set.h>
@@ -141,10 +140,10 @@ calculateRateMatrix(SC_PartitionFunction::Z_Matrix& z,
 	std::unordered_set<size_t>::const_iterator fromIt = done_List.begin();
 	for (size_t from = 0; from < done_List.size(); from++, fromIt++) {
 		// copy according rates
-    size_t fromOrig = *fromIt;
-		toIt = done_List.begin();
+                size_t fromOrig = *fromIt;
+		toIt = std::next(fromIt, 1); //done_List.begin();
 		double rateSum = 0.0;
-		for (size_t to = 0; to < done_List.size(); to++, toIt++) {
+		for (size_t to = from+1; to < done_List.size(); to++, toIt++) {
 			size_t toOrig = *toIt;
 			// copy non-diagonal entries
 			if (toOrig != fromOrig) {
@@ -170,8 +169,9 @@ calculateRateMatrix(SC_PartitionFunction::Z_Matrix& z,
 				z_transition = max(z_transition, z_reverseTransition);
 
 				double z_basin = 0;
-				if (z.find(basinID) != z.end()) {
-					z_basin = z.at(basinID).getZ();
+				auto it_z_basin = z.find(basinID);
+				if (it_z_basin != z.end()) {
+					z_basin = it_z_basin->second.getZ();
 				}
 				if (z_basin > 0.0) {
 					double rate_Val = z_transition
@@ -181,6 +181,20 @@ calculateRateMatrix(SC_PartitionFunction::Z_Matrix& z,
 						rateSum += rate_Val;
 					}
 				}
+				SC_PartitionFunction::PairID basinID2 = SC_PartitionFunction::PairID(toOrig, toOrig);
+                                double z_basin2 = 0;
+                                auto it_z_basin2 = z.find(basinID2);
+                                if (it_z_basin2 != z.end()) {
+                                        z_basin2 = it_z_basin2->second.getZ();
+                                }
+                                if (z_basin2 > 0.0) {
+                                        double rate_Val = z_transition
+                                                        / (/*maxNeighNum * */z_basin2);
+                                        if (rate_Val > 0.0) {
+                                                final_Rate.at(from, to) = rate_Val;
+                                                rateSum += rate_Val;
+                                        }
+                                }
 			}
 		}
 		final_Rate.at(from, from) = 1.0 - rateSum;
@@ -520,6 +534,21 @@ int threadFunction(vrna_fold_compound_t *vc,
 	}
 	return 0;
 }
+
+
+typedef struct less_second_ {
+  typedef std::pair<size_t, MyState*> type;
+  bool operator ()(type const& a, type const& b) const {
+    // check if
+    // - smaller energy or
+    // - equal energy and smaller string representation
+    return (a.second->getEnergy() < b.second->getEnergy())
+        || (a.second->getEnergy() == b.second->getEnergy()
+            && StructureUtils::IsSmaller(a.second->structure,
+                b.second->structure));
+  }
+} less_second;
+
 
 int main(int argc, char** argv) {
 
@@ -1364,7 +1393,12 @@ int main(int argc, char** argv) {
                   padding_length = offset - out.length();
                   pad = std::string(padding_length, ' ');
                   printf("%s%s\n", pad.c_str(), endStructureMinimum);
+                }else{
+                  printf("\n");
                 }
+
+                printf("Number of minima: %d\n", done_List.size());
+
 		std::cout << std::endl;
 
 		// Calculate the final Rate Matrix:
@@ -1386,11 +1420,19 @@ int main(int argc, char** argv) {
 			final_minima.insert( { from, MinimaForReverseSearch.at(*fromIt) });
 		}
 
+		  std::vector<std::pair<size_t, MyState*>> sortedMinimaIDs;
+		  for (auto it = final_minima.begin(); it != final_minima.end(); it++) {
+		    sortedMinimaIDs.push_back(
+		        std::pair<size_t, MyState*>(it->first, (MyState*) &(it->second)));
+		  }
+
+		  std::sort(sortedMinimaIDs.begin(), sortedMinimaIDs.end(), less_second());
+
 		// Print the Final rate matrix of the States in Final minima set.
 		// printRateMatrix (*final_Rate, final_minima, *transOut, true);
-		PairHashTable::HashTable* sorted_min_and_output_ids = printRateMatrixSorted(*final_Rate, final_minima, *transOut);
+		PairHashTable::HashTable* sorted_min_and_output_ids = printRateMatrixSorted(*final_Rate, sortedMinimaIDs, *transOut);
 		std::cout << std::endl;
-		printEquilibriumDensities(z, final_minima, Minima, *transOut);
+		printEquilibriumDensities(z, sortedMinimaIDs, Minima, *transOut);
 		std::cout << std::endl;
 
 		//if parameter given: print Z-matrix to file.
@@ -1400,7 +1442,7 @@ int main(int argc, char** argv) {
 			ptFile
 					<< "              --------------THE PARTITIONFUNCTION MATRIX----------------------- "
 					<< std::endl << std::endl;
-			printZMatrixSorted(z, maxNeighNum, final_minima, Minima, ptFile);
+			printZMatrixSorted(z, maxNeighNum, sortedMinimaIDs, Minima, ptFile);
 			ptFile.close();
 		}
 
@@ -1432,7 +1474,7 @@ int main(int argc, char** argv) {
 		print_number_of_rates (*final_Rate,final_minima, Minima, std::cout);
 
 		if(!binary_rates_file.empty()){
-		  write_binary_rates_file(binary_rates_file, *final_Rate,final_minima, Minima);
+		  write_binary_rates_file(binary_rates_file, *final_Rate, sortedMinimaIDs, Minima);
 		}
 
 		/**
