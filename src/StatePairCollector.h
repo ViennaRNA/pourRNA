@@ -48,7 +48,7 @@ public:
       SC_PartitionFunction::Z_Matrix& z, const size_t maxGradWalkHashed,
       Concurrent_Queue<MyState> *discoveredMinima,
       double boltzmannWeightTemperature, unsigned int move_set, PairHashMap::HashMap& all_saddles,
-      std::string& sourceStructure,std::string& targetStructure, int maxBPdist);
+      const char * sourceStructure, const char * targetStructure, int maxBPdist);
   virtual
   ~StatePairCollector();
   /**
@@ -89,8 +89,8 @@ private:
   Concurrent_Queue<MyState> *DiscoveredMinima;
 
   char * CurrentStructure;
-  std::string& SourceStructure;
-  std::string& TargetStructure;
+  const char * SourceStructure;
+  const char * TargetStructure;
   int MaxBPdist;
   HashSet::UnorderedHashSet MininaToIgnore;
 

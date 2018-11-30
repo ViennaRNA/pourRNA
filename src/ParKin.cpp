@@ -215,8 +215,8 @@ struct flooderInputParameter {
 	unsigned int Move_set;
 	PairHashMap::HashMap* All_Saddles;
 	int MaxBPdist;
-	std::string SourceStructure;
-	std::string TargetStructure;
+	char * SourceStructure;
+	char * TargetStructure;
   ~flooderInputParameter() {
     if (CurrentMinimum != NULL)
       delete CurrentMinimum;
@@ -664,6 +664,19 @@ int main(int argc, char** argv) {
 			}
 		}
 
+		std::string start_structure_file = out_Parser.getStrVal("start_structure_file");
+		std::list<std::string> start_structure_list;
+		if(start_structure_file.size() != 0){
+		  std::ifstream infile(start_structure_file);
+		  std::string line;
+		  while (std::getline(infile, line))
+		  {
+		    if(StructureUtils::IsValidStructure(line)){
+		      start_structure_list.push_back(line);
+		    }
+		  }
+		}
+
 		// container for all partition functions to generate
 		// indices are according to minima container
 		// Z(i,i) will hold the basins partition function
@@ -974,10 +987,24 @@ int main(int argc, char** argv) {
 					<< elapsed_seconds_InitialWalk.count() << "s\n";
 		}
 
+
+		char * startStructureMinimum = vrna_db_from_ptable(startState.getStructure());
+		short * rnaFinalStructurePT = NULL;
+		MyState* finalStructureMinimum = NULL;
+		char * endStructureMinimum = NULL;
+		if(rna_final_str != ""){
+                  rnaFinalStructurePT = vrna_ptable(rna_final_str.c_str());
+                  int energy_final = vrna_eval_structure_pt(vc, rnaFinalStructurePT);
+                  MyState finalState(energy_final, rnaFinalStructurePT);
+                  finalStructureMinimum = WalkGradientHashed(move_set, maxToHash).walk(vc,finalState);
+                  endStructureMinimum = vrna_db_from_ptable(finalStructureMinimum->getStructure());
+		}
+
+
 		// add current minimum to set of minima and store its index
 		size_t currentMinID = 0;
-		Minima.insert( { *startStateMinimum, currentMinID });
-		MinimaForReverseSearch.insert( { currentMinID, *startStateMinimum });
+		Minima.insert( { MyState(*startStateMinimum), currentMinID });
+		MinimaForReverseSearch.insert( { currentMinID, MyState(*startStateMinimum) });
 
 		///// for tests only -> write file with all Energies ///
 		std::unordered_set<int> addedMinIDs;
@@ -1002,8 +1029,26 @@ int main(int argc, char** argv) {
 		// insert the index of current minima to toDo_list
 		toDo_List.push_back(currentMinID);
 
+		size_t min_id_from_list = currentMinID;
+		for(auto it = start_structure_list.begin(); it != start_structure_list.end(); it++){
+		  short * tmpMinPairTable = vrna_ptable(it->c_str());
+		  int energy = vrna_eval_structure_pt(vc, tmpMinPairTable);
+		  MyState start_struct_i(energy, tmpMinPairTable);
+		  free(tmpMinPairTable);
+		  MyState* start_struct_min = WalkGradientHashed(move_set, maxToHash).walk(vc, start_struct_i);
+		  auto it_min = Minima.find(*start_struct_min);
+		  if(it_min == Minima.end()){
+		    min_id_from_list++;
+		    Minima.insert({MyState(*start_struct_min), min_id_from_list});
+		    MinimaForReverseSearch.insert( { min_id_from_list, MyState(*start_struct_min) });
+		    toDo_List.push_back(min_id_from_list);
+		  }
+		  delete start_struct_min;
+		}
+
 		////// init dynamic-Best-K feature /////
 		bool mfeFound = false;
+		bool finalStructureFound = false;
 		char * mfeStructure = (char*) vrna_alloc(
 				(vc->length + 1) * sizeof(char));
 		float mfeEnergy = vrna_mfe(vc, mfeStructure);
@@ -1068,7 +1113,7 @@ int main(int argc, char** argv) {
 							res = false;
 						}
 						//std::cout << "" << index << ' ' << res << '\n' << std::flush;
-						if (!res) {
+						if (!res && !finalStructureFound) {
 							finish = false;
 							//test if new discovered minima are on the stack (pull all available minima)
 							//TODO: warning! This kind of asynchronous flooding disables some Filter Options.
@@ -1117,6 +1162,24 @@ int main(int argc, char** argv) {
 
 								threadParameter->clear();
 							}
+
+							//if final structure is in done list --> break;
+				                        if(!finalStructureFound && finalStructureMinimum != NULL){
+				                          auto final_min_it = Minima.find(*finalStructureMinimum);
+				                          if (final_min_it != Minima.end()) {
+				                            auto done_final_it = done_List.find(final_min_it->second);
+				                            if(done_final_it != done_List.end()){
+				                              finalStructureFound = true;
+				                              break;
+				                            }
+				                          }
+				                        }
+				                        if(finalStructureFound){
+				                          // do not create new threads if the final structure has been found.
+				                          toDo_List.clear();
+				                          break;
+				                        }
+
 							if (!toDo_List.empty()) {
 								finish = false;
 								//create a new thread
@@ -1153,8 +1216,8 @@ int main(int argc, char** argv) {
 									inParameter->Move_set = move_set;
 									inParameter->All_Saddles = &all_saddles;
 									inParameter->MaxBPdist = maxBPdist;
-									inParameter->SourceStructure = rna_start_str;
-									inParameter->TargetStructure = rna_final_str;
+									inParameter->SourceStructure = startStructureMinimum;
+									inParameter->TargetStructure = endStructureMinimum;
 
 									flooderOutputParameter* outParameter =
 											new flooderOutputParameter();
@@ -1273,11 +1336,35 @@ int main(int argc, char** argv) {
 		}
 
 		std::cout << std::endl;
-		std::cout << "MFE structure: " << mfeStructure << std::endl;
-		std::cout << "The start state is: " << startState.toString()
-				<< std::endl;
-		std::cout << "The start state ends in basin: "
-				<< startStateMinimum->toString() << std::endl;
+		int structure_length = strlen(mfeStructure) + 1;
+		std::string out = "MFE structure: ";
+		printf(out.c_str());
+		int offset = 31;
+		int padding_length = offset - out.length(); //structure_length - out.length();
+		std::string pad = std::string(padding_length, ' ');
+		printf("%s%s\n", pad.c_str(), mfeStructure);
+		out = "The start state is: ";
+		printf(out.c_str());
+		padding_length = offset - out.length();
+		pad = std::string(padding_length, ' ');
+		printf("%s%s\n", pad.c_str(), rna_start_str.c_str());
+		out = "The start state ends in basin: ";
+                printf(out.c_str());
+                padding_length = offset - out.length();
+                pad = std::string(padding_length, ' ');
+                printf("%s%s\n", pad.c_str(), startStructureMinimum);
+                out = "The final state is: ";
+                printf(out.c_str());
+                padding_length = offset - out.length();
+                pad = std::string(padding_length, ' ');
+                printf("%s%s\n", pad.c_str(), rna_final_str.c_str());
+                out = "The final minimum is: ";
+                printf(out.c_str());
+                if(endStructureMinimum != NULL){
+                  padding_length = offset - out.length();
+                  pad = std::string(padding_length, ' ');
+                  printf("%s%s\n", pad.c_str(), endStructureMinimum);
+                }
 		std::cout << std::endl;
 
 		// Calculate the final Rate Matrix:
@@ -1358,14 +1445,30 @@ int main(int argc, char** argv) {
 	    std::string s1 = from_to.first.toString();
 	    std::string s2 = from_to.second.toString();
 	    std::string saddle = it->second.toString();
-	    size_t id_from = sorted_min_and_output_ids->at(from_to.first);
-	    size_t id_to = sorted_min_and_output_ids->at(from_to.second);
+	    int id_from = -1;
+	    int id_to = -1;
+	    try{
+	    id_from = sorted_min_and_output_ids->at(from_to.first);
+	    id_to = sorted_min_and_output_ids->at(from_to.second);
+	    }catch(std::exception & ex) {
+	      // transition cannot exist e.g. if the final structure was reached, before the discovered minima have been flooded.
+              //std::cerr << "\n\n ERORR : " << ex.what() << "\n" << std::endl;
+	    }
+	    if(id_from != -1 && id_to != -1){
 	    std::printf("%ld, %s, %.2f, %ld, %s, %.2f, %s, %.2f\n", id_from, s1.c_str(), from_to.first.energy/100.0,
 	        id_to, s2.c_str(), from_to.second.energy/100.0, saddle.c_str(), saddle_height);
+	    }
 	  }
 
 
 		/***********Garbage collection ************/
+                if(startStructureMinimum != NULL)
+                  free(startStructureMinimum);
+                if(rnaFinalStructurePT != NULL)
+                  free(rnaFinalStructurePT);
+                if(finalStructureMinimum != NULL)
+                  delete  finalStructureMinimum;
+                free(endStructureMinimum);
 		delete sorted_min_and_output_ids;
 	  //	delete ScMinimum;
 		vrna_fold_compound_free(vc);
@@ -1434,6 +1537,9 @@ void writeDescription(biu::OptionMap & allowed, std::string & info) {
 			biu::COption("startStr", true, biu::COption::STRING,
 					"the start structure of the exploration defining the first gradient basin; defaults"
 							" to the open chain"));
+	allowed.push_back(
+	      biu::COption("start_structure_file", true, biu::COption::STRING,
+	          "File with start structures (one per line)"));
 	allowed.push_back(
 			biu::COption("finalStr", true, biu::COption::STRING,
 					"the final structure of the exploration defining the last gradient basin"));

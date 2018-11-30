@@ -11,7 +11,7 @@ StatePairCollector::StatePairCollector(size_t currentMinID,
 		PairHashTable::HashTable& minima, SC_PartitionFunction::Z_Matrix& z,
 		const size_t maxGradWalkHashed, Concurrent_Queue<MyState> *discoveredMinima,
 		double boltzmannWeightTemperature, unsigned int move_set, PairHashMap::HashMap& all_saddles,
-		std::string& sourceStructure,std::string& targetStructure, int maxBPdist) :
+		const char * sourceStructure, const char * targetStructure, int maxBPdist) :
 		CurMinID(currentMinID), Minima(minima), Z(z), GradWalk(
 		    move_set, maxGradWalkHashed), NumberOfOuterStates(0), DiscoveredMinima(
 				discoveredMinima), BoltzmannWeightTemperature(
@@ -51,22 +51,23 @@ void StatePairCollector::add(vrna_fold_compound_t *vc,
 
 	// check if newMin is known in Minima
 	if (minEntry == Minima.end()) {
-    //If the min does not exist, create a new index and add it.
-    neighborMinID = Minima.size();
-    Minima.insert( { MyState(*newMin), neighborMinID });
-
 	  //filter discovered minima at first
 	  // if the min is in the already filtered list, abort this function!!!
-	  {
+
       //max base pair distance filter:
-      int dist_from_source = vrna_bp_distance((const char *)CurrentStructure, SourceStructure.c_str());
-      int dist_from_target = vrna_bp_distance((const char *)CurrentStructure, TargetStructure.c_str());
-      if(dist_from_source + dist_from_target > MaxBPdist){
-        MininaToIgnore.insert(MyState(*newMin));
-        delete newMin;
-        return;
+      if(SourceStructure != NULL && TargetStructure != NULL){
+        int dist_from_source = vrna_bp_distance((const char *)CurrentStructure, SourceStructure);
+        int dist_from_target = vrna_bp_distance((const char *)CurrentStructure, TargetStructure);
+        if(dist_from_source + dist_from_target > MaxBPdist){
+          MininaToIgnore.insert(MyState(*newMin));
+          delete newMin;
+          return;
+        }
       }
-	  }
+
+      //If the min does not exist, create a new index and add it.
+      neighborMinID = Minima.size();
+      Minima.insert( { MyState(*newMin), neighborMinID });
 
 	  //report discovered min.
 		if (DiscoveredMinima != NULL)
