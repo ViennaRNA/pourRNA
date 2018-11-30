@@ -25,48 +25,67 @@ extern "C" {
 class MyState {
 public:
 
-	//! type of structure representation
-	typedef short* Structure;
+//! type of structure representation
+typedef short *Structure;
 
-	MyState();
-	MyState(int energy, short* structure);
-	MyState(struct_en* state);
-	MyState(const MyState& state);
-	//! less comparison based on E and using the lexicographical order
-	//! of s as tiebreaker
-	bool
-	operator<(const MyState& toCompare) const;
-	MyState
-	operator=(MyState toCopy);
-	MyState*
-	clone() const;
-	std::string
-	toString() const;
-	~MyState();
+MyState();
+MyState(int   energy,
+        short *structure);
+MyState(struct_en *state);
+MyState(const MyState& state);
+//! less comparison based on E and using the lexicographical order
+//! of s as tiebreaker
+bool
+operator<(const MyState& toCompare) const;
 
-	int getEnergy() const {
-		return energy;
-	}
 
-	void setEnergy(int energy) {
-		this->energy = energy;
-	}
+MyState
+operator=(MyState toCopy);
 
-	const Structure &
-	getStructure() const {
-		return structure;
-	}
 
-	void setStructure(Structure structure) {
-		this->structure = structure;
-	}
+MyState *
+clone() const;
+
+
+std::string
+toString() const;
+
+
+~MyState();
+
+int
+getEnergy() const
+{
+  return energy;
+}
+
+
+void
+setEnergy(int energy)
+{
+  this->energy = energy;
+}
+
+
+const Structure &
+getStructure() const
+{
+  return structure;
+}
+
+
+void
+setStructure(Structure structure)
+{
+  this->structure = structure;
+}
+
 
 public:
-	// ! energy in 10kcal/mol
-	int energy;
-	// ! structure in pairTable format
-	Structure structure;
-
+// ! energy in 10kcal/mol
+int       energy;
+// ! structure in pairTable format
+Structure structure;
 };
 
 #endif /* MYSTATE_H_ */

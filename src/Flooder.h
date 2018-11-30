@@ -29,61 +29,73 @@ class Flooder
 {
 public:
 
-  /**
-   * ! local basin flooder.
-   * @param sequence the rna-sequence as "acgu"-string.
-   * @param maxEnergy the maximal energy all states should be below in kcal/mol
-   * @param maxToQueue the maximal number of elements the underlying queue is allowed to contain
-   * @param the move set (see vrna_package neighbor.h)
-   */
-  Flooder (double maxEnergy, size_t maxToQueue, unsigned int move_set);
+/**
+ * ! local basin flooder.
+ * @param sequence the rna-sequence as "acgu"-string.
+ * @param maxEnergy the maximal energy all states should be below in kcal/mol
+ * @param maxToQueue the maximal number of elements the underlying queue is allowed to contain
+ * @param the move set (see vrna_package neighbor.h)
+ */
+Flooder (double       maxEnergy,
+         size_t       maxToQueue,
+         unsigned int move_set);
 
-  /**
-   * ! flood the basin of the given local minimum. Compute the partition function sum.
-   *  @param localMinState the minimum of the basin which should be flooded.
-   *  @param scBasin a state collector which counts the state of the basin.
-   *  @param scSurface a collector which calculates the contact surface.
-   */
-  int
-  floodBasin (vrna_fold_compound_t *vc, const MyState& localMinState, StateCollector* scBasin, StatePairCollector* scSurface);
-  virtual
-  ~Flooder ();
+/**
+ * ! flood the basin of the given local minimum. Compute the partition function sum.
+ *  @param localMinState the minimum of the basin which should be flooded.
+ *  @param scBasin a state collector which counts the state of the basin.
+ *  @param scSurface a collector which calculates the contact surface.
+ */
+int
+floodBasin(vrna_fold_compound_t *vc,
+           const MyState&       localMinState,
+           StateCollector       *scBasin,
+           StatePairCollector   *scSurface);
+
+
+virtual
+~Flooder ();
 
 private:
-  //! the maximal energy all states should be below in 10cal/mol
-  int MaxEnergy;
-  //! the maximal number of elements the underlying queue is allowed to contain
-  size_t MaxStatesToQueue;
-  //! states that where considered during the flooding.
-  size_t ProcessedStates;
-  //! the move set for neighbor generation
-  unsigned int Move_set;
+//! the maximal energy all states should be below in 10cal/mol
+int           MaxEnergy;
+//! the maximal number of elements the underlying queue is allowed to contain
+size_t        MaxStatesToQueue;
+//! states that where considered during the flooding.
+size_t        ProcessedStates;
+//! the move set for neighbor generation
+unsigned int  Move_set;
 public:
-  /**
-   * ! returns the final energy threshold that has been changed if
-   * states from the priority queue are removed (in kcal/mol).
-   */
-  double
-  getFinalEnergyThreshold ()
-  {
-    return (double) MaxEnergy / 100.0;
-  }
-  ;
-  /**
-   * ! get the neighbored structures which differ in one base-pair.
-   *   The neighbors will be stored in the NeighborList variable.
-   *  @param structureEnergy the rna-structure in pair-table format and energy (see ViennaRNA-package).
-   */
-  struct_en*
-  get_Neighbors_pt (vrna_fold_compound_t *vc, const MyState* structureEnergy, size_t *numberOfNeighbors);
+/**
+ * ! returns the final energy threshold that has been changed if
+ * states from the priority queue are removed (in kcal/mol).
+ */
+double
+getFinalEnergyThreshold()
+{
+  return (double)MaxEnergy / 100.0;
+}
 
-  /**
-   * ! states that where considered during the flooding.
-   */
-  size_t
-  getProcessedStates () const
-  {
-    return ProcessedStates;
-  }
+
+;
+/**
+ * ! get the neighbored structures which differ in one base-pair.
+ *   The neighbors will be stored in the NeighborList variable.
+ *  @param structureEnergy the rna-structure in pair-table format and energy (see ViennaRNA-package).
+ */
+struct_en *
+get_Neighbors_pt(vrna_fold_compound_t *vc,
+                 const MyState        *structureEnergy,
+                 size_t               *numberOfNeighbors);
+
+
+/**
+ * ! states that where considered during the flooding.
+ */
+size_t
+getProcessedStates() const
+{
+  return ProcessedStates;
+}
 };
 #endif /* FLOODER_H_ */

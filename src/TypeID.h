@@ -16,15 +16,15 @@ using namespace std;
 class TypeID
 {
 public:
-  static size_t counter;
+static size_t counter;
 
 public:
-  template<typename T>
-    static size_t
-    value ()
-    {
-      return ++counter;
-    }
+template<typename T>
+static size_t
+value()
+{
+  return ++counter;
+}
 };
 
 #endif /* TYPEID_H_ */

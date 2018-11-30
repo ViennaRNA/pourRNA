@@ -8,4 +8,3 @@
 #include "TypeID.h"
 
 size_t TypeID::counter = 1;
-

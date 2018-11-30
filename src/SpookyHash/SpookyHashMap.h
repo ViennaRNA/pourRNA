@@ -17,24 +17,23 @@ class SpookyHashMap
 {
 public:
 
-  struct SpookyHashMapHash
-    {
-      std::size_t
-      operator() (const MyState& k) const
-	{
-	  return SpookyHash::Hash64(k.structure,sizeof(short)*(k.structure[0] + 1),0);
-	}
-    };
+struct SpookyHashMapHash {
+  std::size_t
+  operator()(const MyState& k) const
+  {
+    return SpookyHash::Hash64(k.structure, sizeof(short) * (k.structure[0] + 1), 0);
+  }
+};
 
-  struct SpookyHashMapEqual
-    {
-      bool
-      operator() (const MyState& lhs, const MyState& rhs) const
-	{
-	  return StructureUtils::IsEqual(lhs.structure,rhs.structure);
-	}
-    };
-  typedef biu::LimitedHash<MyState, MyState, SpookyHashMapHash, SpookyHashMapEqual> HashTable;
+struct SpookyHashMapEqual {
+  bool
+  operator()(const MyState& lhs,
+             const MyState& rhs) const
+  {
+    return StructureUtils::IsEqual(lhs.structure, rhs.structure);
+  }
+};
+typedef biu::LimitedHash<MyState, MyState, SpookyHashMapHash, SpookyHashMapEqual> HashTable;
 };
 
 #endif /* SPOOKYHASHMAP_H_ */

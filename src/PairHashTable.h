@@ -23,52 +23,50 @@ class PairHashTable
 {
 public:
 
-  struct PairTableHash
+struct PairTableHash {
+  std::size_t
+  operator()(const MyState& k) const
   {
-    std::size_t
-    operator() (const MyState& k) const
-    {
-      // std::string keyStructure = k.toString();
-      // return std::hash<std::string> () (keyStructure);
-      return SpookyHash::Hash64(k.structure, sizeof(short)*(k.structure[0] + 1), 0);
-    }
-  };
+    // std::string keyStructure = k.toString();
+    // return std::hash<std::string> () (keyStructure);
+    return SpookyHash::Hash64(k.structure, sizeof(short) * (k.structure[0] + 1), 0);
+  }
+};
 
-  struct PairTableEqual
+struct PairTableEqual {
+  bool
+  operator()(const MyState& lhs,
+             const MyState& rhs) const
   {
-    bool
-    operator() (const MyState& lhs, const MyState& rhs) const
-    {
-      return StructureUtils::IsEqual (lhs.structure, rhs.structure);
-    }
-  };
-  typedef std::unordered_map<MyState, size_t, PairTableHash, PairTableEqual> HashTable;
+    return StructureUtils::IsEqual(lhs.structure, rhs.structure);
+  }
+};
+typedef std::unordered_map<MyState, size_t, PairTableHash, PairTableEqual> HashTable;
 };
 
 class HashSet
 {
 public:
 
-  struct SetHash
+struct SetHash {
+  std::size_t
+  operator()(const MyState& k) const
   {
-    std::size_t
-    operator() (const MyState& k) const
-    {
-      // std::string keyStructure = k.toString();
-      // return std::hash<std::string> () (keyStructure);
-      return SpookyHash::Hash64(k.structure, sizeof(short)*(k.structure[0] + 1), 0);
-    }
-  };
+    // std::string keyStructure = k.toString();
+    // return std::hash<std::string> () (keyStructure);
+    return SpookyHash::Hash64(k.structure, sizeof(short) * (k.structure[0] + 1), 0);
+  }
+};
 
-  struct HashSetEqual
+struct HashSetEqual {
+  bool
+  operator()(const MyState& lhs,
+             const MyState& rhs) const
   {
-    bool
-    operator() (const MyState& lhs, const MyState& rhs) const
-    {
-      return StructureUtils::IsEqual (lhs.structure, rhs.structure);
-    }
-  };
-  typedef std::unordered_set<MyState, SetHash, HashSetEqual> UnorderedHashSet;
+    return StructureUtils::IsEqual(lhs.structure, rhs.structure);
+  }
+};
+typedef std::unordered_set<MyState, SetHash, HashSetEqual> UnorderedHashSet;
 };
 
 

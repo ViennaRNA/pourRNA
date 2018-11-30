@@ -34,72 +34,87 @@ extern "C" {
  */
 class StatePairCollector {
 public:
-  /**
-   * ! Collects all pairs of neighbors between the currentMinID and other states.
-   * Calculates the partition function.
-   * @param minima set of all minima.
-   * @param currentMinID the id of the current minimum which represents the current gradient basin.
-   * @param z a container for the partition functions.
-   * @param discoveredMinima queue to report new discovered minima.
-   * @param Temperature for the Boltzmann weight (not for the energies)
-   * @param the move set for the gradient walk (see vrna_package neighbor.h).
-   */
-  StatePairCollector(size_t currentMinID, PairHashTable::HashTable& minima,
-      SC_PartitionFunction::Z_Matrix& z, const size_t maxGradWalkHashed,
-      Concurrent_Queue<MyState> *discoveredMinima,
-      double boltzmannWeightTemperature, unsigned int move_set, PairHashMap::HashMap& all_saddles,
-      const char * sourceStructure, const char * targetStructure, int maxBPdist);
-  virtual
-  ~StatePairCollector();
-  /**
-   * ! add the statepair to the partition function.
-   * ! Assign a ID for the local minimum if it is not in the minima set, and add it.
-   */
-  virtual void
-  add(vrna_fold_compound_t *vc, const MyState* const state1,
-      const MyState* const state2, bool firstIsSmaller);
-  /**
-   * ! do a gradient walk for the given structure.
-   *   @structure a rna-structure as pair table.
-   *   @return the minimal structure and energy.
-   */
-  static MyState *
-  doGradientWalk(const std::string rnaSequence, short * structure);
+/**
+ * ! Collects all pairs of neighbors between the currentMinID and other states.
+ * Calculates the partition function.
+ * @param minima set of all minima.
+ * @param currentMinID the id of the current minimum which represents the current gradient basin.
+ * @param z a container for the partition functions.
+ * @param discoveredMinima queue to report new discovered minima.
+ * @param Temperature for the Boltzmann weight (not for the energies)
+ * @param the move set for the gradient walk (see vrna_package neighbor.h).
+ */
+StatePairCollector(size_t                           currentMinID,
+                   PairHashTable::HashTable&        minima,
+                   SC_PartitionFunction::Z_Matrix&  z,
+                   const size_t                     maxGradWalkHashed,
+                   Concurrent_Queue<MyState>        *discoveredMinima,
+                   double                           boltzmannWeightTemperature,
+                   unsigned int                     move_set,
+                   PairHashMap::HashMap&            all_saddles,
+                   const char                       *sourceStructure,
+                   const char                       *targetStructure,
+                   int                              maxBPdist);
+virtual
+~StatePairCollector();
+/**
+ * ! add the statepair to the partition function.
+ * ! Assign a ID for the local minimum if it is not in the minima set, and add it.
+ */
+virtual void
+add(vrna_fold_compound_t  *vc,
+    const MyState *const  state1,
+    const MyState *const  state2,
+    bool                  firstIsSmaller);
 
-  size_t getNumberOfOuterStates() const {
-    return NumberOfOuterStates;
-  }
+
+/**
+ * ! do a gradient walk for the given structure.
+ *   @structure a rna-structure as pair table.
+ *   @return the minimal structure and energy.
+ */
+static MyState *
+doGradientWalk(const std::string  rnaSequence,
+               short              *structure);
+
+
+size_t
+getNumberOfOuterStates() const
+{
+  return NumberOfOuterStates;
+}
+
 
 private:
-  // ! identifier of the current minimum.
-  const size_t CurMinID;
-  // ! Temperature for the Boltzmann weight (not the structure energies)
-  double BoltzmannWeightTemperature;
-  // ! minima map: structure, index.
-  PairHashTable::HashTable& Minima;
-  // ! the partition funcion matrix.
-  SC_PartitionFunction::Z_Matrix& Z;
-  // ! minimum identification for this state pair
-  WalkGradientHashed GradWalk;
-  // ! handle minima id for outer states to save gradient walks.
-  PairHashTable::HashTable HandledOuterStates;
-  // ! number of states which are not in basin, but in the contactsurface.
-  size_t NumberOfOuterStates;
-  // ! unique minima queue (ready to flood)
-  Concurrent_Queue<MyState> *DiscoveredMinima;
+// ! identifier of the current minimum.
+const size_t                    CurMinID;
+// ! Temperature for the Boltzmann weight (not the structure energies)
+double                          BoltzmannWeightTemperature;
+// ! minima map: structure, index.
+PairHashTable::HashTable&       Minima;
+// ! the partition funcion matrix.
+SC_PartitionFunction::Z_Matrix& Z;
+// ! minimum identification for this state pair
+WalkGradientHashed              GradWalk;
+// ! handle minima id for outer states to save gradient walks.
+PairHashTable::HashTable        HandledOuterStates;
+// ! number of states which are not in basin, but in the contactsurface.
+size_t                          NumberOfOuterStates;
+// ! unique minima queue (ready to flood)
+Concurrent_Queue<MyState>       *DiscoveredMinima;
 
-  char * CurrentStructure;
-  const char * SourceStructure;
-  const char * TargetStructure;
-  int MaxBPdist;
-  HashSet::UnorderedHashSet MininaToIgnore;
+char                            *CurrentStructure;
+const char                      *SourceStructure;
+const char                      *TargetStructure;
+int                             MaxBPdist;
+HashSet::UnorderedHashSet       MininaToIgnore;
 
 
-  PairHashMap::HashMap& All_Saddles;
-  MyState* current_min;
+PairHashMap::HashMap&           All_Saddles;
+MyState                         *current_min;
 
-  std::mutex mutex_;
-  std::condition_variable cond_;
+std::mutex                      mutex_;
+std::condition_variable         cond_;
 };
 
 #endif /* STATEPAIRCOLLECTOR_H_ */

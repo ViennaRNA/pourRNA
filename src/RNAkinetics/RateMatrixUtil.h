@@ -33,8 +33,11 @@ extern "C" {
  * @param noZeros defines if zero-rates should be printed or not.
  */
 void
-printRateMatrix (const biu::MatrixSparseC<double>& R, const std::unordered_map<size_t, MyState> & minima,
-		 std::ostream & out = std::cout, const bool noZeros = true);
+printRateMatrix(const biu::MatrixSparseC<double>& R,
+                const std::unordered_map<size_t, MyState> & minima,
+                std::ostream & out = std::cout,
+                const bool noZeros = true);
+
 
 /**
  * ! print the rate matrix without zero rates and sorted.
@@ -42,9 +45,11 @@ printRateMatrix (const biu::MatrixSparseC<double>& R, const std::unordered_map<s
  * @param minima the indices and structures of the minima.
  * @param out the outputstream, default is std::cout.
  */
-PairHashTable::HashTable*
-printRateMatrixSorted (const biu::MatrixSparseC<double>& R, const std::vector<std::pair<size_t, MyState*>>& sortedMinimaIDs,
-		       std::ostream & out = std::cout);
+PairHashTable::HashTable *
+printRateMatrixSorted(const biu::MatrixSparseC<double>& R,
+                      const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs,
+                      std::ostream & out = std::cout);
+
 
 /**
  *  ! write binary rates file.
@@ -53,9 +58,11 @@ printRateMatrixSorted (const biu::MatrixSparseC<double>& R, const std::vector<st
  * @param minima the indices and structures of the minima.
  * @param originalMinima all unfiltered discovered minima with indices that are consistent with the z matrix.
  */
-void write_binary_rates_file(std::string rates_file, const biu::MatrixSparseC<double>& R,
-    const std::vector<std::pair<size_t, MyState*>>& sortedMinimaIDs,
-    const PairHashTable::HashTable& originalMinima);
+void write_binary_rates_file(std::string rates_file,
+                             const biu::MatrixSparseC<double>& R,
+                             const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs,
+                             const PairHashTable::HashTable& originalMinima);
+
 
 /**
  * ! print the number of non-zero rates.
@@ -64,9 +71,11 @@ void write_binary_rates_file(std::string rates_file, const biu::MatrixSparseC<do
  * @param out the outputstream, default is std::cout.
  */
 void
-print_number_of_rates (const biu::MatrixSparseC<double>& R,
-        const std::unordered_map<size_t, MyState>& minimaMap,
-        const PairHashTable::HashTable& originalMinima, std::ostream& out);
+print_number_of_rates(const biu::MatrixSparseC<double>& R,
+                      const std::unordered_map<size_t, MyState>& minimaMap,
+                      const PairHashTable::HashTable& originalMinima,
+                      std::ostream& out);
+
 
 /**
  * ! print the partitionfunction sparse matrix, sorted.
@@ -77,8 +86,12 @@ print_number_of_rates (const biu::MatrixSparseC<double>& R,
  * @param out the outputstream, default is std::cout.
  */
 void
-printZMatrixSorted (const SC_PartitionFunction::Z_Matrix& z, size_t maxNeighbors, const std::vector<std::pair<size_t, MyState*>>& sortedMinimaIDs,
-		    const PairHashTable::HashTable& originalMinima, std::ostream& out = std::cout);
+printZMatrixSorted(const SC_PartitionFunction::Z_Matrix& z,
+                   size_t maxNeighbors,
+                   const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs,
+                   const PairHashTable::HashTable& originalMinima,
+                   std::ostream& out = std::cout);
+
 
 /**
  * ! print a vector with the equilibrium densities (Zb/sum(Zb')).
@@ -88,8 +101,10 @@ printZMatrixSorted (const SC_PartitionFunction::Z_Matrix& z, size_t maxNeighbors
  * @param out the outputstream, default is std::cout.
  */
 void
-printEquilibriumDensities (SC_PartitionFunction::Z_Matrix& z,
-			   const std::vector<std::pair<size_t, MyState*>>& sortedMinimaIDs,
-			   const PairHashTable::HashTable& originalMinima, std::ostream& out);
+printEquilibriumDensities(SC_PartitionFunction::Z_Matrix& z,
+                          const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs,
+                          const PairHashTable::HashTable& originalMinima,
+                          std::ostream& out);
+
 
 #endif /*RATEMATRIXUTIL_H_*/
