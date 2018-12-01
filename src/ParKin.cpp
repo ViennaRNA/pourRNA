@@ -381,7 +381,7 @@ merge_results(std::vector<std::pair<flooderInputParameter *,
                                     flooderOutputParameter *> > *threadParameter,
               bool logEnergies,
               ofstream &energyFile,
-              std::unordered_set<int> &addedMinIDs,
+              std::unordered_set<size_t> &addedMinIDs,
               bool writeDotplot,
               SC_DotPlot::DotPlot &dotplot,
               PairHashTable::HashTable &Minima,
@@ -424,7 +424,7 @@ merge_results(std::vector<std::pair<flooderInputParameter *,
         const std::vector<int>& energies =
           outParameter->ScBasin->getEnergies();
         int                     energy;
-        for (int m = 0; m < energies.size(); m++) {
+        for (size_t m = 0; m < energies.size(); m++) {
           energy = energies[m];
           energyFile << energy << " ";
         }
@@ -479,14 +479,14 @@ merge_results(std::vector<std::pair<flooderInputParameter *,
       outParameter->PartitionFunctions;
     //adjust index in partitionfunction z.
     for (auto it = localZ.begin(); it != localZ.end(); it++) {
-      if (mapOldIndexToNewIndex.find(it->first.first)
+      auto new_first_index_it = mapOldIndexToNewIndex.find(it->first.first);
+      auto new_second_index_it = mapOldIndexToNewIndex.find(it->first.second);
+      if (new_first_index_it
           != mapOldIndexToNewIndex.end()
-          && mapOldIndexToNewIndex.find(it->first.second)
+          && new_second_index_it
           != mapOldIndexToNewIndex.end()) {
-        size_t                        newFirstIndex = mapOldIndexToNewIndex.at(
-          it->first.first);
-        size_t                        newSecondIndex = mapOldIndexToNewIndex.at(
-          it->first.second);
+        size_t                        newFirstIndex = new_first_index_it->second;
+        size_t                        newSecondIndex = new_second_index_it->second;
         SC_PartitionFunction::PairID  localPairID =
           SC_PartitionFunction::PairID(newFirstIndex,
                                        newSecondIndex);
@@ -523,7 +523,7 @@ merge_results(std::vector<std::pair<flooderInputParameter *,
     }
 
     //  add all neighbored minima not part of DONE list to toDO_list
-    for (int i = 0; i < outParameter->IndicesOfFilteredMinima.size(); i++) {
+    for (size_t i = 0; i < outParameter->IndicesOfFilteredMinima.size(); i++) {
       size_t index = mapOldIndexToNewIndex.at(
         outParameter->IndicesOfFilteredMinima.at(i));
       // if the element at the index position is not already in done List, add it to toDo_list
@@ -1018,12 +1018,12 @@ main(int  argc,
     }
 
     // add current minimum to set of minima and store its index
-    size_t                  currentMinID = 0;
+    size_t                  currentMinID = TypeID::value<size_t>();
     Minima.insert({ MyState(*startStateMinimum), currentMinID });
     MinimaForReverseSearch.insert({ currentMinID, MyState(*startStateMinimum) });
 
     ///// for tests only -> write file with all Energies ///
-    std::unordered_set<int> addedMinIDs;
+    std::unordered_set<size_t> addedMinIDs;
     ofstream                energyFile;
     if (energyFileName.size() > 0 & logEnergies) {
       energyFile.open(energyFileName);
@@ -1045,7 +1045,6 @@ main(int  argc,
     // insert the index of current minima to toDo_list
     toDo_List.push_back(currentMinID);
 
-    size_t                      min_id_from_list = currentMinID;
     for (auto it = start_structure_list.begin(); it != start_structure_list.end(); it++) {
       short   *tmpMinPairTable  = vrna_ptable(it->c_str());
       int     energy            = vrna_eval_structure_pt(vc, tmpMinPairTable);
@@ -1054,7 +1053,7 @@ main(int  argc,
       MyState *start_struct_min = WalkGradientHashed(move_set, maxToHash).walk(vc, start_struct_i);
       auto    it_min            = Minima.find(*start_struct_min);
       if (it_min == Minima.end()) {
-        min_id_from_list++;
+        size_t min_id_from_list = TypeID::value<size_t>();
         Minima.insert({ MyState(*start_struct_min), min_id_from_list });
         MinimaForReverseSearch.insert({ min_id_from_list, MyState(*start_struct_min) });
         toDo_List.push_back(min_id_from_list);
@@ -1129,39 +1128,41 @@ main(int  argc,
               res     = false;
             }
             //std::cout << "" << index << ' ' << res << '\n' << std::flush;
-            if (!res && !finalStructureFound) {
+            if (!res) {
               finish = false;
-              //test if new discovered minima are on the stack (pull all available minima)
-              //TODO: warning! This kind of asynchronous flooding disables some Filter Options.
-              if (!enableBestKFilter && !enableDeltaMinEFilter) {
-                while (!discoveredMinimaForEachThread[index].empty()) {
-                  MyState newMin =
-                    discoveredMinimaForEachThread[index].pop();
+              if(!finalStructureFound){
+                //test if new discovered minima are on the stack (pull all available minima)
+                //TODO: warning! This kind of asynchronous flooding disables some Filter Options.
+                if (!enableBestKFilter && !enableDeltaMinEFilter) {
+                  while (!discoveredMinimaForEachThread[index].empty()) {
+                    MyState newMin =
+                      discoveredMinimaForEachThread[index].pop();
 
-                  //start flooding.
-                  if (Minima.find(newMin) == Minima.end()) {
-                    //if local min is not in total list.
-                    //add new min and set lowest maximal index.
-                    size_t lowestMaxIndex = TypeID::value<
-                      size_t>();
+                    //start flooding.
+                    if (Minima.find(newMin) == Minima.end()) {
+                      //if local min is not in total list.
+                      //add new min and set lowest maximal index.
+                      size_t lowestMaxIndex = TypeID::value<
+                        size_t>();
 
-                    Minima.insert(
-                      { newMin, lowestMaxIndex });
-                    MinimaForReverseSearch.insert({
-                                                    lowestMaxIndex, newMin
-                                                  });
+                      Minima.insert(
+                        { newMin, lowestMaxIndex });
+                      MinimaForReverseSearch.insert({
+                                                      lowestMaxIndex, newMin
+                                                    });
 
-                    // if the element at the index position is not already in done List, add it to toDo_list
-                    if (done_List.find(lowestMaxIndex)
-                        == done_List.end()
-                        && std::find(toDo_List.begin(),
-                                     toDo_List.end(),
-                                     lowestMaxIndex)
-                        == toDo_List.end())
-                      toDo_List.push_back(lowestMaxIndex);
+                      // if the element at the index position is not already in done List, add it to toDo_list
+                      if (done_List.find(lowestMaxIndex)
+                          == done_List.end()
+                          && std::find(toDo_List.begin(),
+                                       toDo_List.end(),
+                                       lowestMaxIndex)
+                          == toDo_List.end())
+                        toDo_List.push_back(lowestMaxIndex);
+                    }
+
+                    //discoveredMinimaForEachThread[index].pop_front();
                   }
-
-                  //discoveredMinimaForEachThread[index].pop_front();
                 }
               }
             } else {

@@ -42,7 +42,7 @@ Flooder::get_Neighbors_pt(vrna_fold_compound_t  *vc,
   *numberOfNeighbors = count;
 
   struct_en *neighbors  = (struct_en *)malloc(sizeof(struct_en) * (count + 1));
-  int       i           = 0;
+  size_t       i           = 0;
   int       energy;
   short     *pt_neighbor;
   struct_en *neighbor;
