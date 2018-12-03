@@ -54,15 +54,34 @@ printRateMatrixSorted(const biu::MatrixSparseC<double>& R,
 /**
  *  ! write binary rates file.
  *  first value is the number of states, then the all outgoing rates for state 1, then all for state 2 etc.
+ * @param rates_file the name of the rate matrix file.
  * @param R the rateMatrix.
  * @param minima the indices and structures of the minima.
- * @param originalMinima all unfiltered discovered minima with indices that are consistent with the z matrix.
  */
 void write_binary_rates_file(std::string rates_file,
                              const biu::MatrixSparseC<double>& R,
-                             const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs,
-                             const PairHashTable::HashTable& originalMinima);
+                             const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs);
 
+/**
+ *  ! write sparse binary rates file.
+ *  first value is the number of states, then <integer from>, <integer number of how many value pairs to>,
+ *  <value pair <integer to, double rate from, to>> etc.
+ * @param rates_file the name of the rate matrix file.
+ * @param R the rateMatrix.
+ * @param minima the indices and structures of the minima.
+ */
+void write_binary_rates_file_sparse(std::string rates_file,
+                             const biu::MatrixSparseC<double>& R,
+                             const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs);
+
+/**
+ *  ! write a text file that contains the rate matrix and a text file that contains the structures.
+ */
+void
+write_barriers_like_output(std::string file_prefix,
+                        const biu::MatrixSparseC<double>& R,
+                        const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs,
+                        std::string sequence);
 
 /**
  * ! print the number of non-zero rates.
@@ -73,7 +92,6 @@ void write_binary_rates_file(std::string rates_file,
 void
 print_number_of_rates(const biu::MatrixSparseC<double>& R,
                       const std::unordered_map<size_t, MyState>& minimaMap,
-                      const PairHashTable::HashTable& originalMinima,
                       std::ostream& out);
 
 
@@ -97,13 +115,11 @@ printZMatrixSorted(const SC_PartitionFunction::Z_Matrix& z,
  * ! print a vector with the equilibrium densities (Zb/sum(Zb')).
  * @param z the matrix with all transition partition sums and indices that are consistent with original minima.
  * @param finalMinima all (maybe filtered) minima that are in the rate matrix.
- * @param originalMinima all unfiltered discovered minima with indices that are consistent with the z matrix.
  * @param out the outputstream, default is std::cout.
  */
 void
 printEquilibriumDensities(SC_PartitionFunction::Z_Matrix& z,
                           const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs,
-                          const PairHashTable::HashTable& originalMinima,
                           std::ostream& out);
 
 

@@ -11,16 +11,16 @@ SC_PartitionFunction::SC_PartitionFunction (const double  temperature,
                                             const bool    storeEnergies)
   :
   StateCollector(),
-  StoreEnergies(false),
+  StoreEnergies(storeEnergies),
   Energies(),
   Z(0.0),
   JOULE_TO_KCAL(0.000239),
   GAS_CONSTANT_R(8.314472),
   GAS_CONSTANT_RT(GAS_CONSTANT_R * JOULE_TO_KCAL * 310.15),
-  kT(GAS_CONSTANT_RT)
+  kT(GAS_CONSTANT_R * JOULE_TO_KCAL * (temperature + 273.15))
 {
   // initialize data structures
-  initialize(temperature, storeEnergies);
+  //initialize(temperature, storeEnergies);
 }
 
 

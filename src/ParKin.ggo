@@ -161,6 +161,23 @@ option  "binary-rates-file" -
 string
 optional
 
+option  "binary-rates-file-sparse" -
+"File to store all rates in a sparse binary format: First value is the number of states (uint_32), then <uint_32 from>, \
+<uint_32 number of how many value pairs to>, <value pair <uint_32 to, double rate from, to>> etc.\n"
+string
+optional
+
+option  "saddle-file" -
+"Store all saddles in a CSV file."
+string
+optional
+
+option  "barriers-like-output" -
+"Output the rates file and the structures in a format similar to the tool barriers. \
+For the same prefix is used for both files."
+string
+optional
+
 option  "partitionFunctions" -
 "If provided, the partition function matrix will be written to the given file name.\n"
 string

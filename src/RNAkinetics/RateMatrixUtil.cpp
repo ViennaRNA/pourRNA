@@ -14,8 +14,6 @@ printRateMatrix(const biu::MatrixSparseC<double>& R,
                 const bool noZeros)
 {
   assertbiu(R.numColumns() == R.numRows(), "R is no square matrix");
-  assertbiu(R.numRows() <= minimaMap.size(), "less minima than rates");
-
   const size_t LEAD = 6;
 
   if (noZeros) {
@@ -77,8 +75,6 @@ printRateMatrixSorted(const biu::MatrixSparseC<double>& R,
                       std::ostream& out)
 {
   assertbiu(R.numColumns() == R.numRows(), "R is no square matrix");
-  assertbiu(R.numRows() <= sortedMinimaIDs.size(), "less minima than rates");
-
   const size_t              LEAD = 6;
 
   PairHashTable::HashTable  *states_and_output_ids = new PairHashTable::HashTable();
@@ -91,7 +87,7 @@ printRateMatrixSorted(const biu::MatrixSparseC<double>& R,
         << /*minimaMap.at(nextMinID).toString()*/ sortedMinimaIDs[c].second->toString() << "] :";
     states_and_output_ids->insert({ MyState(
                                       /*minimaMap.at(nextMinID)*/ *sortedMinimaIDs[c].second), c });
-    std::vector<double> columnVector  = R.columnVec(nextMinID);
+    std::vector<double> columnVector  = R.rowVec(nextMinID);
     bool                bPrinted      = false;
     size_t              rowMinID;
     std::stringstream   sstmp;
@@ -119,11 +115,9 @@ printRateMatrixSorted(const biu::MatrixSparseC<double>& R,
 void
 write_binary_rates_file(std::string rates_file,
                         const biu::MatrixSparseC<double>& R,
-                        const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs,
-                        const PairHashTable::HashTable& originalMinima)
+                        const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs)
 {
   assertbiu(R.numColumns() == R.numRows(), "R is no square matrix");
-  assertbiu(R.numRows() <= sortedMinimaIDs.size(), "less minima than rates");
 
   FILE        *BINOUT;
   const char  *binfile = rates_file.c_str(); //"rates.bin";
@@ -139,12 +133,9 @@ write_binary_rates_file(std::string rates_file,
   fwrite(&n, sizeof(int), 1, BINOUT);
 
   size_t  nextMinID;
-  // print only non-empty rates
   double  rate = 0.0;
   for (size_t c = 0; c < sortedMinimaIDs.size(); c++) {
-    //MyState min = *sortedMinimaIDs[c].second;
-    nextMinID = sortedMinimaIDs[c].first; //originalMinima.at(min);
-
+    nextMinID = sortedMinimaIDs[c].first;
     std::vector<double> columnVector  = R.rowVec(nextMinID);
     bool                bPrinted      = false;
     size_t              rowMinID;
@@ -159,15 +150,114 @@ write_binary_rates_file(std::string rates_file,
   fclose(BINOUT);
 }
 
+void
+write_binary_rates_file_sparse(std::string rates_file,
+                        const biu::MatrixSparseC<double>& R,
+                        const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs)
+{
+  assertbiu(R.numColumns() == R.numRows(), "R is no square matrix");
+
+  FILE        *BINOUT;
+  const char  *binfile = rates_file.c_str(); //"rates.bin";
+  double      tmprate;
+  BINOUT = fopen(binfile, "w");
+  if (!BINOUT) {
+    fprintf(stderr, "Error: could not open sparse matrix file.\n");
+    exit(101);
+  }
+
+  uint32_t n = sortedMinimaIDs.size();
+  /* first write dim to file */
+  fwrite(&n, sizeof(uint32_t), 1, BINOUT);
+
+  size_t  nextMinID;
+  double  rate = 0.0;
+  for (size_t c = 0; c < sortedMinimaIDs.size(); c++) {
+    nextMinID = sortedMinimaIDs[c].first;
+    std::vector<double> rowVector  = R.rowVec(nextMinID);
+    size_t              colMinID;
+    uint32_t n_not_zero = 0;
+    for (uint32_t r = 0; r < sortedMinimaIDs.size(); r++) {
+      colMinID  = sortedMinimaIDs[r].first;
+      if(rowVector[colMinID] != 0.0)
+        n_not_zero++;
+    }
+    if(n_not_zero > 0u){
+      //state from
+      fwrite(&c, sizeof(uint32_t), 1, BINOUT);
+      //how many transitions
+      fwrite(&n_not_zero, sizeof(uint32_t), 1, BINOUT);
+      //state two and rate-from-to
+      for (uint32_t r = 0; r < sortedMinimaIDs.size(); r++) {
+        colMinID  = sortedMinimaIDs[r].first;
+        rate      = rowVector[colMinID];
+        if(rate != 0.0){
+          fwrite(&r, sizeof(uint32_t), 1, BINOUT);
+          fwrite(&rate, sizeof(double), 1, BINOUT);
+        }
+      }
+    }
+  }
+  fclose(BINOUT);
+}
+
+void
+write_barriers_like_output(std::string file_prefix,
+                        const biu::MatrixSparseC<double>& R,
+                        const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs,
+                        std::string sequence)
+{
+  assertbiu(R.numColumns() == R.numRows(), "R is no square matrix");
+
+  FILE        *rates_file;
+  std::string rates_file_name = file_prefix + std::string("_rates.out");
+  rates_file = fopen(rates_file_name.c_str(), "w");
+  if (!rates_file) {
+    fprintf(stderr, "Error: could not write barriers-like rates file.\n");
+    exit(101);
+  }
+  size_t  n = sortedMinimaIDs.size();
+  size_t  nextMinID;
+  double      rate;
+  std::vector<double> columnVector;
+  size_t              rowMinID;
+  for (size_t c = 0; c < n; c++) {;
+    nextMinID = sortedMinimaIDs[c].first;
+    columnVector  = R.rowVec(nextMinID);
+    for (size_t r = 0; r < sortedMinimaIDs.size(); r++) {
+      rowMinID  = sortedMinimaIDs[r].first;
+      rate      = columnVector[rowMinID];
+      fprintf(rates_file, "%10.4g ", rate);
+    }
+    fprintf(rates_file, "\n");
+  }
+  fclose(rates_file);
+
+  FILE        *states_file;
+  std::string states_file_name = file_prefix + std::string("_states.out");
+
+  states_file = fopen(states_file_name.c_str(), "w");
+  if (!states_file) {
+    fprintf(stderr, "Error: could not write barriers-like states file.\n");
+    exit(101);
+  }
+  fprintf(states_file, "     %s\n", sequence.c_str());
+  MyState * state;
+  for (size_t c = 0; c < n; c++) {
+    //nextMinID = sortedMinimaIDs[c].first; // --> use output ID.
+    state = sortedMinimaIDs[c].second;
+    fprintf(states_file, "%4ld %s %6.2f\n", c+1, state->toString().c_str(), state->getEnergy()/100.0);
+  }
+  fclose(states_file);
+}
+
 
 void
 print_number_of_rates(const biu::MatrixSparseC<double>& R,
                       const std::unordered_map<size_t, MyState>& minimaMap,
-                      const PairHashTable::HashTable& originalMinima,
                       std::ostream& out)
 {
   assertbiu(R.numColumns() == R.numRows(), "R is no square matrix");
-  assertbiu(R.numRows() <= minimaMap.size(), "less minima than rates");
 
   size_t  count_rates = 0;
   size_t  nextMinID;
@@ -261,7 +351,6 @@ printZMatrixSorted(const SC_PartitionFunction::Z_Matrix& z,
 void
 printEquilibriumDensities(SC_PartitionFunction::Z_Matrix& z,
                           const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs,
-                          const PairHashTable::HashTable& originalMinima,
                           std::ostream& out)
 {
   out << "Equilibrium Densities:" << std::endl;
@@ -270,7 +359,7 @@ printEquilibriumDensities(SC_PartitionFunction::Z_Matrix& z,
   double  sumZb = 0;
   // calc. sum of all basin partition functions.
   for (size_t c = 0; c < sortedMinimaIDs.size(); c++) {
-    nextMinID = originalMinima.at(*sortedMinimaIDs[c].second);
+    nextMinID = sortedMinimaIDs[c].first;
     sumZb     += z[SC_PartitionFunction::PairID(nextMinID, nextMinID)].getZ();
   }
   double            equilibriumDensity;
@@ -278,7 +367,7 @@ printEquilibriumDensities(SC_PartitionFunction::Z_Matrix& z,
   std::stringstream sstmp;
   sstmp << std::scientific;
   for (size_t c = 0; c < sortedMinimaIDs.size(); c++) {
-    nextMinID           = originalMinima.at(*sortedMinimaIDs[c].second);
+    nextMinID           = sortedMinimaIDs[c].first;
     equilibriumDensity  =
       z[SC_PartitionFunction::PairID(nextMinID, nextMinID)].getZ() / sumZb;
     // print probability and state

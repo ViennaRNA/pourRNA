@@ -142,8 +142,16 @@ calculateRateMatrix(SC_PartitionFunction::Z_Matrix& z,
                     std::unordered_map<size_t, MyState>& minimaForReverseSearch,
                     size_t maxNeighNum)
 {
+  size_t max_size = 0;
+  size_t done_id;
+  for (auto done_it = done_List.begin(); done_it != done_List.end(); done_it++) {
+    done_id = *done_it;
+    if(done_id > max_size)
+      max_size = done_id;
+  }
+  max_size++;
   biu::MatrixSparseC<double>&                 final_Rate = *new biu::MatrixSparseC<double>(
-    done_List.size(), done_List.size(), 0.0);
+      max_size, max_size, 0.0);
   // iterate through all elements of done List to produce the final rate matrix
   std::unordered_set<size_t>::const_iterator  toIt    = done_List.begin();
   std::unordered_set<size_t>::const_iterator  fromIt  = done_List.begin();
@@ -151,7 +159,6 @@ calculateRateMatrix(SC_PartitionFunction::Z_Matrix& z,
     // copy according rates
     size_t  fromOrig = *fromIt;
     toIt = std::next(fromIt, 1); //done_List.begin();
-    double  rateSum = 0.0;
     for (size_t to = from + 1; to < done_List.size(); to++, toIt++) {
       size_t toOrig = *toIt;
       // copy non-diagonal entries
@@ -186,8 +193,7 @@ calculateRateMatrix(SC_PartitionFunction::Z_Matrix& z,
           double rate_Val = z_transition
                             / (/*maxNeighNum * */ z_basin);
           if (rate_Val > 0.0) {
-            final_Rate.at(to, from) = rate_Val;
-            rateSum                 += rate_Val;
+            final_Rate.at(fromOrig, toOrig) = rate_Val;
           }
         }
 
@@ -201,14 +207,20 @@ calculateRateMatrix(SC_PartitionFunction::Z_Matrix& z,
           double rate_Val = z_transition
                             / (/*maxNeighNum * */ z_basin2);
           if (rate_Val > 0.0) {
-            final_Rate.at(from, to) = rate_Val;
-            rateSum                 += rate_Val;
+            final_Rate.at(toOrig, fromOrig) = rate_Val;
           }
-        }
+       }
       }
     }
-    final_Rate.at(from, from) = 1.0 - rateSum;
   }   // end for
+  // compute diagonal
+  for (auto from_it = done_List.begin(); from_it != done_List.end(); from_it++) {
+    double sum = 0.0;
+    for (auto to_it = done_List.begin(); to_it != done_List.end(); to_it++) {
+      sum += final_Rate.at(*from_it, *to_it);
+    }
+    final_Rate.at(*from_it, *from_it) = 1-sum;
+  }
   return final_Rate;
 }
 
@@ -261,10 +273,10 @@ struct flooderOutputParameter {
 
 /**
  * ! flood the basin with the given structure "flooderInputParameter->CurrentMinimum".
- *   The transition-partitionsums and the partitionsum of the basin will be written to
+ *   The transition-partition function and the partition function of the basin will be written to
  *   "flooderOutputParameter->PartitionFunctions".
  *   @param inParameter contains a structure which identifies the basin and filter parameters.
- *   @param outParameter contains the partitionfunctions and neigbored minima.
+ *   @param outParameter contains the partition function and neigbored minima.
  */
 int
 floodBasin(vrna_fold_compound_t   *vc,
@@ -278,7 +290,7 @@ floodBasin(vrna_fold_compound_t   *vc,
   // initializing set, which contains the NEighbors indices  of current state
   size_t                    loopCurrentLocalMinID = 0;
 
-  MyState                   *minState = new MyState(*inParameter->CurrentMinimum); //TODO: create new instance! (cleaned if localThreadMinima is cleaned)
+  MyState                   *minState = new MyState(*inParameter->CurrentMinimum);
 
   //set local id to zero because of the statePairCollector id-assign-method.
 
@@ -1412,7 +1424,7 @@ main(int  argc,
     for (size_t from = 0; from < done_List.size(); from++, fromIt++) {
       // store minimum with correct index for final rate matrix
       // (from column-state to row-state)
-      final_minima.insert({ from, MinimaForReverseSearch.at(*fromIt) });
+      final_minima.insert({ *fromIt, MinimaForReverseSearch.at(*fromIt) });
     }
 
     std::vector<std::pair<size_t, MyState *> > sortedMinimaIDs;
@@ -1428,7 +1440,7 @@ main(int  argc,
                                                                                 sortedMinimaIDs,
                                                                                 *transOut);
     std::cout << std::endl;
-    printEquilibriumDensities(z, sortedMinimaIDs, Minima, *transOut);
+    printEquilibriumDensities(z, sortedMinimaIDs, *transOut);
     std::cout << std::endl;
 
     //if parameter given: print Z-matrix to file.
@@ -1444,9 +1456,8 @@ main(int  argc,
 
     double partitionFunctionLandscape = 0;
     //get partition Sum for the energy landscape.
-    for (size_t i = 0; i < final_minima.size(); i++) {
-      MyState tmpMin    = final_minima.at(i);
-      size_t  minIndex  = Minima.at(tmpMin);
+    for (auto it = final_minima.begin(); it != final_minima.end(); it++) {
+      size_t  minIndex  = it->first;
       partitionFunctionLandscape +=
         z.at(SC_PartitionFunction::PairID(minIndex, minIndex)).getZ();
     }
@@ -1468,35 +1479,61 @@ main(int  argc,
       }
     }
 
-    print_number_of_rates(*final_Rate, final_minima, Minima, std::cout);
+    print_number_of_rates(*final_Rate, final_minima, std::cout);
 
     if (!binary_rates_file.empty())
-      write_binary_rates_file(binary_rates_file, *final_Rate, sortedMinimaIDs, Minima);
+      write_binary_rates_file(binary_rates_file, *final_Rate, sortedMinimaIDs);
 
     /**
-     * print saddles
+     * write saddle file
      * */
-    std::printf(
-      "id_from, loc_min_from, loc_min_from_energy, id_to, loc_min_to, loc_min_to_energy, saddle, saddle_energy\n");
-    for (auto it = all_saddles.begin(); it != all_saddles.end(); it++) {
-      const std::pair<MyState, MyState>&  from_to       = it->first;
-      double                              saddle_height = it->second.energy / 100.0;
-      std::string                         s1            = from_to.first.toString();
-      std::string                         s2            = from_to.second.toString();
-      std::string                         saddle        = it->second.toString();
-      int                                 id_from       = -1;
-      int                                 id_to         = -1;
-      try{
-        id_from = sorted_min_and_output_ids->at(from_to.first);
-        id_to   = sorted_min_and_output_ids->at(from_to.second);
-      }catch (std::exception & ex) {
-        // transition cannot exist e.g. if the final structure was reached, before the discovered minima have been flooded.
-        //std::cerr << "\n\n ERORR : " << ex.what() << "\n" << std::endl;
+    if(args_info.saddle_file_given){
+      FILE* saddle_file = fopen(args_info.saddle_file_arg, "w");
+      if (!saddle_file) {
+          fprintf(stderr, "Error: could not open saddle file.\n");
+          exit(101);
+        }
+      std::string header = std::string("id_from, loc_min_from, loc_min_from_energy, id_to, loc_min_to, ")+
+          std::string("loc_min_to_energy, saddle, saddle_energy\n");
+      fwrite(header.c_str(), sizeof(char), header.length(), saddle_file);
+
+      for (auto it = all_saddles.begin(); it != all_saddles.end(); it++) {
+        const std::pair<MyState, MyState>&  from_to       = it->first;
+        double                              saddle_height = it->second.energy / 100.0;
+        std::string                         s1            = from_to.first.toString();
+        std::string                         s2            = from_to.second.toString();
+        std::string                         saddle        = it->second.toString();
+        int                                 id_from       = -1;
+        int                                 id_to         = -1;
+        try{
+          id_from = sorted_min_and_output_ids->at(from_to.first);
+          id_to   = sorted_min_and_output_ids->at(from_to.second);
+        }catch (std::exception & ex) {
+          // transition cannot exist e.g. if the final structure was reached, before the discovered minima have been flooded.
+          //std::cerr << "\n\n ERORR : " << ex.what() << "\n" << std::endl;
+        }
+        if (id_from != -1 && id_to != -1){
+            std::fprintf(saddle_file,"%d, %s, %.2f, %d, %s, %.2f, %s, %.2f\n", id_from,
+                                  s1.c_str(), from_to.first.energy / 100.0,
+                                  id_to, s2.c_str(), from_to.second.energy / 100.0, saddle.c_str(), saddle_height);
+        }
       }
-      if (id_from != -1 && id_to != -1)
-        std::printf("%d, %s, %.2f, %d, %s, %.2f, %s, %.2f\n", id_from,
-                    s1.c_str(), from_to.first.energy / 100.0,
-                    id_to, s2.c_str(), from_to.second.energy / 100.0, saddle.c_str(), saddle_height);
+      fclose(saddle_file);
+    }
+
+    if(args_info.barriers_like_output_given){
+      char * barriers_prefix = args_info.barriers_like_output_arg;
+      write_barriers_like_output(barriers_prefix,
+                                  *final_Rate,
+                                  sortedMinimaIDs,
+                                  rnaSequence);
+    }
+
+    if(args_info.binary_rates_file_sparse_given){
+      std::string sparse_matrix_file(args_info.binary_rates_file_sparse_arg);
+      write_binary_rates_file_sparse(sparse_matrix_file,
+                                    *final_Rate,
+                                    sortedMinimaIDs);
     }
 
 
@@ -1537,6 +1574,9 @@ main(int  argc,
 
     if (final_Rate != NULL)
       delete final_Rate;
+
+    ParKin_cmdline_parser_free(&args_info);
+
   } catch (std::exception & ex) {
     std::cerr << "\n\n ERORR : " << ex.what() << "\n" << std::endl;
     return_Value = -1;
