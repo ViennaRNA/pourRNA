@@ -719,6 +719,17 @@ main(int  argc,
       }
     }
 
+    if (args_info.maxBPdist_add_given) {
+      int maxBP_add = 0;
+      maxBP_add = args_info.maxBPdist_add_arg;
+      //if (maxBPdist < 0)
+      //  throw ArgException("The base pair distance has to be positive!");
+      if(!args_info.finalStr_given || !args_info.startStr_given)
+        throw ArgException("Error: maxBPdist_add expects that you also set a start structure and a final structure!");
+      maxBPdist = vrna_bp_distance(rna_start_str.c_str(), rna_final_str.c_str());
+      maxBPdist += maxBP_add;
+    }
+
     std::list<std::string> start_structure_list;
     if (args_info.start_structure_file_given) {
       std::string start_structure_file = args_info.start_structure_file_arg;
@@ -726,8 +737,17 @@ main(int  argc,
         std::ifstream infile(start_structure_file);
         std::string   line;
         while (std::getline(infile, line))
-          if (StructureUtils::IsValidStructure(line))
-            start_structure_list.push_back(line);
+          if (StructureUtils::IsValidStructure(line)){
+            if(args_info.maxBPdist_add_given){
+              int start_dist = vrna_bp_distance(line.c_str(), rna_final_str.c_str());
+              int final_dist = vrna_bp_distance(line.c_str(), rna_final_str.c_str());
+              if(start_dist + final_dist <= maxBPdist)
+                start_structure_list.push_back(line);
+            }
+            else{
+              start_structure_list.push_back(line);
+            }
+          }
       }
     }
 
@@ -784,12 +804,6 @@ main(int  argc,
       maxThreads = args_info.maxThreads_arg;
       if (maxThreads < 1)
         throw ArgException("you should use at least one thread.");
-    }
-
-    if (args_info.maxBPdist_given) {
-      maxBPdist = args_info.maxBPdist_arg;
-      if (maxBPdist < 0)
-        throw ArgException("The base pair distance has to be positive!");
     }
 
     if (args_info.energyFile_given) {
@@ -1194,14 +1208,17 @@ main(int  argc,
                 threadParameter->clear();
               }
 
-              //if final structure is in done list --> break;
-              if (!finalStructureFound && finalStructureMinimum != NULL) {
-                auto final_min_it = Minima.find(*finalStructureMinimum);
-                if (final_min_it != Minima.end()) {
-                  auto done_final_it = done_List.find(final_min_it->second);
-                  if (done_final_it != done_List.end()) {
-                    finalStructureFound = true;
-                    break;
+              // stop exploration at final structure only if no maximal base pair distance is given!
+              if(!args_info.maxBPdist_add_given){
+                //if final structure is in done list --> break;
+                if (!finalStructureFound && finalStructureMinimum != NULL) {
+                  auto final_min_it = Minima.find(*finalStructureMinimum);
+                  if (final_min_it != Minima.end()) {
+                    auto done_final_it = done_List.find(final_min_it->second);
+                    if (done_final_it != done_List.end()) {
+                      finalStructureFound = true;
+                      break;
+                    }
                   }
                 }
               }

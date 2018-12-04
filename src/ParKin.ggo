@@ -101,10 +101,14 @@ double
 default="65536"
 optional
 
-option  "maxBPdist" -
-"Sets the maximum base pair distance for direct neighbor minima to be explored. \
+option  "maxBPdist-add" -
+"Increases the maximum base pair distance for direct neighbor minima to be explored. \
 Needs a start structure and a final structure in order to work. For all discovered \
-minima m holds: bp_dist(m, startStr) + bp_dist(m, finalStr) < maxBPdist.\n"
+minima m holds: bp_dist(m, startStr) + bp_dist(m, finalStr) < d(startStr, finalStr) + maxBPdist_add.
+If this parameter is given, the explorative flooding will not stop at the final structure! Instead
+it will explore all minima on the direct path and at its borders. This helps to evaluate optimal refolding paths
+in a post-processing step.\n"
+
 int
 default="65536"
 optional
