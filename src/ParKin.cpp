@@ -719,15 +719,13 @@ main(int  argc,
       }
     }
 
+    int maxBP_add = 0;
     if (args_info.maxBPdist_add_given) {
-      int maxBP_add = 0;
       maxBP_add = args_info.maxBPdist_add_arg;
       //if (maxBPdist < 0)
       //  throw ArgException("The base pair distance has to be positive!");
       if(!args_info.finalStr_given || !args_info.startStr_given)
         throw ArgException("Error: maxBPdist_add expects that you also set a start structure and a final structure!");
-      maxBPdist = vrna_bp_distance(rna_start_str.c_str(), rna_final_str.c_str());
-      maxBPdist += maxBP_add;
     }
 
     std::list<std::string> start_structure_list;
@@ -738,15 +736,7 @@ main(int  argc,
         std::string   line;
         while (std::getline(infile, line))
           if (StructureUtils::IsValidStructure(line)){
-            if(args_info.maxBPdist_add_given){
-              int start_dist = vrna_bp_distance(line.c_str(), rna_final_str.c_str());
-              int final_dist = vrna_bp_distance(line.c_str(), rna_final_str.c_str());
-              if(start_dist + final_dist <= maxBPdist)
-                start_structure_list.push_back(line);
-            }
-            else{
               start_structure_list.push_back(line);
-            }
           }
       }
     }
@@ -1071,6 +1061,11 @@ main(int  argc,
     // insert the index of current minima to toDo_list
     toDo_List.push_back(currentMinID);
 
+    if(args_info.maxBPdist_add_given){
+      maxBPdist = vrna_bp_distance(startStructureMinimum, endStructureMinimum);
+      maxBPdist += maxBP_add;
+    }
+
     for (auto it = start_structure_list.begin(); it != start_structure_list.end(); it++) {
       short   *tmpMinPairTable  = vrna_ptable(it->c_str());
       int     energy            = vrna_eval_structure_pt(vc, tmpMinPairTable);
@@ -1079,10 +1074,20 @@ main(int  argc,
       MyState *start_struct_min = WalkGradientHashed(move_set, maxToHash).walk(vc, start_struct_i);
       auto    it_min            = Minima.find(*start_struct_min);
       if (it_min == Minima.end()) {
-        size_t min_id_from_list = TypeID::value<size_t>();
-        Minima.insert({ MyState(*start_struct_min), min_id_from_list });
-        MinimaForReverseSearch.insert({ min_id_from_list, MyState(*start_struct_min) });
-        toDo_List.push_back(min_id_from_list);
+        bool allow_min = true;
+        if(args_info.maxBPdist_add_given){
+            int start_dist = vrna_bp_distance(startStructureMinimum, start_struct_min->toString().c_str());
+            int final_dist = vrna_bp_distance(endStructureMinimum, start_struct_min->toString().c_str());
+            if(start_dist + final_dist > maxBPdist){
+              allow_min = false;
+            }
+        }
+        if(allow_min){
+          size_t min_id_from_list = TypeID::value<size_t>();
+          Minima.insert({ MyState(*start_struct_min), min_id_from_list });
+          MinimaForReverseSearch.insert({ min_id_from_list, MyState(*start_struct_min) });
+          toDo_List.push_back(min_id_from_list);
+        }
       }
 
       delete start_struct_min;
