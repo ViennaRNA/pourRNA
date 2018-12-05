@@ -150,7 +150,7 @@ calculateRateMatrix(SC_PartitionFunction::Z_Matrix& z,
   biu::MatrixSparseC<double>&                 final_Rate = *new biu::MatrixSparseC<double>(
       max_size, max_size, 0.0);
   // iterate through all elements of done List to produce the final rate matrix
-  std::unordered_set<size_t>::const_iterator  toIt    = done_List.begin();
+  std::unordered_set<size_t>::const_iterator  toIt;//    = done_List.begin();
   std::unordered_set<size_t>::const_iterator  fromIt  = done_List.begin();
   for (size_t from = 0; from < done_List.size(); from++, fromIt++) {
     // copy according rates
@@ -159,7 +159,7 @@ calculateRateMatrix(SC_PartitionFunction::Z_Matrix& z,
     for (size_t to = from + 1; to < done_List.size(); to++, toIt++) {
       size_t toOrig = *toIt;
       // copy non-diagonal entries
-      if (toOrig != fromOrig) {
+      //if (toOrig != fromOrig) {
         //compute the rate from row-state two column-state
         //in Z-Matrix: from i to j.
         //in final_Rate: from j to i !
@@ -172,11 +172,12 @@ calculateRateMatrix(SC_PartitionFunction::Z_Matrix& z,
 
         double                        z_transition        = 0;
         double                        z_reverseTransition = 0;
-        if (z.find(transitionID) != z.end())
-          z_transition = z.at(transitionID).getZ();
-
-        if (z.find(reverseTransitionID) != z.end())
-          z_reverseTransition = z.at(reverseTransitionID).getZ();
+        auto it_transition = z.find(transitionID);
+        if (it_transition != z.end())
+          z_transition = it_transition->second.getZ();
+        auto it_reverse_transition = z.find(reverseTransitionID);
+        if (it_reverse_transition != z.end())
+          z_reverseTransition = it_reverse_transition->second.getZ();
 
         //max is important if filters are applied! Otherwise it should be equal.
         z_transition = max(z_transition, z_reverseTransition);
@@ -207,7 +208,7 @@ calculateRateMatrix(SC_PartitionFunction::Z_Matrix& z,
             final_Rate.at(toOrig, fromOrig) = rate_Val;
           }
        }
-      }
+      //}
     }
   }   // end for
   // compute diagonal
@@ -1265,7 +1266,10 @@ main(int  argc,
                   inParameter->TemperatureForBoltzmannWeight =
                     temperatureForBoltzmannWeight;
                   inParameter->Move_set         = move_set;
-                  inParameter->All_Saddles      = &all_saddles;
+                  if(args_info.saddle_file_given)
+                    inParameter->All_Saddles      = &all_saddles;
+                  else
+                    inParameter->All_Saddles      = NULL;
                   inParameter->MaxBPdist        = maxBPdist;
                   inParameter->SourceStructure  = startStructureMinimum;
                   inParameter->TargetStructure  = endStructureMinimum;
@@ -1434,7 +1438,7 @@ main(int  argc,
       done_List,
       MinimaForReverseSearch);
       */
-    biu::MatrixSparseC<double>  *final_Rate = &calculateRateMatrix(z,
+    biu::MatrixSparseC<double>&  final_Rate = calculateRateMatrix(z,
                                                                    done_List);
 
     // To store the States after applying all the Filtering Techniques
@@ -1455,7 +1459,7 @@ main(int  argc,
 
     // Print the Final rate matrix of the States in Final minima set.
     // printRateMatrix (*final_Rate, final_minima, *transOut, true);
-    PairHashTable::HashTable *sorted_min_and_output_ids = printRateMatrixSorted(*final_Rate,
+    PairHashTable::HashTable *sorted_min_and_output_ids = printRateMatrixSorted(final_Rate,
                                                                                 sortedMinimaIDs,
                                                                                 *transOut);
     std::cout << std::endl;
@@ -1498,10 +1502,10 @@ main(int  argc,
       }
     }
 
-    print_number_of_rates(*final_Rate, sortedMinimaIDs, std::cout);
+    print_number_of_rates(final_Rate, sortedMinimaIDs, std::cout);
 
     if (!binary_rates_file.empty())
-      write_binary_rates_file(binary_rates_file, *final_Rate, sortedMinimaIDs);
+      write_binary_rates_file(binary_rates_file, final_Rate, sortedMinimaIDs);
 
     /**
      * write saddle file
@@ -1543,7 +1547,7 @@ main(int  argc,
     if(args_info.barriers_like_output_given){
       char * barriers_prefix = args_info.barriers_like_output_arg;
       write_barriers_like_output(barriers_prefix,
-                                  *final_Rate,
+                                  final_Rate,
                                   sortedMinimaIDs,
                                   rnaSequence);
     }
@@ -1551,7 +1555,7 @@ main(int  argc,
     if(args_info.binary_rates_file_sparse_given){
       std::string sparse_matrix_file(args_info.binary_rates_file_sparse_arg);
       write_binary_rates_file_sparse(sparse_matrix_file,
-                                    *final_Rate,
+                                    final_Rate,
                                     sortedMinimaIDs);
     }
 
@@ -1591,8 +1595,8 @@ main(int  argc,
     if (startStateMinimum != NULL)
       delete startStateMinimum;
 
-    if (final_Rate != NULL)
-      delete final_Rate;
+    if (&final_Rate != NULL)
+      delete &final_Rate;
 
     ParKin_cmdline_parser_free(&args_info);
 

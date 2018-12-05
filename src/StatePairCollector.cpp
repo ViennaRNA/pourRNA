@@ -85,29 +85,29 @@ StatePairCollector::add(vrna_fold_compound_t  *vc,
       DiscoveredMinima->push((*newMin));
 
     //add the first saddle for this new minimum
-    MyState                       *a          = current_min->clone();
-    MyState                       *b          = newMin->clone();
-    std::pair<MyState, MyState>   state_pair  = std::pair<MyState, MyState>({ *a, *b });
+    if(&All_Saddles != NULL){
+      MyState                       *a          = current_min->clone();
+      MyState                       *b          = newMin->clone();
+      std::pair<MyState, MyState>   state_pair  = std::pair<MyState, MyState>({ *a, *b });
 
-    std::unique_lock<std::mutex>  mlock(mutex_);
-    auto                          pair_it = All_Saddles.find(state_pair);
-    if (pair_it == All_Saddles.end()) {
-      std::pair<MyState, MyState> state_pair2 = std::pair<MyState, MyState>({ *b, *a });
-      auto                        pair_it2    = All_Saddles.find(state_pair2);
-      if (pair_it2 == All_Saddles.end()) {
-        // add higher state as saddle
-        if (firstIsSmaller)
-          All_Saddles[state_pair] = MyState(*state2);
-        else
-          All_Saddles[state_pair] = MyState(*state1);
+      std::unique_lock<std::mutex>  mlock(mutex_);
+      auto                          pair_it = All_Saddles.find(state_pair);
+      if (pair_it == All_Saddles.end()) {
+        std::pair<MyState, MyState> state_pair2 = std::pair<MyState, MyState>({ *b, *a });
+        auto                        pair_it2    = All_Saddles.find(state_pair2);
+        if (pair_it2 == All_Saddles.end()) {
+          // add higher state as saddle
+          if (firstIsSmaller)
+            All_Saddles[state_pair] = MyState(*state2);
+          else
+            All_Saddles[state_pair] = MyState(*state1);
+        }
       }
+      mlock.unlock();
+      cond_.notify_one();
+      delete a;
+      delete b;
     }
-
-    mlock.unlock();
-    cond_.notify_one();
-
-    delete a;
-    delete b;
   } else {
     // get index of newMin in Minima
     neighborMinID = minEntry->second;

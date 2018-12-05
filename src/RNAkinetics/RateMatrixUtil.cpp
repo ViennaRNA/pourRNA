@@ -81,21 +81,23 @@ printRateMatrixSorted(const biu::MatrixSparseC<double>& R,
   out << std::scientific << "\n from : to\n";
   size_t                    nextMinID;
   // print only non-empty rates
+  double rate = 0.0;
   for (size_t c = 0; c < sortedMinimaIDs.size(); c++) {
     nextMinID = sortedMinimaIDs[c].first;
     out << "\n" << std::setw(LEAD) << c << " ["
         << /*minimaMap.at(nextMinID).toString()*/ sortedMinimaIDs[c].second->toString() << "] :";
     states_and_output_ids->insert({ MyState(
                                       /*minimaMap.at(nextMinID)*/ *sortedMinimaIDs[c].second), c });
-    std::vector<double> columnVector  = R.rowVec(nextMinID);
+    //std::vector<double> columnVector  = R.rowVec(nextMinID);
     bool                bPrinted      = false;
     size_t              rowMinID;
     std::stringstream   sstmp;
     sstmp << std::scientific;
     for (size_t r = 0; r < sortedMinimaIDs.size(); r++) {
       rowMinID = sortedMinimaIDs[r].first;
-      if (columnVector[rowMinID] != 0.0) {
-        sstmp << " " << r << " = " << columnVector[rowMinID] << ",";
+      rate = R.at(nextMinID, rowMinID);
+      if (/*columnVector[rowMinID]*/ rate != 0.0) {
+        sstmp << " " << r << " = " << /*columnVector[rowMinID]*/ rate << ",";
         bPrinted = true;
       }
     }
@@ -136,12 +138,12 @@ write_binary_rates_file(std::string rates_file,
   double  rate = 0.0;
   for (size_t c = 0; c < sortedMinimaIDs.size(); c++) {
     nextMinID = sortedMinimaIDs[c].first;
-    std::vector<double> columnVector  = R.rowVec(nextMinID);
+    //std::vector<double> columnVector  = R.rowVec(nextMinID);
     bool                bPrinted      = false;
     size_t              rowMinID;
     for (size_t r = 0; r < sortedMinimaIDs.size(); r++) {
       rowMinID  = sortedMinimaIDs[r].first;
-      rate      = columnVector[rowMinID];
+      rate      = R.at(nextMinID, rowMinID); //columnVector[rowMinID];
       fwrite(&rate, sizeof(double), 1, BINOUT);
     }
   }
@@ -174,12 +176,13 @@ write_binary_rates_file_sparse(std::string rates_file,
   double  rate = 0.0;
   for (size_t c = 0; c < sortedMinimaIDs.size(); c++) {
     nextMinID = sortedMinimaIDs[c].first;
-    std::vector<double> rowVector  = R.rowVec(nextMinID);
+    //std::vector<double> rowVector  = R.rowVec(nextMinID);
     size_t              colMinID;
     uint32_t n_not_zero = 0;
     for (uint32_t r = 0; r < sortedMinimaIDs.size(); r++) {
       colMinID  = sortedMinimaIDs[r].first;
-      if(rowVector[colMinID] != 0.0)
+      rate = R.at(nextMinID, colMinID);
+      if(/*rowVector[colMinID]*/ rate != 0.0)
         n_not_zero++;
     }
     if(n_not_zero > 0u){
@@ -190,7 +193,8 @@ write_binary_rates_file_sparse(std::string rates_file,
       //state two and rate-from-to
       for (uint32_t r = 0; r < sortedMinimaIDs.size(); r++) {
         colMinID  = sortedMinimaIDs[r].first;
-        rate      = rowVector[colMinID];
+        //rate      = rowVector[colMinID];
+        rate = R.at(nextMinID, colMinID);
         if(rate != 0.0){
           fwrite(&r, sizeof(uint32_t), 1, BINOUT);
           fwrite(&rate, sizeof(double), 1, BINOUT);
@@ -261,15 +265,15 @@ print_number_of_rates(const biu::MatrixSparseC<double>& R,
 
   size_t  count_rates = 0;
   size_t  nextMinID;
-  size_t  rowMinID;
+  size_t  colMinID;
   double  rate;
   // count only non-empty rates
   for (auto it = minimaMap.begin(); it != minimaMap.end(); it++) {
     nextMinID = it->first;
-    std::vector<double> columnVector = R.columnVec(nextMinID);
+    //std::vector<double> columnVector = R.columnVec(nextMinID);
     for (auto it_r = minimaMap.begin(); it_r != minimaMap.end(); it_r++) {
-      rowMinID  = it_r->first;
-      rate      = columnVector[rowMinID];
+      colMinID  = it_r->first;
+      rate      = R.at(nextMinID, colMinID); //columnVector[colMinID];
       if (rate != 0.0)
         count_rates += 1;
     }
