@@ -9,7 +9,7 @@
 #define SC_PARTITIONFUNCTION_H_
 
 #include <cmath>
-#include <map>
+#include <unordered_map>
 #include <vector>
 #include "StateCollector.h"
 
@@ -94,13 +94,25 @@ getEnergies() const
 typedef std::pair<size_t, size_t> PairID;
 
 
+struct UInt_Pair_Hash {
+  std::uint64_t
+  operator()(const std::pair<std::uint32_t, std::uint32_t>& k) const
+  {
+    std::uint64_t first = k.first;
+    std::uint64_t second = k.second;
+
+    first << 32;
+    first += second;
+    return first;
+  }
+};
 /*!
  * container for all partition functions to generate
  * indices are according to minima container
  * Z(i,i) will hold the basins partition function
  * Z(i,j) will hold the partition function of the saddle points between minimum i and j
  */
-typedef std::map<PairID, SC_PartitionFunction> Z_Matrix;
+typedef std::unordered_map<PairID, SC_PartitionFunction, UInt_Pair_Hash> Z_Matrix;
 
 protected:
 //! variable decides if energies should be stored.
