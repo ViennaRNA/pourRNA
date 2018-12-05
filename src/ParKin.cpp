@@ -133,14 +133,11 @@ getMaximalNeighborsOfAMacroState(SC_PartitionFunction::Z_Matrix& z,
  * @param z the matrix with transition partition functions.
  * @param done_List the list of handled minima.
  * @param minimaForReverseSearch the minima pairs with minID and structure&energy.
- * @param maxNeighNum the maximum number of macrostates is used to normalize the rates.
  * @return the biu::MatrixSparseC<double> RateMatrix.
  */
 biu::MatrixSparseC<double> &
 calculateRateMatrix(SC_PartitionFunction::Z_Matrix& z,
-                    std::unordered_set<size_t>& done_List,
-                    std::unordered_map<size_t, MyState>& minimaForReverseSearch,
-                    size_t maxNeighNum)
+                    std::unordered_set<size_t>& done_List)
 {
   size_t max_size = 0;
   size_t done_id;
@@ -1431,28 +1428,28 @@ main(int  argc,
     << "              --------------THE FINAL RATE MATRIX----------------------- "
     << std::endl;
     // the maximum number of macrostates is used to normalize the rates.
-    size_t                      maxNeighNum = getMaximalNeighborsOfAMacroState(
+    /*
+      size_t                      maxNeighNum = getMaximalNeighborsOfAMacroState(
       z,
       done_List,
       MinimaForReverseSearch);
+      */
     biu::MatrixSparseC<double>  *final_Rate = &calculateRateMatrix(z,
-                                                                   done_List,
-                                                                   MinimaForReverseSearch,
-                                                                   maxNeighNum);
+                                                                   done_List);
 
     // To store the States after applying all the Filtering Techniques
-    std::unordered_map<size_t, MyState>         final_minima;
+    //std::unordered_map<size_t, MyState>         final_minima;
     std::unordered_set<size_t>::const_iterator  fromIt = done_List.begin();
-    for (size_t from = 0; from < done_List.size(); from++, fromIt++) {
+    //for (size_t from = 0; from < done_List.size(); from++, fromIt++) {
       // store minimum with correct index for final rate matrix
       // (from column-state to row-state)
-      final_minima.insert({ *fromIt, MinimaForReverseSearch.at(*fromIt) });
-    }
+    //  final_minima.insert({ *fromIt, MinimaForReverseSearch.at(*fromIt) });
+    //}
 
     std::vector<std::pair<size_t, MyState *> > sortedMinimaIDs;
-    for (auto it = final_minima.begin(); it != final_minima.end(); it++)
+    for (size_t from = 0; from < done_List.size(); from++, fromIt++)
       sortedMinimaIDs.push_back(
-        std::pair<size_t, MyState *>(it->first, (MyState *)&(it->second)));
+        std::pair<size_t, MyState *>(*fromIt, (MyState *)&MinimaForReverseSearch.at(*fromIt)));
 
     std::sort(sortedMinimaIDs.begin(), sortedMinimaIDs.end(), less_second());
 
@@ -1472,13 +1469,13 @@ main(int  argc,
       ptFile
       << "              --------------THE PARTITIONFUNCTION MATRIX----------------------- "
       << std::endl << std::endl;
-      printZMatrixSorted(z, maxNeighNum, sortedMinimaIDs, Minima, ptFile);
+      printZMatrixSorted(z, sortedMinimaIDs, Minima, ptFile);
       ptFile.close();
     }
 
     double partitionFunctionLandscape = 0;
     //get partition Sum for the energy landscape.
-    for (auto it = final_minima.begin(); it != final_minima.end(); it++) {
+    for (auto it = sortedMinimaIDs.begin(); it != sortedMinimaIDs.end(); it++) {
       size_t  minIndex  = it->first;
       partitionFunctionLandscape +=
         z.at(SC_PartitionFunction::PairID(minIndex, minIndex)).getZ();
@@ -1501,7 +1498,7 @@ main(int  argc,
       }
     }
 
-    print_number_of_rates(*final_Rate, final_minima, std::cout);
+    print_number_of_rates(*final_Rate, sortedMinimaIDs, std::cout);
 
     if (!binary_rates_file.empty())
       write_binary_rates_file(binary_rates_file, *final_Rate, sortedMinimaIDs);
@@ -1589,7 +1586,7 @@ main(int  argc,
     free(rnaStructurePT);
     Minima.clear();
     MinimaForReverseSearch.clear();
-    final_minima.clear();
+    //final_minima.clear();
     z.clear();
     if (startStateMinimum != NULL)
       delete startStateMinimum;

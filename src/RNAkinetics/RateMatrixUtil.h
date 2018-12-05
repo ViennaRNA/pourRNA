@@ -91,21 +91,19 @@ write_barriers_like_output(std::string file_prefix,
  */
 void
 print_number_of_rates(const biu::MatrixSparseC<double>& R,
-                      const std::unordered_map<size_t, MyState>& minimaMap,
+                      const std::vector<std::pair<size_t, MyState *> >& minimaMap,
                       std::ostream& out);
 
 
 /**
  * ! print the partitionfunction sparse matrix, sorted.
  * @param z the partitionfunctions.
- * @param maxNeighbors the maximal number of neighbors is used to calculate the correct transition partition sums.
  * @param minima the indices and structures of the minima.
  * @param originalMinima all unfiltered discovered minima with indices that are consistent with the z matrix.
  * @param out the outputstream, default is std::cout.
  */
 void
 printZMatrixSorted(const SC_PartitionFunction::Z_Matrix& z,
-                   size_t maxNeighbors,
                    const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs,
                    const PairHashTable::HashTable& originalMinima,
                    std::ostream& out = std::cout);

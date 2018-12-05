@@ -254,7 +254,7 @@ write_barriers_like_output(std::string file_prefix,
 
 void
 print_number_of_rates(const biu::MatrixSparseC<double>& R,
-                      const std::unordered_map<size_t, MyState>& minimaMap,
+                      const std::vector<std::pair<size_t, MyState *> >& minimaMap,
                       std::ostream& out)
 {
   assertbiu(R.numColumns() == R.numRows(), "R is no square matrix");
@@ -281,15 +281,13 @@ print_number_of_rates(const biu::MatrixSparseC<double>& R,
 
 void
 printZMatrixSorted(const SC_PartitionFunction::Z_Matrix& z,
-                   size_t maxNeighbors,
                    const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs,
                    const PairHashTable::HashTable& originalMinima,
                    std::ostream& out)
 {
   const size_t  LEAD = 6;
 
-  out << std::scientific << "# max. neighbors: " << maxNeighbors
-      << "\n from : to\n";
+  out << "\n from : to\n";
   size_t        nextMinID;
   // print only non-empty rates
   for (size_t c = 0; c < sortedMinimaIDs.size(); c++) {
