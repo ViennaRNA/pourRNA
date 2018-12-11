@@ -46,9 +46,10 @@ public:
  */
 StatePairCollector(size_t                           currentMinID,
                    PairHashTable::HashTable&        minima,
+                   PairHashTable::HashTable_Reverse& id_to_minima,
                    SC_PartitionFunction::Z_Matrix&  z,
                    const size_t                     maxGradWalkHashed,
-                   Concurrent_Queue<MyState>        *discoveredMinima,
+                   Concurrent_Queue<std::uint32_t>        *discoveredMinima,
                    double                           boltzmannWeightTemperature,
                    unsigned int                     move_set,
                    PairHashMap::HashMap&            all_saddles,
@@ -92,6 +93,7 @@ const size_t                    CurMinID;
 double                          BoltzmannWeightTemperature;
 // ! minima map: structure, index.
 PairHashTable::HashTable&       Minima;
+PairHashTable::HashTable_Reverse& ID_to_Minima;
 // ! the partition funcion matrix.
 SC_PartitionFunction::Z_Matrix& Z;
 // ! minimum identification for this state pair
@@ -101,7 +103,7 @@ PairHashTable::HashTable        HandledOuterStates;
 // ! number of states which are not in basin, but in the contactsurface.
 size_t                          NumberOfOuterStates;
 // ! unique minima queue (ready to flood)
-Concurrent_Queue<MyState>       *DiscoveredMinima;
+Concurrent_Queue<std::uint32_t>       *DiscoveredMinima;
 
 char                            *CurrentStructure;
 const char                      *SourceStructure;

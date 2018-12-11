@@ -7,4 +7,4 @@
 
 #include "TypeID.h"
 
-size_t TypeID::counter = 1;
+std::uint32_t TypeID::counter = 0;

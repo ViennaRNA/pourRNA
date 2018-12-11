@@ -25,19 +25,6 @@ extern "C" {
 #include "../PairHashTable.h"
 #include <vector>
 
-/**
- * ! print the rate matrix.
- * @param R the rateMatrix.
- * @param minima the indices and structures of the minima.
- * @param out the outputstream, default is std::cout.
- * @param noZeros defines if zero-rates should be printed or not.
- */
-void
-printRateMatrix(const biu::MatrixSparseC<double>& R,
-                const std::unordered_map<size_t, MyState> & minima,
-                std::ostream & out = std::cout,
-                const bool noZeros = true);
-
 
 /**
  * ! print the rate matrix without zero rates and sorted.
@@ -46,7 +33,7 @@ printRateMatrix(const biu::MatrixSparseC<double>& R,
  * @param out the outputstream, default is std::cout.
  */
 PairHashTable::HashTable *
-printRateMatrixSorted(const biu::MatrixSparseC<double>& R,
+printRateMatrixSorted(const SC_PartitionFunction::SparseMatrix& R,
                       const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs,
                       std::ostream & out = std::cout);
 
@@ -59,7 +46,7 @@ printRateMatrixSorted(const biu::MatrixSparseC<double>& R,
  * @param minima the indices and structures of the minima.
  */
 void write_binary_rates_file(std::string rates_file,
-                             const biu::MatrixSparseC<double>& R,
+                             const SC_PartitionFunction::SparseMatrix& R,
                              const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs);
 
 /**
@@ -71,7 +58,7 @@ void write_binary_rates_file(std::string rates_file,
  * @param minima the indices and structures of the minima.
  */
 void write_binary_rates_file_sparse(std::string rates_file,
-                             const biu::MatrixSparseC<double>& R,
+                             const SC_PartitionFunction::SparseMatrix& R,
                              const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs);
 
 /**
@@ -79,7 +66,7 @@ void write_binary_rates_file_sparse(std::string rates_file,
  */
 void
 write_barriers_like_output(std::string file_prefix,
-                        const biu::MatrixSparseC<double>& R,
+                        const SC_PartitionFunction::SparseMatrix& R,
                         const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs,
                         std::string sequence);
 
@@ -90,7 +77,7 @@ write_barriers_like_output(std::string file_prefix,
  * @param out the outputstream, default is std::cout.
  */
 void
-print_number_of_rates(const biu::MatrixSparseC<double>& R,
+print_number_of_rates(const SC_PartitionFunction::SparseMatrix& R,
                       const std::vector<std::pair<size_t, MyState *> >& minimaMap,
                       std::ostream& out);
 

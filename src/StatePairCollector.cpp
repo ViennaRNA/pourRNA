@@ -6,19 +6,21 @@
  */
 
 #include "StatePairCollector.h"
+#include "TypeID.h"
 
 StatePairCollector::StatePairCollector(size_t                           currentMinID,
                                        PairHashTable::HashTable&        minima,
+                                       PairHashTable::HashTable_Reverse& id_to_minima,
                                        SC_PartitionFunction::Z_Matrix&  z,
                                        const size_t                     maxGradWalkHashed,
-                                       Concurrent_Queue<MyState>        *discoveredMinima,
+                                       Concurrent_Queue<std::uint32_t>        *discoveredMinima,
                                        double                           boltzmannWeightTemperature,
                                        unsigned int                     move_set,
                                        PairHashMap::HashMap&            all_saddles,
                                        const char                       *sourceStructure,
                                        const char                       *targetStructure,
                                        int                              maxBPdist) :
-  CurMinID(currentMinID), Minima(minima), Z(z), GradWalk(
+  CurMinID(currentMinID), Minima(minima), ID_to_Minima(id_to_minima), Z(z), GradWalk(
     move_set, maxGradWalkHashed), NumberOfOuterStates(0), DiscoveredMinima(
     discoveredMinima), BoltzmannWeightTemperature(
     boltzmannWeightTemperature), All_Saddles(all_saddles),
@@ -45,11 +47,11 @@ StatePairCollector::add(vrna_fold_compound_t  *vc,
                         bool                  firstIsSmaller)
 {
   // int minimumEnergy = move_gradient (RNAsequence, structurePairTable, s0, s1, 0, 0, 0);
-  size_t                                    neighborMinID = -1;
+  std::uint32_t                                    neighborMinID = -1;
   MyState                                   *newMin       = GradWalk.walk(vc, *state2);
 
   // search for newMin
-  PairHashTable::HashTable::const_iterator  minEntry = Minima.find(*newMin);
+  auto  minEntry = Minima.find(*newMin);
 
   // search in black list
   HashSet::UnorderedHashSet::const_iterator badMin = MininaToIgnore.find(*newMin);
@@ -77,40 +79,47 @@ StatePairCollector::add(vrna_fold_compound_t  *vc,
     }
 
     //If the min does not exist, create a new index and add it.
-    neighborMinID = Minima.size();
-    Minima.insert({ MyState(*newMin), neighborMinID });
+    std::unique_lock<std::mutex>  mlock(mutex_);
+    neighborMinID = TypeID::value(); //Minima.size();
+    mlock.unlock();
+    cond_.notify_one();
+
+    Minima[(*newMin)] = neighborMinID;
+    if(ID_to_Minima.find(neighborMinID) == ID_to_Minima.end())
+      ID_to_Minima[neighborMinID] = (*newMin);
 
     //report discovered min.
     if (DiscoveredMinima != NULL)
-      DiscoveredMinima->push((*newMin));
+      DiscoveredMinima->push(neighborMinID);
 
-    //add the first saddle for this new minimum
-    if(&All_Saddles != NULL){
-      MyState                       *a          = current_min->clone();
-      MyState                       *b          = newMin->clone();
-      std::pair<MyState, MyState>   state_pair  = std::pair<MyState, MyState>({ *a, *b });
-
-      std::unique_lock<std::mutex>  mlock(mutex_);
-      auto                          pair_it = All_Saddles.find(state_pair);
-      if (pair_it == All_Saddles.end()) {
-        std::pair<MyState, MyState> state_pair2 = std::pair<MyState, MyState>({ *b, *a });
-        auto                        pair_it2    = All_Saddles.find(state_pair2);
-        if (pair_it2 == All_Saddles.end()) {
-          // add higher state as saddle
-          if (firstIsSmaller)
-            All_Saddles[state_pair] = MyState(*state2);
-          else
-            All_Saddles[state_pair] = MyState(*state1);
-        }
-      }
-      mlock.unlock();
-      cond_.notify_one();
-      delete a;
-      delete b;
-    }
   } else {
     // get index of newMin in Minima
     neighborMinID = minEntry->second;
+  }
+
+  //add the first saddle for this new minimum
+  if(&All_Saddles != NULL){
+    //MyState                       *a          = current_min->clone();
+    //MyState                       *b          = newMin->clone();
+    std::pair<std::uint32_t, std::uint32_t>   state_pair  = { CurMinID, neighborMinID };
+
+    std::unique_lock<std::mutex>  mlock(mutex_);
+    auto                          pair_it = All_Saddles.find(state_pair);
+    if (pair_it == All_Saddles.end()) {
+      std::pair<std::uint32_t, std::uint32_t> state_pair2 = std::pair<std::uint32_t, std::uint32_t>({ neighborMinID, CurMinID});
+      auto                        pair_it2    = All_Saddles.find(state_pair2);
+      if (pair_it2 == All_Saddles.end()) {
+        // add higher state as saddle
+        if (firstIsSmaller)
+          All_Saddles[state_pair] = MyState(*state2);
+        else
+          All_Saddles[state_pair] = MyState(*state1);
+      }
+    }
+    mlock.unlock();
+    cond_.notify_one();
+    //delete a;
+    //delete b;
   }
 
   //now we should free the memory of newMin, because it already exists in the minima list.
@@ -119,7 +128,7 @@ StatePairCollector::add(vrna_fold_compound_t  *vc,
   SC_PartitionFunction::PairID              pairID = {
     CurMinID, neighborMinID
   };
-  SC_PartitionFunction::Z_Matrix::iterator  zIt = Z.find(pairID);
+  auto  zIt = Z.find(pairID);
   if (zIt == Z.end())
     // vc->params->temperature is in Celsius.
     Z[pairID].initialize(vc->params->temperature);

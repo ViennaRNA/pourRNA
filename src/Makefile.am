@@ -30,6 +30,8 @@ parKin_SOURCES =	${GENGETOPT_CMDL} \
 					BIUlibPart/assertbiu.hh \
 					BIUlibPart/MatrixSparse.hh \
 					BIUlibPart/MatrixSparse.icc \
+					SC_PartitionFunction.h \
+                    SC_PartitionFunction.cpp \
 					RNAkinetics/RateMatrixUtil.h \
 					RNAkinetics/RateMatrixUtil.cpp \
 					RNAkinetics/RNA_NeighMinFilter.h \
@@ -49,8 +51,6 @@ parKin_SOURCES =	${GENGETOPT_CMDL} \
 					PairHashTable.h \
 					Concurrent_Pair_Hash_Map.h \
 					PairHashMap.h \
-                    SC_PartitionFunction.h \
-                    SC_PartitionFunction.cpp \
                     SC_DotPlot.h \
                     SC_DotPlot.cpp \
 				    StateCollector.h \
