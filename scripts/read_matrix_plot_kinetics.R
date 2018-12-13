@@ -47,7 +47,7 @@ read_sparse_binary_rate_matrix <- function(rate_matrix_file) {
 
 rate_matrix = read_sparse_binary_rate_matrix(fileNameMatrix)
 #rate_matrix
-
+print("read matrix")
 #structures=read.table(fileNameStructures, stringsAsFactors=FALSE, skip=1)
 #structures=structures[,2]
 #structures
@@ -66,13 +66,17 @@ for(i in 1:n){
 
 ev=eigen(Q)
 eValues=ev$val
-eValues
+#eValues
 eVectorsL=ev$vec
-eValues
-eVectorsL
+#eValues
+#eVectorsL
+
+print("eigenvalues computed")
 
 eVectorsR=t(solve(ev$vec))
-eVectorsR
+#eVectorsR
+
+print("eigenvectors computed")
 
 ## initial distribution
 p0 <- rep(0, 1, n)
