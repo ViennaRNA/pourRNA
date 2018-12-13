@@ -75,7 +75,7 @@ if __name__ == "__main__":
     parser.add_argument("-i", "--index_from", action="store", type=int, required=False, help="Index from.")
     parser.add_argument("-j", "--index_to", action="store", type=int, required=False, help="Index to.")
     parser.add_argument("-d", "--structure_index_file", type=str, required=False, help="File with two structures, for which the min max saddle is computed.")
-    parser.add_argument("-p", "--plot", type=str, required=False, help="Create Path Plot.")
+    parser.add_argument("-p", "--plot", action='store_true', required=False, help="Create Path Plot.")
     args = parser.parse_args()
     paths_graph, min_saddle, struct_id_energy_dict = read_saddle_csv_file(args.file)
     
@@ -132,25 +132,33 @@ if __name__ == "__main__":
     print(path_from_saddle_to)
     #print([ (struct_id_energy_dict[x], distances[x] + min_saddle - 1) for x in sp])
     
-    path_indices = [ x for x in range(1, len(path_from_saddle_to)+1)]
+    if (args.plot):
+        path_indices = [ x for x in range(1, len(path_from_saddle_to)+1)]
+        
+        all_lines = []
+        lines, = plt.plot(path_indices, path_from_saddle_to, label="Structure Energies", linewidth=1, color = "black", marker=".")
+        all_lines.append(lines)
+        path_labels = []
+        for x in path_indices[1:-1]:
+            if x % 5 == 0:
+                path_labels.append(x)
+            else:
+                path_labels.append('')
+        path_labels = [path_indices[0]] + path_labels + [path_indices[-1]]
+        plt.xticks(path_indices, path_labels)
+        #leg = plt.legend(handles=all_lines, fontsize = 'medium')
+        #leg_texts = leg.get_texts()
     
-    all_lines = []
-    lines, = plt.plot(path_indices, path_from_saddle_to, label="Structure Energies", linewidth=1, color = "black", marker=".")
-    all_lines.append(lines)
-    plt.xticks(path_indices)
-    #leg = plt.legend(handles=all_lines, fontsize = 'medium')
-    #leg_texts = leg.get_texts()
-
-    #plt.setp(lines, color='r', linewidth=2.0)
-    #ax = plt.axes()
-    #ax.set_xscale("log", nonposx='clip')
-    #ax.set_yscale("log")
-    plt.xlabel('Structures along Optimal Path')
-    plt.ylabel('Energy [kcal/mol]') 
-    plt.grid(True)
-    res_file="./refolding_path.pdf"
-    plt.savefig(res_file)
-    plt.clf()
+        #plt.setp(lines, color='r', linewidth=2.0)
+        #ax = plt.axes()
+        #ax.set_xscale("log", nonposx='clip')
+        #ax.set_yscale("log")
+        plt.xlabel('Structures along Optimal Path')
+        plt.ylabel('Energy [kcal/mol]') 
+        plt.grid(True)
+        res_file="./refolding_path.pdf"
+        plt.savefig(res_file)
+        plt.clf()
         
     
     
