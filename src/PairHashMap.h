@@ -31,7 +31,6 @@ class PairHashMap
 {
 public:
 
- /*
 struct PairMapHash {
   std::uint64_t
   operator()(const std::pair<MyState, MyState>& k) const
@@ -58,37 +57,8 @@ struct PairMapEqual {
            StructureUtils::IsEqual(lhs.second.structure, rhs.second.structure);
   }
 };
-typedef Concurrent_Pair_Hash_Map<std::pair<MyState, MyState>, MyState, PairMapHash, PairMapEqual> HashMapStates;
-*/
-
-
-struct PairMapHash_uint32 {
-  std::uint64_t
-  operator()(const std::pair<std::uint32_t, std::uint32_t>& k) const
-  {
-    // std::string keyStructure = k.toString();
-    // return std::hash<std::string> () (keyStructure);
-    std::uint64_t first = k.first;
-    std::uint64_t second = k.second;
-
-    first << 32;
-    first += second;
-    return first;
-  }
-};
-
-struct PairMapEqual_uint32 {
-  bool
-  operator()(const std::pair<std::uint32_t, std::uint32_t>& lhs,
-             const std::pair<std::uint32_t, std::uint32_t>& rhs) const
-  {
-    return (lhs.first == rhs.first) &&
-           (lhs.second == rhs.second);
-  }
-};
-
-typedef Concurrent_Pair_Hash_Map<std::pair<std::uint32_t,
-    std::uint32_t>, MyState, PairMapHash_uint32, PairMapEqual_uint32> HashMap;
+typedef Concurrent_Pair_Hash_Map<std::pair<MyState,
+                                           MyState>, MyState, PairMapHash, PairMapEqual> HashMap;
 };
 
 

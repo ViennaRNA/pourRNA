@@ -38,7 +38,6 @@ extern "C" {
 #include <ViennaRNA/neighbor.h>
 }
 #include "BIUlibPart/MatrixSparse.hh"
-#include "SC_PartitionFunction.h"
 #include "RNAkinetics/RateMatrixUtil.h"
 #include "RNAkinetics/RNA_NeighMinFilter.h"
 #include "Flooder.h"
@@ -136,37 +135,29 @@ getMaximalNeighborsOfAMacroState(SC_PartitionFunction::Z_Matrix& z,
  * @param minimaForReverseSearch the minima pairs with minID and structure&energy.
  * @return the biu::MatrixSparseC<double> RateMatrix.
  */
-SC_PartitionFunction::SparseMatrix &
+biu::MatrixSparseC<double> &
 calculateRateMatrix(SC_PartitionFunction::Z_Matrix& z,
                     std::unordered_set<size_t>& done_List)
 {
-
-  std::uint32_t max_size = 0;
-  std::uint32_t done_id;
+  size_t max_size = 0;
+  size_t done_id;
   for (auto done_it = done_List.begin(); done_it != done_List.end(); done_it++) {
     done_id = *done_it;
     if(done_id > max_size)
       max_size = done_id;
   }
   max_size++;
-  /*
-  std::uint32_t min_ids[done_List.size()];
-  std::uint32_t i=0;
-  for (auto done_it = done_List.begin(); done_it != done_List.end(); done_it++, i++) {
-    done_id = *done_it;
-    min_ids[i] = done_id;
-  }
-*/
-  SC_PartitionFunction::SparseMatrix&                 final_Rate = *new SC_PartitionFunction::SparseMatrix(max_size, max_size, 0.0); //biu::MatrixSparseC<double>(max_size, max_size, 0.0);
+  biu::MatrixSparseC<double>&                 final_Rate = *new biu::MatrixSparseC<double>(
+      max_size, max_size, 0.0);
   // iterate through all elements of done List to produce the final rate matrix
   std::unordered_set<size_t>::const_iterator  toIt;//    = done_List.begin();
   std::unordered_set<size_t>::const_iterator  fromIt  = done_List.begin();
-  for (std::uint32_t from = 0; from < done_List.size(); from++, fromIt++ ) {
+  for (size_t from = 0; from < done_List.size(); from++, fromIt++) {
     // copy according rates
-    std::uint32_t  fromOrig = *fromIt;
+    size_t  fromOrig = *fromIt;
     toIt = std::next(fromIt, 1); //done_List.begin();
-    for (std::uint32_t to = from + 1; to < done_List.size(); to++ , toIt++) {
-      std::uint32_t toOrig = *toIt;
+    for (size_t to = from + 1; to < done_List.size(); to++, toIt++) {
+      size_t toOrig = *toIt;
       // copy non-diagonal entries
       //if (toOrig != fromOrig) {
         //compute the rate from row-state two column-state
@@ -240,7 +231,7 @@ struct flooderInputParameter {
   size_t                    BasinID;
   MyState                   *CurrentMinimum;
   NeighMinFilter            *Filter;
-  Concurrent_Queue<std::uint32_t> *DiscoveredMinima;
+  Concurrent_Queue<MyState> *DiscoveredMinima;
   double                    TemperatureForBoltzmannWeight;
   unsigned int              Move_set;
   PairHashMap::HashMap      *All_Saddles;
@@ -265,11 +256,10 @@ struct flooderOutputAnylse {
 
 struct flooderOutputParameter {
   // ! All neighbored minima.
-  PairHashTable::HashTable*        LocalThreadMinima;
-  PairHashTable::HashTable_Reverse*        ID_to_Minima;
+  PairHashTable::HashTable        LocalThreadMinima;
   // ! Only the indices are filtered.
   std::vector<size_t>             IndicesOfFilteredMinima;
-  SC_PartitionFunction::Z_Matrix*  PartitionFunctions;
+  SC_PartitionFunction::Z_Matrix  PartitionFunctions;
   SC_PartitionFunction            *ScBasin;
   flooderOutputAnylse             Analysis;
   ~flooderOutputParameter()
@@ -294,22 +284,21 @@ floodBasin(vrna_fold_compound_t   *vc,
   size_t                    loopCurrentMinID = inParameter->BasinID;
 
   PairHashTable::HashTable& localThreadMinima =
-    *outParameter->LocalThreadMinima;
+    outParameter->LocalThreadMinima;
   // initializing set, which contains the NEighbors indices  of current state
-  size_t                    loopCurrentLocalMinID = loopCurrentMinID; // 0;
+  size_t                    loopCurrentLocalMinID = 0;
 
   MyState                   *minState = new MyState(*inParameter->CurrentMinimum);
 
   //set local id to zero because of the statePairCollector id-assign-method.
-  MyState insertState = MyState(*minState);
-  localThreadMinima[insertState] =  loopCurrentLocalMinID;
+
+  localThreadMinima.insert({ *minState, loopCurrentLocalMinID });
 
   // start walking and computing the Partition Function
-  PairHashTable::HashTable_Reverse& id_to_minima = *outParameter->ID_to_Minima;
+
   // creating the StatePaircollector to manage the state of Pairs between the neighbor basins
   StatePairCollector spc(loopCurrentLocalMinID, localThreadMinima,
-                         id_to_minima,
-                         *outParameter->PartitionFunctions, inParameter->MaxToHash,
+                         outParameter->PartitionFunctions, inParameter->MaxToHash,
                          inParameter->DiscoveredMinima,
                          inParameter->TemperatureForBoltzmannWeight,
                          inParameter->Move_set,
@@ -329,10 +318,10 @@ floodBasin(vrna_fold_compound_t   *vc,
   // SC_PartitionFunction scBasin;
   myFlooder.floodBasin(vc, *minState, outParameter->ScBasin, &spc);
 
-  auto x_pair_id = SC_PartitionFunction::PairID(loopCurrentLocalMinID,
-      loopCurrentLocalMinID);
-  //auto x_pf = ;
-  (*outParameter->PartitionFunctions)[x_pair_id] = *outParameter->ScBasin;
+  outParameter->PartitionFunctions.insert(
+    std::pair<SC_PartitionFunction::PairID, SC_PartitionFunction>(
+      SC_PartitionFunction::PairID(loopCurrentLocalMinID,
+                                   loopCurrentLocalMinID), *outParameter->ScBasin));
 
   for (auto it = localThreadMinima.begin(); it != localThreadMinima.end();
        it++) {
@@ -343,7 +332,7 @@ floodBasin(vrna_fold_compound_t   *vc,
 
   if (inParameter->Filter != NULL) {
     inParameter->Filter->filter(localThreadMinima,
-                                *outParameter->PartitionFunctions, loopCurrentLocalMinID,
+                                outParameter->PartitionFunctions, loopCurrentLocalMinID,
                                 *minState, outParameter->IndicesOfFilteredMinima);
   }
 
@@ -406,7 +395,7 @@ merge_results(std::vector<std::pair<flooderInputParameter *,
               bool writeDotplot,
               SC_DotPlot::DotPlot &dotplot,
               PairHashTable::HashTable &Minima,
-              PairHashTable::HashTable_Reverse &MinimaForReverseSearch,
+              std::unordered_map<size_t, MyState> &MinimaForReverseSearch,
               SC_PartitionFunction::Z_Matrix &z,
               bool dynamicBestK,
               std::unordered_map<size_t, std::vector<size_t> > &dynamicBestKFilterNeighborList,
@@ -437,7 +426,7 @@ merge_results(std::vector<std::pair<flooderInputParameter *,
       std::cout << "Processed States by flooding: "
                 << outParameter->Analysis.ProcessedStates << std::endl;
     }
-/*
+
     if (logEnergies) {
       if (addedMinIDs.find(inParameter->BasinID) == addedMinIDs.end()) {
         addedMinIDs.insert(inParameter->BasinID);
@@ -465,10 +454,9 @@ merge_results(std::vector<std::pair<flooderInputParameter *,
           dotplot[it->first] = it->second;
       }
     }
-*/
-    /*
+
     PairHashTable::HashTable&           localThreadMinima =
-      *outParameter->LocalThreadMinima;
+      outParameter->LocalThreadMinima;
     size_t                              loopCurrentMinID = inParameter->BasinID;
 
     //add localMinima to total minima and adjust indices in localPartitionfunctions
@@ -484,29 +472,21 @@ merge_results(std::vector<std::pair<flooderInputParameter *,
       if (Minima.find(localThreadMin) == Minima.end()) {
         //if local min is not in total list.
         //add new min and set lowest maximal index.
-        std::uint32_t lowestMaxIndex = TypeID::value();
+        size_t lowestMaxIndex = TypeID::value<size_t>();
 
-        MyState toAdd = MyState(localThreadMin);
-        Minima[toAdd] = lowestMaxIndex;
-        MinimaForReverseSearch[lowestMaxIndex] = toAdd;
+        Minima.insert({ MyState(localThreadMin), lowestMaxIndex });
+        MinimaForReverseSearch.insert({ lowestMaxIndex,
+                                        MyState(localThreadMin) });
       }
-      else{
-        // add again just in case.
-        if(MinimaForReverseSearch.find(minIt->second) == MinimaForReverseSearch.end())
-          MinimaForReverseSearch[minIt->second] = MyState(localThreadMin);
-      }
-      std::uint32_t newIndex = Minima.at((MyState&)localThreadMin);
+
+      size_t newIndex = Minima.at(localThreadMin);
 
       //assingn total id to localID.
       mapOldIndexToNewIndex.insert({ oldIndex, newIndex });
     }
-*/
-    /*
-     * TODO: add a local minima index in order to do the k-best and neighbor filter
-     *       with asynchronous parallelization. --> has to be applied in State pair Collector (see DiscoveredMinima variable)!!!
-     *
+
     SC_PartitionFunction::Z_Matrix& localZ =
-      *outParameter->PartitionFunctions;
+      outParameter->PartitionFunctions;
     //adjust index in partitionfunction z.
     for (auto it = localZ.begin(); it != localZ.end(); it++) {
       auto new_first_index_it = mapOldIndexToNewIndex.find(it->first.first);
@@ -520,10 +500,9 @@ merge_results(std::vector<std::pair<flooderInputParameter *,
         SC_PartitionFunction::PairID  localPairID =
           SC_PartitionFunction::PairID(newFirstIndex,
                                        newSecondIndex);
-        z[localPairID]  = it->second;
+        z.insert({ localPairID, it->second });
       }
     }
-
 
     //fill dynamic Best-k filter list.
     if (dynamicBestK) {
@@ -552,28 +531,23 @@ merge_results(std::vector<std::pair<flooderInputParameter *,
                                                 allNeighboredMinima });
       }
     }
-    */
 
-    /*
     //  add all neighbored minima not part of DONE list to toDO_list
     for (size_t i = 0; i < outParameter->IndicesOfFilteredMinima.size(); i++) {
-      auto filt_min_it = mapOldIndexToNewIndex.find(
-              outParameter->IndicesOfFilteredMinima.at(i));
-      if(filt_min_it != mapOldIndexToNewIndex.end()){
-        size_t index = filt_min_it->second;
-        // if the element at the index position is not already in done List, add it to toDo_list
-        if (done_List.find(index) == done_List.end()
-            && std::find(toDo_List.begin(), toDo_List.end(), index)
-            == toDo_List.end())
-          toDo_List.push_back(index);
-      }
+      size_t index = mapOldIndexToNewIndex.at(
+        outParameter->IndicesOfFilteredMinima.at(i));
+      // if the element at the index position is not already in done List, add it to toDo_list
+      if (done_List.find(index) == done_List.end()
+          && std::find(toDo_List.begin(), toDo_List.end(), index)
+          == toDo_List.end())
+        toDo_List.push_back(index);
     } // end for
 
     //clean up (thread specific minima lists)
-    //localThreadMinima.clear();
+    localThreadMinima.clear();
     mapOldIndexToNewIndex.clear();
-    //localZ.clear();
-*/
+    localZ.clear();
+
     delete inParameter;
     delete outParameter;
   } //end merge results.
@@ -705,7 +679,7 @@ main(int  argc,
   if (ParKin_cmdline_parser(argc, argv, &args_info) != 0)
     exit(1);
 
-  //try {
+  try {
     // parse sequence
     std::string rnaSequence = "";
     if (!args_info.seq_given) {
@@ -773,7 +747,7 @@ main(int  argc,
 
     // set of all minima found so far
     PairHashTable::HashTable            Minima;
-    PairHashTable::HashTable_Reverse MinimaForReverseSearch;
+    std::unordered_map<size_t, MyState> MinimaForReverseSearch;
 
     // set best K filter if required
     if (args_info.filterBestK_given) {
@@ -1058,10 +1032,9 @@ main(int  argc,
     }
 
     // add current minimum to set of minima and store its index
-    std::uint32_t                  currentMinID = TypeID::value();
-    MyState toAdd = MyState(*startStateMinimum);
-    Minima[toAdd] = currentMinID;
-    MinimaForReverseSearch[currentMinID] =  toAdd;
+    size_t                  currentMinID = TypeID::value<size_t>();
+    Minima.insert({ MyState(*startStateMinimum), currentMinID });
+    MinimaForReverseSearch.insert({ currentMinID, MyState(*startStateMinimum) });
 
     ///// for tests only -> write file with all Energies ///
     std::unordered_set<size_t> addedMinIDs;
@@ -1108,10 +1081,9 @@ main(int  argc,
             }
         }
         if(allow_min){
-          std::uint32_t min_id_from_list = TypeID::value();
-          MyState toAdd = MyState(*start_struct_min);
-          Minima[toAdd] = min_id_from_list;
-          MinimaForReverseSearch[min_id_from_list] = toAdd;
+          size_t min_id_from_list = TypeID::value<size_t>();
+          Minima.insert({ MyState(*start_struct_min), min_id_from_list });
+          MinimaForReverseSearch.insert({ min_id_from_list, MyState(*start_struct_min) });
           toDo_List.push_back(min_id_from_list);
         }
       }
@@ -1161,7 +1133,7 @@ main(int  argc,
         std::vector<
           std::pair<flooderInputParameter *,
                     flooderOutputParameter *> > threadParameterLists[maxThreads];
-        Concurrent_Queue<std::uint32_t>               discoveredMinimaForEachThread[maxThreads];
+        Concurrent_Queue<MyState>               discoveredMinimaForEachThread[maxThreads];
 
         std::future<int>                        v[maxThreads];
 
@@ -1190,66 +1162,51 @@ main(int  argc,
               if(!finalStructureFound){
                 //test if new discovered minima are on the stack (pull all available minima)
                 //TODO: warning! This kind of asynchronous flooding disables some Filter Options.
-                //if (!enableBestKFilter && !enableDeltaMinEFilter) {
+                if (!enableBestKFilter && !enableDeltaMinEFilter) {
                   while (!discoveredMinimaForEachThread[index].empty()) {
-                    std::uint32_t newMin =
+                    MyState newMin =
                       discoveredMinimaForEachThread[index].pop();
 
+                    //start flooding.
+                    if (Minima.find(newMin) == Minima.end()) {
+                      //if local min is not in total list.
+                      //add new min and set lowest maximal index.
+                      size_t lowestMaxIndex = TypeID::value<
+                        size_t>();
+
+                      Minima.insert(
+                        { newMin, lowestMaxIndex });
+                      MinimaForReverseSearch.insert({
+                                                      lowestMaxIndex, newMin
+                                                    });
+
                       // if the element at the index position is not already in done List, add it to toDo_list
-                      if (done_List.find(newMin)
+                      if (done_List.find(lowestMaxIndex)
                           == done_List.end()
                           && std::find(toDo_List.begin(),
                                        toDo_List.end(),
-                                       newMin)
+                                       lowestMaxIndex)
                           == toDo_List.end())
-                        toDo_List.push_back(newMin);
+                        toDo_List.push_back(lowestMaxIndex);
+                    }
+
                     //discoveredMinimaForEachThread[index].pop_front();
                   }
-                //}
+                }
               }
             } else {
               //finished -> merge result and create a new thread
-
-              while (!discoveredMinimaForEachThread[index].empty()) {
-                  std::uint32_t newMin =
-                    discoveredMinimaForEachThread[index].pop();
-                    // if the element at the index position is not already in done List, add it to toDo_list
-                    if (done_List.find(newMin)
-                        == done_List.end()
-                        && std::find(toDo_List.begin(),
-                                     toDo_List.end(),
-                                     newMin)
-                        == toDo_List.end())
-                      toDo_List.push_back(newMin);
-                  //discoveredMinimaForEachThread[index].pop_front();
-              }
-
               std::vector<
                 std::pair<flooderInputParameter *,
                           flooderOutputParameter *> > *threadParameter =
                 &threadParameterLists[index];
               if (threadParameter->size() > 0) {
-
-                /*
                 merge_results(threadParameter, logEnergies,
                               energyFile, addedMinIDs, writeDotplot,
                               dotplot, Minima, MinimaForReverseSearch,
                               z, dynamicBestK,
                               dynamicBestKFilterNeighborList,
                               toDo_List, done_List, verbose);
-                              */
-                for (int k = 0; k < threadParameter->size(); ++k) {
-                  std::pair<flooderInputParameter *, flooderOutputParameter *>  *bothParameter;
-                  bothParameter = &threadParameter->at(k);
-
-                  flooderInputParameter                                         *inParameter =
-                    bothParameter->first;
-                  flooderOutputParameter                                        *outParameter =
-                    bothParameter->second;
-                  delete inParameter;
-                  delete outParameter;
-                }
-
 
                 threadParameter->clear();
               }
@@ -1297,14 +1254,8 @@ main(int  argc,
                   flooderInputParameter *inParameter =
                     new flooderInputParameter();
                   inParameter->BasinID        = minID;
-                  auto it_min = MinimaForReverseSearch.find(minID);
-                  if(it_min != MinimaForReverseSearch.end()){
                   inParameter->CurrentMinimum =
-                    new MyState(it_min->second);
-                  }
-                  else{
-                    fprintf(stderr, "Error: Minimum ID %ld could not be found!\n", minID);
-                  }
+                    new MyState(MinimaForReverseSearch.at(minID));
                   inParameter->MaxToHash        = maxToHash;
                   inParameter->MaxToQueue       = maxToQueue;
                   inParameter->Filter           = neighborFilter;
@@ -1325,9 +1276,7 @@ main(int  argc,
 
                   flooderOutputParameter *outParameter =
                     new flooderOutputParameter();
-                  outParameter->PartitionFunctions = &z;
-                  outParameter->LocalThreadMinima = &Minima;
-                  outParameter->ID_to_Minima = &MinimaForReverseSearch;
+
                   // check what state collector to instantiate
                   if (writeDotplot) {
                     outParameter->ScBasin = new SC_DotPlot(
@@ -1372,9 +1321,8 @@ main(int  argc,
       short *mfeStructurePT = vrna_ptable(mfeStructure);
       for (auto doneIt = done_List.begin(); doneIt != done_List.end();
            ++doneIt) {
-        std::uint32_t min_id = *doneIt;
         if (StructureUtils::IsEqual(
-              MinimaForReverseSearch[min_id].structure,
+              MinimaForReverseSearch[*doneIt].structure,
               mfeStructurePT)) {
           mfeFound = true;
           break;
@@ -1444,37 +1392,36 @@ main(int  argc,
 
     std::cout << std::endl;
     int         structure_length  = strlen(mfeStructure) + 1;
-    std::string out_tmp = std::string("MFE structure: ");
-    printf("%s", out_tmp.c_str());
+    std::string out               = "MFE structure: ";
+    printf("%s", out.c_str());
     int         offset          = 31;
-    int         padding_length  = offset - out_tmp.length(); //structure_length - out.length();
+    int         padding_length  = offset - out.length(); //structure_length - out.length();
     std::string pad             = std::string(padding_length, ' ');
     printf("%s%s\n", pad.c_str(), mfeStructure);
-    out_tmp = std::string("The start state is: ");
-    printf("%s", out_tmp.c_str());
-    padding_length  = offset - out_tmp.length();
+    out = "The start state is: ";
+    printf("%s", out.c_str());
+    padding_length  = offset - out.length();
     pad             = std::string(padding_length, ' ');
     printf("%s%s\n", pad.c_str(), rna_start_str.c_str());
-    out_tmp = std::string("The start state ends in basin: ");
-    printf("%s", out_tmp.c_str());
-    padding_length  = offset - out_tmp.length();
+    out = "The start state ends in basin: ";
+    printf("%s", out.c_str());
+    padding_length  = offset - out.length();
     pad             = std::string(padding_length, ' ');
     printf("%s%s\n", pad.c_str(), startStructureMinimum);
-    out_tmp = std::string("The final state is: ");
-    printf("%s", out_tmp.c_str());
-    padding_length  = offset - out_tmp.length();
+    out = "The final state is: ";
+    printf("%s", out.c_str());
+    padding_length  = offset - out.length();
     pad             = std::string(padding_length, ' ');
     printf("%s%s\n", pad.c_str(), rna_final_str.c_str());
-    out_tmp = std::string("The final minimum is: ");
-    printf("%s", out_tmp.c_str());
+    out = "The final minimum is: ";
+    printf("%s", out.c_str());
     if (endStructureMinimum != NULL) {
-      padding_length  = offset - out_tmp.length();
+      padding_length  = offset - out.length();
       pad             = std::string(padding_length, ' ');
       printf("%s%s\n", pad.c_str(), endStructureMinimum);
     } else {
       printf("\n");
     }
-
 
     printf("Number of minima: %ld\n", done_List.size());
 
@@ -1491,13 +1438,9 @@ main(int  argc,
       done_List,
       MinimaForReverseSearch);
       */
-    SC_PartitionFunction::SparseMatrix& final_Rate = calculateRateMatrix(z,
+    biu::MatrixSparseC<double>&  final_Rate = calculateRateMatrix(z,
                                                                    done_List);
 
-    if(args_info.skip_rates_given)
-    {
-      exit(101);
-    }
     // To store the States after applying all the Filtering Techniques
     //std::unordered_map<size_t, MyState>         final_minima;
     std::unordered_set<size_t>::const_iterator  fromIt = done_List.begin();
@@ -1508,16 +1451,14 @@ main(int  argc,
     //}
 
     std::vector<std::pair<size_t, MyState *> > sortedMinimaIDs;
-    for (size_t from = 0; from < done_List.size(); from++, fromIt++){
-      std::uint32_t min_id = *fromIt;
+    for (size_t from = 0; from < done_List.size(); from++, fromIt++)
       sortedMinimaIDs.push_back(
-        std::pair<size_t, MyState *>(*fromIt, (MyState *)&MinimaForReverseSearch.at(min_id)));
-    }
+        std::pair<size_t, MyState *>(*fromIt, (MyState *)&MinimaForReverseSearch.at(*fromIt)));
+
     std::sort(sortedMinimaIDs.begin(), sortedMinimaIDs.end(), less_second());
 
     // Print the Final rate matrix of the States in Final minima set.
     // printRateMatrix (*final_Rate, final_minima, *transOut, true);
-    //if(!args_info.skip_rates_given)
     PairHashTable::HashTable *sorted_min_and_output_ids = printRateMatrixSorted(final_Rate,
                                                                                 sortedMinimaIDs,
                                                                                 *transOut);
@@ -1540,9 +1481,8 @@ main(int  argc,
     //get partition Sum for the energy landscape.
     for (auto it = sortedMinimaIDs.begin(); it != sortedMinimaIDs.end(); it++) {
       size_t  minIndex  = it->first;
-      auto self_id = SC_PartitionFunction::PairID(minIndex, minIndex);
       partitionFunctionLandscape +=
-        z.at(self_id).getZ();
+        z.at(SC_PartitionFunction::PairID(minIndex, minIndex)).getZ();
     }
     std::cout << "The overall partition function is: "
               << partitionFunctionLandscape << std::endl;
@@ -1581,32 +1521,24 @@ main(int  argc,
       fwrite(header.c_str(), sizeof(char), header.length(), saddle_file);
 
       for (auto it = all_saddles.begin(); it != all_saddles.end(); it++) {
-        const std::pair<std::uint32_t, std::uint32_t>&  from_to       = it->first;
+        const std::pair<MyState, MyState>&  from_to       = it->first;
         double                              saddle_height = it->second.energy / 100.0;
-        //printf("all_saddles %d, %d\n", from_to.first, from_to.second);
-
-        auto it_from = MinimaForReverseSearch.find((std::size_t)from_to.first);
-        auto it_to = MinimaForReverseSearch.find((std::size_t)from_to.second);
-        if(it_from != MinimaForReverseSearch.end() && it_to != MinimaForReverseSearch.end()){
-          MyState& s_from = it_from->second;
-          MyState& s_to = it_to->second;
-          std::string                         s1            = s_from.toString();
-          std::string                         s2            = s_to.toString();
-          std::string                         saddle        = it->second.toString();
-          int                                 id_from       = -1;
-          int                                 id_to         = -1;
-          try{
-            id_from = sorted_min_and_output_ids->at(s_from);
-            id_to   = sorted_min_and_output_ids->at(s_to);
-          }catch (std::exception & ex) {
-            // transition cannot exist e.g. if the final structure was reached, before the discovered minima have been flooded.
-            //std::cerr << "\n\n ERORR : " << ex.what() << "\n" << std::endl;
-          }
-          if (id_from != -1 && id_to != -1){
-              std::fprintf(saddle_file,"%d, %s, %.2f, %d, %s, %.2f, %s, %.2f\n", id_from,
-                                    s1.c_str(), s_from.energy / 100.0,
-                                    id_to, s2.c_str(), s_to.energy / 100.0, saddle.c_str(), saddle_height);
-          }
+        std::string                         s1            = from_to.first.toString();
+        std::string                         s2            = from_to.second.toString();
+        std::string                         saddle        = it->second.toString();
+        int                                 id_from       = -1;
+        int                                 id_to         = -1;
+        try{
+          id_from = sorted_min_and_output_ids->at(from_to.first);
+          id_to   = sorted_min_and_output_ids->at(from_to.second);
+        }catch (std::exception & ex) {
+          // transition cannot exist e.g. if the final structure was reached, before the discovered minima have been flooded.
+          //std::cerr << "\n\n ERORR : " << ex.what() << "\n" << std::endl;
+        }
+        if (id_from != -1 && id_to != -1){
+            std::fprintf(saddle_file,"%d, %s, %.2f, %d, %s, %.2f, %s, %.2f\n", id_from,
+                                  s1.c_str(), from_to.first.energy / 100.0,
+                                  id_to, s2.c_str(), from_to.second.energy / 100.0, saddle.c_str(), saddle_height);
         }
       }
       fclose(saddle_file);
@@ -1626,6 +1558,7 @@ main(int  argc,
                                     final_Rate,
                                     sortedMinimaIDs);
     }
+
 
     /***********Garbage collection ************/
     if (startStructureMinimum != NULL)
@@ -1667,12 +1600,11 @@ main(int  argc,
 
     ParKin_cmdline_parser_free(&args_info);
 
-    /*
   } catch (std::exception & ex) {
     std::cerr << "\n\n ERORR : " << ex.what() << "\n" << std::endl;
     return_Value = -1;
   }
-*/
+
 
   //print stopwatch:
   end = std::chrono::system_clock::now();

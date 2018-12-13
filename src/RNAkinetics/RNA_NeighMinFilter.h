@@ -164,7 +164,7 @@ private:
 //! the Z matrix to use for order decisions
 const SC_PartitionFunction::Z_Matrix &  Z;
 //! index of current row in Z to access
-const std::uint32_t                            curRow;
+const size_t                            curRow;
 
 public:
 
@@ -173,7 +173,7 @@ public:
  * @param row the row in the matrix to use
  */
 GreaterByZMatrix (const SC_PartitionFunction::Z_Matrix &Zmatrix,
-                  const std::uint32_t                          row) :
+                  const size_t                          row) :
   Z(Zmatrix), curRow(row)
 {
 }
@@ -187,15 +187,11 @@ GreaterByZMatrix (const SC_PartitionFunction::Z_Matrix &Zmatrix,
  *         false otherwise
  */
 bool
-operator ()(const std::uint32_t  x,
-            const std::uint32_t  y)
+operator ()(const size_t  x,
+            const size_t  y)
 {
-  auto c_to_x = SC_PartitionFunction::PairID((std::uint32_t)curRow, (std::uint32_t)x);
-  auto c_to_y = SC_PartitionFunction::PairID((std::uint32_t)curRow, (std::uint32_t)y);
-  auto pf_cx_it = ((SC_PartitionFunction::Z_Matrix &)Z).find(c_to_x);
-  auto pf_cy_it = ((SC_PartitionFunction::Z_Matrix &)Z).find(c_to_y);
-  double  Zx  = pf_cx_it->second.getZ();
-  double  Zy  = pf_cy_it->second.getZ();
+  double  Zx  = Z.find(SC_PartitionFunction::PairID(curRow, x))->second.getZ();
+  double  Zy  = Z.find(SC_PartitionFunction::PairID(curRow, y))->second.getZ();
 
   return Zx > Zy;
 }

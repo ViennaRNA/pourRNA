@@ -62,13 +62,12 @@ NeighMin_E_Filter::~NeighMin_E_Filter ()
  *   of the Neighbors of the current State using deltaE value.
  */
 void
-NeighMin_E_Filter::filter(const PairHashTable::HashTable &        minimaSet_x,
+NeighMin_E_Filter::filter(const PairHashTable::HashTable &        minimaSet,
                           const SC_PartitionFunction::Z_Matrix &  Z,
                           const size_t                            curMinIndex,
                           const MyState                           currentMin,
                           IndexList &                             indicesToFilter)
 {
-  PairHashTable::HashTable & minimaSet = (PairHashTable::HashTable &)minimaSet_x;
   // create the Temporary Neighbors indices, which will store the Neighbors
   // with energy higher than current state.
   IndexList tempList;

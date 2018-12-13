@@ -9,7 +9,6 @@
 #define TYPEID_H_
 
 #include <cstddef>
-#include <cstdint>
 using namespace std;
 /**
  * ! Assign unique integer IDs.
@@ -17,10 +16,11 @@ using namespace std;
 class TypeID
 {
 public:
-static std::uint32_t counter;
+static size_t counter;
 
 public:
-static std::uint32_t
+template<typename T>
+static size_t
 value()
 {
   return ++counter;

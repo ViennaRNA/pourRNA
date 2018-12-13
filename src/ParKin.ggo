@@ -199,11 +199,6 @@ structure in the upper right triangle and the basin representative in the lower 
 string
 optional
 
-option  "skip-rates" -
-"Skip rate computation and write only saddle output.\n"
-flag
-off
-
 option  "verbose" v
 "Verbose.\n"
 flag

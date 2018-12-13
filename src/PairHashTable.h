@@ -16,7 +16,6 @@
 #include "StructureUtils.h"
 #include "MyState.h"
 #include "SpookyHash/SpookyV2.h"
-#include "Concurrent_Pair_Hash_Map.h"
 /**
  * This class maps a rna-structure (in pairTableFormat (see ViennaRNA-Package)) to an integer.
  */
@@ -42,8 +41,7 @@ struct PairTableEqual {
     return StructureUtils::IsEqual(lhs.structure, rhs.structure);
   }
 };
-typedef Concurrent_Pair_Hash_Map<MyState, std::uint32_t, PairTableHash, PairTableEqual> HashTable;
-typedef Concurrent_Pair_Hash_Map<std::uint32_t, MyState, std::hash<std::uint32_t>, std::equal_to<std::uint32_t>> HashTable_Reverse;
+typedef std::unordered_map<MyState, size_t, PairTableHash, PairTableEqual> HashTable;
 };
 
 class HashSet

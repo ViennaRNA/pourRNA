@@ -12,8 +12,6 @@
 #include <unordered_map>
 #include <vector>
 #include "StateCollector.h"
-#include "Concurrent_Pair_Hash_Map.h"
-#include "BIUlibPart/MatrixSparse.hh"
 
 /**
  * ! This state collector updates the partition function if a state is added.
@@ -83,25 +81,17 @@ getBoltzmannWeight(const MyState & state) const
 }
 
 
-std::vector<int>&
-getEnergies()
+const std::vector<int>&
+getEnergies() const
 {
   return Energies;
-}
-
-inline
-SC_PartitionFunction& operator=(SC_PartitionFunction& x){
-  this->kT = x.kT;
-  this->setZ(x.getZ());
-  this->getEnergies().insert(this->getEnergies().end(), x.getEnergies().begin(), x.getEnergies().end());
-  return *this;
 }
 
 
 /*!
  * index pair
  */
-typedef std::pair<std::uint32_t, std::uint32_t> PairID;
+typedef std::pair<size_t, size_t> PairID;
 
 
 struct UInt_Pair_Hash {
@@ -116,24 +106,13 @@ struct UInt_Pair_Hash {
     return first;
   }
 };
-struct UInt_Pair_Equal {
-    bool
-    operator()(const std::pair<std::uint32_t, std::uint32_t>& lhs,
-               const std::pair<std::uint32_t, std::uint32_t>& rhs) const
-    {
-      return (lhs.first == rhs.first) &&
-             (lhs.second == rhs.second);
-    }
-  };
 /*!
  * container for all partition functions to generate
  * indices are according to minima container
  * Z(i,i) will hold the basins partition function
  * Z(i,j) will hold the partition function of the saddle points between minimum i and j
  */
-typedef Concurrent_Pair_Hash_Map<PairID, SC_PartitionFunction, UInt_Pair_Hash, UInt_Pair_Equal> Z_Matrix;
-//typedef std::unordered_map<SC_PartitionFunction::PairID, double, SC_PartitionFunction::UInt_Pair_Hash, SC_PartitionFunction::UInt_Pair_Equal> SparseMatrix;
-typedef biu::MatrixSparseC<double> SparseMatrix;
+typedef std::unordered_map<PairID, SC_PartitionFunction, UInt_Pair_Hash> Z_Matrix;
 
 protected:
 //! variable decides if energies should be stored.
