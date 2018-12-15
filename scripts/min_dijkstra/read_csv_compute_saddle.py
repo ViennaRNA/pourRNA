@@ -8,6 +8,7 @@ from operator import itemgetter
 import math
 import re
 import matplotlib.pyplot as plt
+import RNA
 
 """
 format: id_from, structure from, energy from, id_to, str. to, energy to, saddle str, saddle energy. 
@@ -15,6 +16,7 @@ format: id_from, structure from, energy from, id_to, str. to, energy to, saddle 
 def read_saddle_csv_file(file):
     paths_dictionary = {}
     struct_id_energy_dict = {}
+    struct_id_structure_dict = {}
     min_saddle = 1000000000
     with open(file, 'r') as f:
         new_index = 0
@@ -30,16 +32,16 @@ def read_saddle_csv_file(file):
                 #    break
                 
                 index_from = match.group(1)
-                #structure_from = match.group(2)
+                structure_from = match.group(2)
                 energy_from = match.group(3)
                 #energy_from = float(energy_from)
                 
                 index_to = match.group(4)
-                #structure_to = match.group(5)
+                structure_to = match.group(5)
                 energy_to = match.group(6)
                 #energy_to = float(energy_to)
                 
-                #structure_saddle = match.group(7)
+                structure_saddle = match.group(7)
                 saddle_energy_kcal = match.group(8)
                 saddle_energy_kcal = float(saddle_energy_kcal)
 
@@ -64,8 +66,13 @@ def read_saddle_csv_file(file):
                 paths_dictionary[index_to][index_from] = saddle_energy_kcal
                 if saddle_energy_kcal < min_saddle:
                     min_saddle = saddle_energy_kcal
+
+                struct_id_structure_dict[(index_to,index_to)] = structure_to
+                struct_id_structure_dict[(index_from,index_from)] = structure_from
+                struct_id_structure_dict[(index_from,index_to)] = structure_saddle
+                struct_id_structure_dict[(index_to,index_from)] = structure_saddle
                 
-    return paths_dictionary, min_saddle, struct_id_energy_dict
+    return paths_dictionary, min_saddle, struct_id_energy_dict, struct_id_structure_dict
 
 if __name__ == "__main__":
     
@@ -76,8 +83,9 @@ if __name__ == "__main__":
     parser.add_argument("-j", "--index_to", action="store", type=int, required=False, help="Index to.")
     parser.add_argument("-d", "--structure_index_file", type=str, required=False, help="File with two structures, for which the min max saddle is computed.")
     parser.add_argument("-p", "--plot", action='store_true', required=False, help="Create Path Plot.")
+    parser.add_argument("-z", "--bpDist_to_final_str", action='store_true', required=False, help="Distance to ground state, else distance to next structure.")
     args = parser.parse_args()
-    paths_graph, min_saddle, struct_id_energy_dict = read_saddle_csv_file(args.file)
+    paths_graph, min_saddle, struct_id_energy_dict, struct_id_structure_dict = read_saddle_csv_file(args.file)
     
     print(paths_graph)
     
@@ -109,12 +117,14 @@ if __name__ == "__main__":
         for v in paths_graph[k].keys():
             paths_graph[k][v] = paths_graph[k][v] - min_saddle + 1
     
+    
     print(ifrom, ito)
     sp, distances = shortestPath(paths_graph, ifrom, ito)
     #sp.reverse()
     #distances.reverse()
     print(sp)
     print(min_saddle)
+    """
     #print([ distances[x] + min_saddle - 1 for x in sp])
     #sp.reverse()
     path_from_saddle_to = []
@@ -122,21 +132,50 @@ if __name__ == "__main__":
         id_from = sp[i]
         e_from = struct_id_energy_dict[id_from]
         path_from_saddle_to.append(float(e_from))
-        #print(id_from, e_from)
         if (i+1 < len(sp)):
             id_to = sp[i+1]
             e_saddle = paths_graph[id_from][id_to] + min_saddle - 1
             path_from_saddle_to.append(float(e_saddle))
-            #print("s", e_saddle)
-            #print(id_to, struct_id_energy_dict[id_to])
     print(path_from_saddle_to)
-    #print([ (struct_id_energy_dict[x], distances[x] + min_saddle - 1) for x in sp])
+    """ 
     
+    ### print path with energies ####
+    f_path = open("refolding_path.txt",'w')
+    RNA.bp_distance("....","(())")
+    path_from_saddle_to = []
+    for i in range(len(sp)):
+        id_from = sp[i]
+        e_from = struct_id_energy_dict[id_from]
+        structure_from = struct_id_structure_dict[(id_from,id_from)]
+        path_from_saddle_to.append([structure_from, float(e_from)])
+        f_path.write(structure_from +" {:.2f}".format(float(e_from)) +"\n")
+        if (i+1 < len(sp)):
+            id_to = sp[i+1]
+            e_saddle = paths_graph[id_from][id_to] + min_saddle - 1
+            structure_saddle = struct_id_structure_dict[(id_from,id_to)]
+            path_from_saddle_to.append([structure_saddle, float(e_saddle)])
+            f_path.write(structure_saddle +" {:.2f}".format(float(e_saddle)) +"\n")
+    #print(path_from_saddle_to)
+    f_path.close()
+
     if (args.plot):
-        path_indices = [ x for x in range(1, len(path_from_saddle_to)+1)]
-        
+        path_indices = [0]
+        path_energies = [ path_from_saddle_to[x][1] for x in range(0, len(path_from_saddle_to))]
+        if(args.bpDist_to_final_str):
+           final_str = path_from_saddle_to[-1][0]
+           path_indices = [ RNA.bp_distance(path_from_saddle_to[x][0], final_str) for x in range(0, len(path_from_saddle_to))]
+        else: # bp-dist to next structure
+           path_indices = [0]
+           total_bp_dist = 0
+           for x in range(0, len(path_from_saddle_to)):
+               if(x+1 < len(path_from_saddle_to)):
+                   x_next = x+1
+                   bp_dist = RNA.bp_distance(path_from_saddle_to[x][0], path_from_saddle_to[x+1][0])
+                   total_bp_dist += bp_dist
+                   path_indices.append(total_bp_dist)
+
         all_lines = []
-        lines, = plt.plot(path_indices, path_from_saddle_to, label="Structure Energies", linewidth=1, color = "black", marker=".")
+        lines, = plt.plot(path_indices, path_energies, label="Structure Energies", linewidth=1, color = "black", marker=".")
         all_lines.append(lines)
         path_labels = []
         for x in path_indices[1:-1]:
