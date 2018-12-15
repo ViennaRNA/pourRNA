@@ -1,7 +1,7 @@
 /*
- * ParKin_Explore.cpp
+ * pourRNA.cpp
  *
- * Main file for ParKin_Explore 1.0
+ * Main file for pourRNA 1.0
  *
  *  Created on: 09.08.2014
  *      Author: Gregor Entzian
@@ -27,7 +27,7 @@
 #include <iostream>
 #include <unistd.h>
 extern "C" {
-#include "ParKin_cmdl.h"
+#include "pourRNA_cmdl.h"
 #include <ViennaRNA/move_set.h>
 #include <ViennaRNA/fold.h>
 //#include <ViennaRNA/read_epars.h>
@@ -678,9 +678,9 @@ main(int  argc,
 
   //---------------------------- Parsing the Parameters---------------------------------
 
-  struct ParKin_args_info args_info;
+  struct pourRNA_args_info args_info;
   // check if there is any unparseable argument
-  if (ParKin_cmdline_parser(argc, argv, &args_info) != 0)
+  if (pourRNA_cmdline_parser(argc, argv, &args_info) != 0)
     exit(1);
 
   try {
@@ -910,7 +910,7 @@ main(int  argc,
 #ifdef DEBUG
         shareFolder = "misc";
 #else
-        shareFolder = "share/ParKin";
+        shareFolder = "share/pourRNA";
 #endif
 
         // Get the path of the executable of this program.
@@ -1602,7 +1602,7 @@ main(int  argc,
     if (&final_Rate != NULL)
       delete &final_Rate;
 
-    ParKin_cmdline_parser_free(&args_info);
+    pourRNA_cmdline_parser_free(&args_info);
 
   } catch (std::exception & ex) {
     std::cerr << "\n\n ERORR : " << ex.what() << "\n" << std::endl;

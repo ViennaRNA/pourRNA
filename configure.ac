@@ -2,11 +2,11 @@
 
 AC_PREREQ([2.59])
 # 5 argument version only available with aclocal >= 2.64
-AC_INIT( [ParKin], [1.0], [], [ParKin], [http://www.bioinf.uni-freiburg.de] )
+AC_INIT( [pourRNA], [1.0], [], [pourRNA], [http://www.bioinf.uni-freiburg.de] )
 
 AC_CANONICAL_HOST
 AC_CONFIG_AUX_DIR([.])
-AC_CONFIG_SRCDIR([src/ParKin.cpp])
+AC_CONFIG_SRCDIR([src/pourRNA.cpp])
 AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -123,7 +123,7 @@ OLD_LDFLAGS=$LDFLAGS
 CXXFLAGS="$CXXFLAGS $AM_CXXFLAGS"
 LDFLAGS="$LDFLAGS $AM_LDFLAGS"
 AC_COMPILE_IFELSE(
-     [AC_LANG_SOURCE([[#include <ViennaRNA/2Dfold.h>]])],
+     [AC_LANG_SOURCE([[#include <ViennaRNA/neighbor.h>]])],
      [ 
 		AC_MSG_RESULT([yes])
 		AC_CHECK_LIB([RNA], [fold_par], [RNANOTFOUND=0], [ RNANOTFOUND=1])

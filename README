@@ -1,5 +1,5 @@
 
-This project implement ParKin 1.0 and was started by 
+This project implements pourRNA 1.0 and was started by 
 
   Gregor Entzian (c) 2014
 
@@ -10,7 +10,7 @@ To configure, compile and install do the following steps:
   - run make install
   
 Dependencies:
-  - ViennaRNA library
+  - ViennaRNA library (> 2.4.10)
   
 Known issues:
   ---

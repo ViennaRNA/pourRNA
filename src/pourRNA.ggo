@@ -1,24 +1,24 @@
 
 
 # Name of your program
-package "ParKin" # don't use package if you're using automake
+package "pourRNA" # don't use package if you're using automake
 
 purpose "Explore RNA energy landscapes"
 
-#usage "ParKin [options]\n"
-version "0.1"   # don't use version if you're using automake
+#usage "pourRNA [options]\n"
+version "1.0"   # don't use version if you're using automake
 
 
 # command line options passed to gengetopt
-args "--file-name=ParKin_cmdl --include-getopt --default-optional --func-name=ParKin_cmdline_parser --arg-struct-name=ParKin_args_info"
+args "--file-name=pourRNA_cmdl --include-getopt --default-optional --func-name=pourRNA_cmdline_parser --arg-struct-name=pourRNA_args_info"
 
 
-description   "ParKin takes an RNA sequence as input and explores the landscape topology locally. \
+description   "pourRNA takes an RNA sequence as input and explores the landscape topology locally. \
 This means the flooding algorithm will be applied for each gradient basin. \
 The partition function for the basin and also for the transitions to neighbored minima will \
 be calculated during the flooding. This approach consumes more computations than \
 global flooding, because the contact surface for two neighbored states is calculated twice. \
-The advantage of ParKin is, that the filtering techniques can be calculated locally. \
+The advantage of pourRNA is, that the filtering techniques can be calculated locally. \
 The filters are used to prune non-relevant transitions directly after flooding a gradient basin. \
 As a result, the transition rates for the filtered landscape topology can be calculated faster \
 than with global approaches. The advantage increases with increasing size of the energy landscape.\n"
