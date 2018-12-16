@@ -1265,8 +1265,18 @@ main(int  argc,
                   inParameter->Filter           = neighborFilter;
                   inParameter->MaxEnergy        = maxEnergy;
                   inParameter->DeltaE           = deltaE;
-                  inParameter->DiscoveredMinima =
-                    &discoveredMinimaForEachThread[index];
+
+                  // check if we can report the minima on-the-fly, or if we have to buffer them for macro-state filtering
+                  if (inParameter->Filter == NULL) {
+                    inParameter->DiscoveredMinima =
+                                          &discoveredMinimaForEachThread[index];
+                  }
+                  else{
+                    /* don't report minima in the concurrent queue, but add them to the todo-list after
+                     * the basin has been flooded (see merge()).
+                     */
+                    inParameter->DiscoveredMinima = NULL;
+                  }
                   inParameter->TemperatureForBoltzmannWeight =
                     temperatureForBoltzmannWeight;
                   inParameter->Move_set         = move_set;
