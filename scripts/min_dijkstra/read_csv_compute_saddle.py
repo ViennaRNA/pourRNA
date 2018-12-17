@@ -11,6 +11,22 @@ import matplotlib.pyplot as plt
 import RNA
 from math import ceil
 
+def read_path_file_energies(file):
+    energies = []
+    structures = []
+    with open(file, 'r') as f:
+        new_index = 0
+        for line in f:
+            #print(line)
+            match = re.match("\s*([\.\(\)]+)\s+(\-?\d*\.?\d*)", line)
+            if match:
+                print(line)
+                energy = float(match.group(2))
+                structure = match.group(1)
+                energies.append(energy)
+                structures.append(structure)
+    return structures, energies
+
 """
 format: id_from, structure from, energy from, id_to, str. to, energy to, saddle str, saddle energy. 
 """
@@ -80,102 +96,110 @@ if __name__ == "__main__":
     # arguments:
     parser = argparse.ArgumentParser(description='myBot', conflict_handler='resolve')
     parser.add_argument("-f", "--file", action="store", type=str, required=True, help="csv file with saddles")
+    parser.add_argument("-g", "--path_file", action='store_true', required=False, help="if given then assume that -f is already a path file.")
     parser.add_argument("-i", "--index_from", action="store", type=int, required=False, help="Index from.")
     parser.add_argument("-j", "--index_to", action="store", type=int, required=False, help="Index to.")
     parser.add_argument("-d", "--structure_index_file", type=str, required=False, help="File with two structures, for which the min max saddle is computed.")
     parser.add_argument("-p", "--plot", action='store_true', required=False, help="Create Path Plot.")
     parser.add_argument("-z", "--bpDist_to_final_str", action='store_true', required=False, help="Distance to ground state, else distance to next structure.")
     args = parser.parse_args()
-    paths_graph, min_saddle, struct_id_energy_dict, struct_id_structure_dict = read_saddle_csv_file(args.file)
     
-    print(paths_graph)
-    
-    ifrom = args.index_from
-    ito = args.index_to
-    if args.structure_index_file and ifrom == None and ito == None:
-        with open(args.structure_index_file, 'r') as f:
-            lines = f.readlines()
-            s1 = lines[2].strip()
-            s2 = lines[3].strip()
-            with open(args.file, 'r') as f:
-                for line in f:
-                    if ifrom == None and s1 in line:
-                        parts = line.split(',')
-                        for i,p in enumerate(parts):
-                            if s1 in p:
-                                ifrom = int(parts[i-1])
-                                break
-                    if ito == None and s2 in line:
-                        parts = line.split(',')
-                        for i,p in enumerate(parts):
-                            if s2 in p:
-                                ito = int(parts[i-1])
-                                break
-                    if ito != None and ifrom != None:
-                        break
-                    
-    for k in paths_graph.keys():
-        for v in paths_graph[k].keys():
-            paths_graph[k][v] = paths_graph[k][v] - min_saddle + 1
-    
-    
-    print(ifrom, ito)
-    sp, distances = shortestPath(paths_graph, ifrom, ito)
-    #sp.reverse()
-    #distances.reverse()
-    print(sp)
-    print(min_saddle)
-    """
-    #print([ distances[x] + min_saddle - 1 for x in sp])
-    #sp.reverse()
-    path_from_saddle_to = []
-    for i in range(len(sp)):
-        id_from = sp[i]
-        e_from = struct_id_energy_dict[id_from]
-        path_from_saddle_to.append(float(e_from))
-        if (i+1 < len(sp)):
-            id_to = sp[i+1]
-            e_saddle = paths_graph[id_from][id_to] + min_saddle - 1
-            path_from_saddle_to.append(float(e_saddle))
-    print(path_from_saddle_to)
-    """ 
     bn = os.path.basename(args.file)
     bn = os.path.splitext(bn)[0]
-    ### print path with energies ####
-    text_file_name = bn+"_refolding_path.txt"
-    f_path = open(text_file_name,'w')
-    #RNA.bp_distance("....","(())")
-    path_from_saddle_to = []
-    for i in range(len(sp)):
-        id_from = sp[i]
-        e_from = struct_id_energy_dict[id_from]
-        structure_from = struct_id_structure_dict[(id_from,id_from)]
-        path_from_saddle_to.append([structure_from, float(e_from)])
-        f_path.write(structure_from +" {:.2f}".format(float(e_from)) +"\n")
-        if (i+1 < len(sp)):
-            id_to = sp[i+1]
-            e_saddle = paths_graph[id_from][id_to] + min_saddle - 1
-            structure_saddle = struct_id_structure_dict[(id_from,id_to)]
-            path_from_saddle_to.append([structure_saddle, float(e_saddle)])
-            f_path.write(structure_saddle +" {:.2f}".format(float(e_saddle)) +"\n")
-    #print(path_from_saddle_to)
-    f_path.close()
+    
+    if(not args.path_file):
+        paths_graph, min_saddle, struct_id_energy_dict, struct_id_structure_dict = read_saddle_csv_file(args.file)
+        
+        print(paths_graph)
+        
+        ifrom = args.index_from
+        ito = args.index_to
+        if args.structure_index_file and ifrom == None and ito == None:
+            with open(args.structure_index_file, 'r') as f:
+                lines = f.readlines()
+                s1 = lines[2].strip()
+                s2 = lines[3].strip()
+                with open(args.file, 'r') as f:
+                    for line in f:
+                        if ifrom == None and s1 in line:
+                            parts = line.split(',')
+                            for i,p in enumerate(parts):
+                                if s1 in p:
+                                    ifrom = int(parts[i-1])
+                                    break
+                        if ito == None and s2 in line:
+                            parts = line.split(',')
+                            for i,p in enumerate(parts):
+                                if s2 in p:
+                                    ito = int(parts[i-1])
+                                    break
+                        if ito != None and ifrom != None:
+                            break
+                        
+        for k in paths_graph.keys():
+            for v in paths_graph[k].keys():
+                paths_graph[k][v] = paths_graph[k][v] - min_saddle + 1
+        
+        
+        print(ifrom, ito)
+        sp, distances = shortestPath(paths_graph, ifrom, ito)
+        #sp.reverse()
+        #distances.reverse()
+        print(sp)
+        print(min_saddle)
+        """
+        #print([ distances[x] + min_saddle - 1 for x in sp])
+        #sp.reverse()
+        path_from_saddle_to = []
+        for i in range(len(sp)):
+            id_from = sp[i]
+            e_from = struct_id_energy_dict[id_from]
+            path_from_saddle_to.append(float(e_from))
+            if (i+1 < len(sp)):
+                id_to = sp[i+1]
+                e_saddle = paths_graph[id_from][id_to] + min_saddle - 1
+                path_from_saddle_to.append(float(e_saddle))
+        print(path_from_saddle_to)
+        """ 
+        ### print path with energies ####
+        text_file_name = bn+"_refolding_path.txt"
+        f_path = open(text_file_name,'w')
+        #RNA.bp_distance("....","(())")
+        path_from_saddle_to = []
+        for i in range(len(sp)):
+            id_from = sp[i]
+            e_from = struct_id_energy_dict[id_from]
+            structure_from = struct_id_structure_dict[(id_from,id_from)]
+            path_from_saddle_to.append([structure_from, float(e_from)])
+            f_path.write(structure_from +" {:.2f}".format(float(e_from)) +"\n")
+            if (i+1 < len(sp)):
+                id_to = sp[i+1]
+                e_saddle = paths_graph[id_from][id_to] + min_saddle - 1
+                structure_saddle = struct_id_structure_dict[(id_from,id_to)]
+                path_from_saddle_to.append([structure_saddle, float(e_saddle)])
+                f_path.write(structure_saddle +" {:.2f}".format(float(e_saddle)) +"\n")
+        #print(path_from_saddle_to)
+        f_path.close()
+    else:
+        path_structures, path_energies = read_path_file_energies(args.file)
+        path_indices = [ x for x in range(0,len(path_energies)) ]
 
     if (args.plot):
-        path_indices = [0]
-        path_energies = [ path_from_saddle_to[x][1] for x in range(0, len(path_from_saddle_to))]
-        if(args.bpDist_to_final_str):
-           final_str = path_from_saddle_to[-1][0]
-           path_indices = [ RNA.bp_distance(path_from_saddle_to[x][0], final_str) for x in range(0, len(path_from_saddle_to))]
-        else: # bp-dist to next structure
-           path_indices = [0]
-           total_bp_dist = 0
-           for x in range(0, len(path_from_saddle_to)):
-               if(x+1 < len(path_from_saddle_to)):
-                   x_next = x+1
-                   bp_dist = RNA.bp_distance(path_from_saddle_to[x][0], path_from_saddle_to[x+1][0])
-                   total_bp_dist += bp_dist
-                   path_indices.append(total_bp_dist)
+        if(not args.path_file):
+            path_indices = [0]
+            path_energies = [ path_from_saddle_to[x][1] for x in range(0, len(path_from_saddle_to))]
+            if(args.bpDist_to_final_str):
+               final_str = path_from_saddle_to[-1][0]
+               path_indices = [ RNA.bp_distance(path_from_saddle_to[x][0], final_str) for x in range(0, len(path_from_saddle_to))]
+            else: # bp-dist to next structure
+               path_indices = [0]
+               total_bp_dist = 0
+               for x in range(0, len(path_from_saddle_to)):
+                   if(x+1 < len(path_from_saddle_to)):
+                       x_next = x+1
+                       bp_dist = RNA.bp_distance(path_from_saddle_to[x][0], path_from_saddle_to[x+1][0])
+                       total_bp_dist += bp_dist
+                       path_indices.append(total_bp_dist)
 
         all_lines = []
         lines, = plt.plot(path_indices, path_energies, label="Structure Energies", linewidth=1, color = "black", marker=".")
