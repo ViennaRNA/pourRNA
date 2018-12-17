@@ -9,6 +9,7 @@ import math
 import re
 import matplotlib.pyplot as plt
 import RNA
+from math import ceil
 
 """
 format: id_from, structure from, energy from, id_to, str. to, energy to, saddle str, saddle energy. 
@@ -138,10 +139,12 @@ if __name__ == "__main__":
             path_from_saddle_to.append(float(e_saddle))
     print(path_from_saddle_to)
     """ 
-    
+    bn = os.path.basename(args.file)
+    bn = os.path.splitext(bn)[0]
     ### print path with energies ####
-    f_path = open("refolding_path.txt",'w')
-    RNA.bp_distance("....","(())")
+    text_file_name = bn+"_refolding_path.txt"
+    f_path = open(text_file_name,'w')
+    #RNA.bp_distance("....","(())")
     path_from_saddle_to = []
     for i in range(len(sp)):
         id_from = sp[i]
@@ -179,12 +182,21 @@ if __name__ == "__main__":
         all_lines.append(lines)
         path_labels = []
         for x in path_indices[1:-1]:
-            if x % 5 == 0:
+            if x % 200 == 0:
                 path_labels.append(x)
             else:
                 path_labels.append('')
-        path_labels = [path_indices[0]] + path_labels + [path_indices[-1]]
+        #path_labels = [path_indices[0]] + path_labels + [path_indices[-1]]
+        path_labels = [path_indices[0]] + [path_indices[-1]]
+        path_indices = [path_indices[0]] + [path_indices[-1]]
         plt.xticks(path_indices, path_labels)
+        e_min = ceil(min(path_energies))
+        while(e_min % 5 != 0):
+            e_min -= 1
+        e_min = int(e_min)
+        e_max = int(-55)
+        e_ticks = [ x for x in range(e_min, e_max+1, 5)]
+        plt.yticks(e_ticks)
         #leg = plt.legend(handles=all_lines, fontsize = 'medium')
         #leg_texts = leg.get_texts()
     
@@ -194,8 +206,8 @@ if __name__ == "__main__":
         #ax.set_yscale("log")
         plt.xlabel('Structures along Optimal Path')
         plt.ylabel('Energy [kcal/mol]') 
-        plt.grid(True)
-        res_file="./refolding_path.pdf"
+        #plt.grid(True)
+        res_file=bn+ "_refolding_path.pdf"
         plt.savefig(res_file)
         plt.clf()
         
