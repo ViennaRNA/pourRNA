@@ -167,7 +167,7 @@ for(i in time){
 
 Pt_t = t(Pt)
 colnames(Pt_t) <- structures
-print(structures)
+#print(structures)
 #Pt
 pdf(paste0(fileNameMatrix,".pdf"))
 #col_set <- rainbow(10) #palette('default')
@@ -184,7 +184,7 @@ if(!is.null(fileNameStructures)){
   for(i in 1:n){
     sums[i] = sum(Pt[i,])
   }
-  print(sums)
+  #print(sums)
   tmp_sums = sums
   best_indices <- rep(0, 1, 10)
   
@@ -209,11 +209,11 @@ if(!is.null(fileNameStructures)){
     selected_structures[i] = structures[best_indices[i]]
     all_colors[i_max] = col_set[i]
   }  
-  print(selected_structures)
+  #print(selected_structures)
   
   #legend("topright",structures,lty=1, bg='white', , col = col_set)
 }
-print(all_colors)
+#print(all_colors)
 matplot(plotTime,Pt_t,type="l",xlim=c(min(plotTime),max(plotTime)), log="x", lty=1, col = all_colors)
 legend("topright",selected_structures,lty=1, bg='white', col = best_colors)
 
