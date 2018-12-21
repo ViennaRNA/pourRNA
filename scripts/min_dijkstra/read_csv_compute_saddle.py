@@ -224,10 +224,20 @@ if __name__ == "__main__":
                 bnx = os.path.splitext(bnx)[0]
                 methods.append(bnx)
                 path_structures, path_energies, bp_dists = read_path_file_energies(fp)
+                
                 if len(bp_dists) > 0:
                     path_indices = bp_dists
                 else:
-                    path_indices = [ x for x in range(0,len(path_energies)) ]
+                    #path_indices = [ x for x in range(0,len(path_energies)) ]
+                    path_indices = [0]
+                    total_bp_dist = 0
+                    for x in range(0, len(path_structures)):
+                        x_next = x+1
+                        if(x_next < len(path_structures)):
+                            bp_dist = RNA.bp_distance(path_structures[x], path_structures[x_next])
+                            total_bp_dist += bp_dist
+                            path_indices.append(total_bp_dist)
+                        
                 if(len(path_indices) == 0):
                     print("Error: ", fp)
                     print(path_energies)
@@ -248,7 +258,7 @@ if __name__ == "__main__":
             for i in range(len(path_indices_per_method)):
                 tmp_indices = path_indices_per_method[i]
                 tmp_diff = max(tmp_indices) - min(tmp_indices)
-                scale_v = float(diff)/tmp_diff
+                scale_v = 1 #float(diff)/tmp_diff
                 path_indices_per_method[i] = [ x*scale_v for x in tmp_indices ]
             
             """
@@ -266,7 +276,7 @@ if __name__ == "__main__":
                     if i_a == i_b and e_a == e_b:
                         map_ij[i] += [j]
             
-            for k,v in map_ij.iteritems():
+            for k,v in map_ij.items():
                 if(len(v) > 0):
                     for i in v:
                         i_to_delete.add(i)
@@ -325,14 +335,15 @@ if __name__ == "__main__":
             
             path_labels = []
             for x in path_indices[1:-1]:
-                if x % 200 == 0:
+                if x % 5 == 0:
                     path_labels.append(x)
                 else:
                     path_labels.append('')
             #path_labels = [path_indices[0]] + path_labels + [path_indices[-1]]
-            path_labels = [min_x_ind, max_x_ind] #[path_indices[0]] + [path_indices[-1]]
-            path_indices = [min_x_ind, max_x_ind] #[path_indices[0]] + [path_indices[-1]]
+            path_labels = [ x for x in range(min_x_ind, max_x_ind,5)] #[min_x_ind, max_x_ind] #[path_indices[0]] + [path_indices[-1]]
+            path_indices = path_labels #[min_x_ind, max_x_ind] #[path_indices[0]] + [path_indices[-1]]
             plt.xticks(path_indices, path_labels)
+            
             e_min = ceil(min(path_energies))
             while(e_min % 5 != 0):
                 e_min -= 1
