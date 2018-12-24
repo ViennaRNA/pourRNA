@@ -9,7 +9,7 @@ option_list = list(
   make_option(c("-g", "--binary_matrix"), type="character", default=NULL,
               help="binary matrix format (from barriers or pourRNA)", metavar="character"),
   make_option(c("-c", "--text_matrix"), type="character", default=NULL,
-              help="binary matrix format (from barriers or pourRNA)", metavar="character"),
+              help="text matrix format (from barriers or pourRNA)", metavar="character"),
   make_option(c("-s", "--states_file"), type="character", default=NULL,
               help="barriers-like output as input file."),
   make_option(c("-i","--initial_state"), type="integer", default=NULL,
@@ -135,8 +135,14 @@ print("eigenvalues computed")
 
 #equilibr. density
 #which.max(eValues)
-#eVectorsL[which.max(eValues),]
-
+#p8 = eVectorsL[which.max(eValues),]
+b <- rep(0, 1, n)
+for(i in 1:n){
+  b[i]=-Q[i,i]
+}
+p8 = solve(t(Q),b)
+p8 = p8 / sum(p8)
+p8 = t(p8)
 print("eigenvectors computed")
 
 ## initial distribution
@@ -148,25 +154,35 @@ V=t(eVectorsR)
 
 Pt=c()
 plotTime=c()
-startP0=as.vector(p0)
+startP0=c(p0)
 for(i in time){  
   Rt = (eVectorsL %*% diag(exp(eValues*i)) %*% V)
   t1 <- startP0 %*% Rt 
+  #print(t1)
+  #print(abs(sum(as.vector(t1) - as.vector(p8[1,]))))
+  #q()
+  #break
   if(is.nan(sum(t1)) || abs(sum(t1)) < 0.90 || abs(sum(t1)) > 1.10){
     print("break!")
     print(i)
     break
   }
+  if(sum(abs(c(t1) - c(p8[1,]))) < 1e-9){
+    print("equilibrium reached!")
+    break
+  }
   if(length(Pt) == 0){
-    Pt = as.vector(t1)
+    Pt = c(t1)
   } else {
-    Pt=cbind(Pt,as.vector(t1))
+    Pt=cbind(Pt,c(t1))
   }
   plotTime=rbind(plotTime,i)
 }
-
+final_time=i
 Pt_t = t(Pt)
-colnames(Pt_t) <- structures
+if(!is.null(fileNameStructures)){
+  colnames(Pt_t) <- structures
+}
 #print(structures)
 #Pt
 pdf(paste0(fileNameMatrix,".pdf"))
@@ -214,9 +230,32 @@ if(!is.null(fileNameStructures)){
   #legend("topright",structures,lty=1, bg='white', , col = col_set)
 }
 #print(all_colors)
+  # so turn off clipping:
+  opar <- par(fig=c(0, 1, 0, 1), oma=c(0, 0, 0, 0), 
+    mar=c(0, 0, 0, 0), new=TRUE)
+  on.exit(par(opar))
+par(mar = c(4, 5, 0, 10))
+add_legend <- function(...) {
+  opar <- par(fig=c(0, 1, 0, 1), oma=c(0, 0, 0, 0), 
+    mar=c(0, 0, 0, 0), new=TRUE, family="mono")
+  on.exit(par(opar))
+  plot(0, 0, type='n', bty='n', xaxt='n', yaxt='n')
+  legend(...)
+}
 matplot(plotTime,Pt_t,type="l",xlim=c(min(plotTime),max(plotTime)), log="x", lty=1, col = all_colors)
-legend("topright",selected_structures,lty=1, bg='white', col = best_colors)
 
+time_and_states <- cbind(plotTime, Pt_t)
+
+write()
+write.table(format(time_and_states, scientific = TRUE), paste0(fileNameMatrix,".kinetics"), sep = " ", col.names = FALSE, row.names=FALSE, , quote=FALSE, append = TRUE)
+
+if(!is.null(fileNameStructures)){
+  # so turn off clipping:
+  #par(xpd=NA)
+  #legend("topright",selected_structures,lty=1, bg='white', col = best_colors)
+add_legend("topright",selected_structures,lty=1, bg='white', col = best_colors)
+  #add_legend(final_time*2,1.04,selected_structures,lty=1, bg='white', col = best_colors)
+}
 dev.off()
 
 
