@@ -5,9 +5,9 @@ compiler:
 - g++
 
 before_install:
-  - sudo add-apt-repository ppa:j-4/vienna-rna
-  - sudo apt-get update
-  - sudo apt-get install viennarna-dev
+  - sudo add-apt-repository ppa:j-4/vienna-rna -y
+  - sudo apt-get update -q
+  - sudo apt-get install viennarna-dev -y
   
 addons:
   apt:
