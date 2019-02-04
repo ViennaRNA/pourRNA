@@ -12,6 +12,7 @@ addons:
     packages:
     - g++
     - gengetopt
+    - viennarna
 
 before_script:
 - autoreconf -i
