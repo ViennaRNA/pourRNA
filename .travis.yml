@@ -4,7 +4,10 @@ dist: trusty
 compiler:
 - g++
 
-
+before_install:
+  - sudo add-apt-repository ppa:j-4/vienna-rna
+  - sudo apt-get update
+  
 addons:
   apt:
     sources:
