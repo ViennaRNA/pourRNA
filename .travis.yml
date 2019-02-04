@@ -3,14 +3,14 @@ dist: trusty
 
 compiler:
 - g++
-- clang++
 
 
 addons:
   apt:
+    sources:
+    - ubuntu-toolchain-r-test
     packages:
     - g++
-    - clang++
     - gengetopt
 
 before_script:
