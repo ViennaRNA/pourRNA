@@ -1,0 +1,45 @@
+sudo: false
+dist: trusty
+
+compiler:
+- g++
+- clang++
+
+
+addons:
+  apt:
+    packages:
+    - g++
+    - clang++
+    - gengetopt
+
+before_script:
+- autoreconf -i
+
+
+script:
+- ./configure
+- make -j${CPU_COUNT}
+
+
+before_deploy:
+- make dist-gzip
+- make dist-zip
+- export DIST_GZIP=$(ls pourRNA-*.tar.gz)
+- export DIST_ZIP=$(ls pourRNA-*.zip)
+- echo "Deploying Changelog and autoconf's dists (${DIST_GZIP} and ${DIST_ZIP}) to GitHub releases"
+
+
+deploy:
+  provider: releases
+  github-token: $GITHUB_TOKEN
+  skip_cleanup: true
+  file_glob: true
+  overwrite: true
+  file:
+  - "${DIST_GZIP}"
+  - "${DIST_ZIP}"
+  - ChangeLog
+  on:
+    repo: ViennaRNA/pourRNA
+    tags: true
