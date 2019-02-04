@@ -1,8 +1,11 @@
-# this is example-file: configure.ac
+
+m4_define([pourRNA_version_major], [1])
+m4_define([pourRNA_version_minor], [0])
+m4_define([pourRNA_version_patch], [0])
 
 AC_PREREQ([2.59])
 # 5 argument version only available with aclocal >= 2.64
-AC_INIT( [pourRNA], [1.0], [], [pourRNA], [http://www.bioinf.uni-freiburg.de] )
+AC_INIT( [pourRNA], pourRNA_version_major.pourRNA_version_minor.pourRNA_version_patch, [], [pourRNA], [http://www.bioinf.uni-freiburg.de] )
 
 AC_CANONICAL_HOST
 AC_CONFIG_AUX_DIR([.])

@@ -6,7 +6,7 @@ package "pourRNA" # don't use package if you're using automake
 purpose "Explore RNA energy landscapes"
 
 #usage "pourRNA [options]\n"
-version "1.0"   # don't use version if you're using automake
+#version "1.0"   # don't use version if you're using automake
 
 
 # command line options passed to gengetopt
