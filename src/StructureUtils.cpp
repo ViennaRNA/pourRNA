@@ -5,6 +5,7 @@
  *      Author: Gregor Entzian
  */
 
+#include <cstring>
 #include "StructureUtils.h"
 
 StructureUtils::StructureUtils()
