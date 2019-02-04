@@ -7,6 +7,7 @@ compiler:
 before_install:
   - sudo add-apt-repository ppa:j-4/vienna-rna
   - sudo apt-get update
+  - sudo apt-get install viennarna-dev
   
 addons:
   apt:
@@ -15,7 +16,6 @@ addons:
     packages:
     - g++
     - gengetopt
-    - viennarna
 
 before_script:
 - autoreconf -i
