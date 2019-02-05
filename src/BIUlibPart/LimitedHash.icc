@@ -384,10 +384,9 @@ namespace biu
 			    class Alloc >
 	inline
 	typename LimitedHash < Key, T, Hash, Pred, Alloc >::hasher 
-	LimitedHash < Key, T, Hash, Pred, Alloc >::
-    hash_function() const
+	LimitedHash < Key, T, Hash, Pred, Alloc >::hash_function() const
     {
-		return hash2Fill.hash_function();
+		return hash2Fill->hash_function();
     }
 	
 	
@@ -400,10 +399,9 @@ namespace biu
 			    class Alloc >
 	inline
 	typename LimitedHash < Key, T, Hash, Pred, Alloc >::key_equal 
-	LimitedHash < Key, T, Hash, Pred, Alloc >::
-    key_eq() const
+	LimitedHash < Key, T, Hash, Pred, Alloc >::key_eq() const
     {
-		return hash2Fill.key_eq();
+		return hash2Fill->key_eq();
     }
 
 	
@@ -415,8 +413,7 @@ namespace biu
 			    class Alloc >
 	inline
 	typename LimitedHash < Key, T, Hash, Pred, Alloc >::iterator       
-	LimitedHash < Key, T, Hash, Pred, Alloc >::
-    find(const key_type& k)
+	LimitedHash < Key, T, Hash, Pred, Alloc >::find(const key_type& k)
 	{
 		internal_iterator pos = hash2Fill->find(k);
 		if (pos != hash2Fill->end()) {
@@ -441,8 +438,7 @@ namespace biu
 			    class Alloc >
 	inline
 	typename LimitedHash < Key, T, Hash, Pred, Alloc >::const_iterator 
-	LimitedHash < Key, T, Hash, Pred, Alloc >::
-    find(const LimitedHash < Key, T, Hash, Pred, Alloc >::key_type& k) const
+	LimitedHash < Key, T, Hash, Pred, Alloc >::find(const LimitedHash < Key, T, Hash, Pred, Alloc >::key_type& k) const
 	{
 		const_internal_iterator pos = hash2Fill->find(k);
 		if (pos != hash2Fill->end()) {
@@ -466,8 +462,7 @@ namespace biu
 			    class Alloc >
 	inline
 	typename LimitedHash < Key, T, Hash, Pred, Alloc >::size_type 
-	LimitedHash < Key, T, Hash, Pred, Alloc >::
-    count(const LimitedHash < Key, T, Hash, Pred, Alloc >::key_type& k) const
+	LimitedHash < Key, T, Hash, Pred, Alloc >::count(const LimitedHash < Key, T, Hash, Pred, Alloc >::key_type& k) const
     {
 		if (this->find( k ) != this->end()) {
 			return 1;
@@ -487,8 +482,7 @@ namespace biu
 	inline
     std::pair<	typename LimitedHash < Key, T, Hash, Pred, Alloc >::iterator
     			, typename LimitedHash < Key, T, Hash, Pred, Alloc >::iterator>
-	LimitedHash < Key, T, Hash, Pred, Alloc >::
-	equal_range(const LimitedHash < Key, T, Hash, Pred, Alloc >::key_type& k)
+	LimitedHash < Key, T, Hash, Pred, Alloc >::equal_range(const LimitedHash < Key, T, Hash, Pred, Alloc >::key_type& k)
 	{
 		iterator pos = this->find(k);
 		return std::make_pair(pos,pos);
@@ -504,8 +498,7 @@ namespace biu
   	inline
     std::pair<	typename LimitedHash < Key, T, Hash, Pred, Alloc >::const_iterator
     			, typename LimitedHash < Key, T, Hash, Pred, Alloc >::const_iterator>
-  	LimitedHash < Key, T, Hash, Pred, Alloc >::
-    equal_range(const LimitedHash < Key, T, Hash, Pred, Alloc >::key_type& k) const
+  	LimitedHash < Key, T, Hash, Pred, Alloc >::equal_range(const LimitedHash < Key, T, Hash, Pred, Alloc >::key_type& k) const
 	{
 		const_iterator pos = this->find(k);
 		return std::make_pair(pos,pos);
@@ -520,8 +513,7 @@ namespace biu
   			    class Alloc >
   	inline
     typename LimitedHash < Key, T, Hash, Pred, Alloc >::mapped_type&
-  	LimitedHash < Key, T, Hash, Pred, Alloc >::
-	operator[](const LimitedHash < Key, T, Hash, Pred, Alloc >::key_type& k)
+  	LimitedHash < Key, T, Hash, Pred, Alloc >::operator[](const LimitedHash < Key, T, Hash, Pred, Alloc >::key_type& k)
 	{
   		iterator it = this->insert( value_type(k, T()) ).first;
   		return (*it).second;
@@ -535,8 +527,7 @@ namespace biu
   			    class Alloc >
   	inline
     void
-  	LimitedHash < Key, T, Hash, Pred, Alloc >::
-  	rehash(LimitedHash < Key, T, Hash, Pred, Alloc >::size_type n)
+  	LimitedHash < Key, T, Hash, Pred, Alloc >::rehash(LimitedHash < Key, T, Hash, Pred, Alloc >::size_type n)
   	{
   		hash2Fill->rehash(n);
   		hash2Check->rehash(n);
@@ -551,8 +542,7 @@ namespace biu
     template < class InputIterator >
   	inline
     void
-  	LimitedHash < Key, T, Hash, Pred, Alloc >::
-    insert(InputIterator first, InputIterator last)
+  	LimitedHash < Key, T, Hash, Pred, Alloc >::insert(InputIterator first, InputIterator last)
     {
   		while (first != last) {
   			this->insert(*first);
@@ -575,8 +565,7 @@ namespace biu
   	template < class iterator_type >
   	inline
   	LimitedHash < Key, T, Hash, Pred, Alloc >::
-  	iteratorT< iterator_type >::
-	iteratorT(	iterator_type cur_
+  	iteratorT< iterator_type >::iteratorT(	iterator_type cur_
 				, iterator_type firstEnd_
 				, iterator_type secondStart_
 				, bool firstNotEnded_ )
@@ -603,9 +592,7 @@ namespace biu
   			    class Alloc >
   	template < class iterator_type >
   	inline
-  	LimitedHash < Key, T, Hash, Pred, Alloc >::
-  	iteratorT< iterator_type >::
-	iteratorT()
+  	LimitedHash < Key, T, Hash, Pred, Alloc >::iteratorT< iterator_type >::iteratorT()
 	 :	cur()
 	 	, firstEnd()
 	 	, secondStart()
@@ -621,9 +608,7 @@ namespace biu
   			    class Alloc >
   	template < class iterator_type >
   	inline
-  	LimitedHash < Key, T, Hash, Pred, Alloc >::
-  	iteratorT< iterator_type >::
-	~iteratorT()
+  	LimitedHash < Key, T, Hash, Pred, Alloc >::iteratorT< iterator_type >::~iteratorT()
 	{ }
 	
   	
@@ -688,11 +673,8 @@ namespace biu
   			    class Alloc >
   	template < class iterator_type >
   	inline
-  	LimitedHash < Key, T, Hash, Pred, Alloc >::
-  	iteratorT< iterator_type >&
-  	LimitedHash < Key, T, Hash, Pred, Alloc >::
-  	iteratorT< iterator_type >::
-    operator++()
+  	typename LimitedHash < Key, T, Hash, Pred, Alloc >:: template iteratorT<iterator_type> &
+  	LimitedHash < Key, T, Hash, Pred, Alloc >::iteratorT< iterator_type >::operator++()
     {
 	  	++cur;
 	  	if (firstNotEnded && cur == firstEnd) {
@@ -711,11 +693,8 @@ namespace biu
   			    class Alloc >
   	template < class iterator_type >
   	inline
-  	LimitedHash < Key, T, Hash, Pred, Alloc >::
-  	iteratorT< iterator_type >
-  	LimitedHash < Key, T, Hash, Pred, Alloc >::
-  	iteratorT< iterator_type >::
-    operator++(int)
+  	typename LimitedHash < Key, T, Hash, Pred, Alloc >:: template iteratorT<iterator_type>
+  	LimitedHash < Key, T, Hash, Pred, Alloc >::iteratorT< iterator_type >::operator++(int)
     { 
     	iteratorT<iterator_type> retIt(cur, firstEnd, secondStart, firstNotEnded);
     	++cur;

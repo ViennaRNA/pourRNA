@@ -124,13 +124,13 @@ namespace biu
 	  //! pre-incrementation (first increment, than return changed state)
 	  //! e.g. (++it)
 	  //! @return a reference to (*this) AFTER incrementation
-	  iteratorT<iterator_type>&
+	  iteratorT&
 	  operator++ ();
 
 	  //! post-incrementation (first return current state, than increment)
 	  //! e.g. (it++)
 	  //! @return a copy of (*this) BEFORE incrementation
-	  iteratorT<iterator_type>
+	  iteratorT
 	  operator++ (int);
 
 	  //! equality comparision
