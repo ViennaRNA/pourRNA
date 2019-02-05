@@ -8,7 +8,7 @@ SUFFIXES = _cmdl.c _cmdl.h .ggo
 GENGETOPT_CMDL =  pourRNA_cmdl.c pourRNA_cmdl.h
 GENGETOPT_FILES =  pourRNA.ggo
 
-EXTRA_DIST =  ${GENGETOPT_FILES} ${GENGETOPT_CMDL}
+EXTRA_DIST =  ${GENGETOPT_FILES} ${GENGETOPT_CMDL} PriorityQueue.cpp
 
 # remove all generated content
 maintainer-clean-local:
