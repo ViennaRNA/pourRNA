@@ -94,14 +94,15 @@ getEnergies() const
 typedef std::pair<size_t, size_t> PairID;
 
 
-struct UInt_Pair_Hash {
+class UInt_Pair_Hash {
+public:
   std::uint64_t
   operator()(const std::pair<std::uint32_t, std::uint32_t>& k) const
   {
     std::uint64_t first = k.first;
     std::uint64_t second = k.second;
 
-    first << 32;
+    first = first << 32;
     first += second;
     return first;
   }

@@ -50,7 +50,9 @@ AC_LANG([C++])
 
 # include openMP for multithreading.
 dnl Check for OpenMP and prepare flags
-AC_OPENMP
+AX_OPENMP([],[])
+
+#AC_SUBST(OPENMP_CXXFLAGS)
 AC_SUBST(AM_CXXFLAGS,"$OPENMP_CXXFLAGS")
 
 ###############################################################################

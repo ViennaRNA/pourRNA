@@ -20,7 +20,7 @@
 #include <vector>
 #include <future>
 #include <thread>
-#include <omp.h>
+//#include <omp.h>
 //basic file operations
 #include <ostream>
 #include <string>
@@ -306,7 +306,7 @@ floodBasin(vrna_fold_compound_t   *vc,
                          inParameter->DiscoveredMinima,
                          inParameter->TemperatureForBoltzmannWeight,
                          inParameter->Move_set,
-                         *inParameter->All_Saddles,
+                         inParameter->All_Saddles,
                          inParameter->SourceStructure,
                          inParameter->TargetStructure,
                          inParameter->MaxBPdist
@@ -1043,7 +1043,7 @@ main(int  argc,
     ///// for tests only -> write file with all Energies ///
     std::unordered_set<size_t> addedMinIDs;
     ofstream                energyFile;
-    if (energyFileName.size() > 0 & logEnergies) {
+    if ((energyFileName.size() > 0) & logEnergies) {
       energyFile.open(energyFileName);
       energyFile << "/* energy in 10kcal/mol*/.\n";
     }
@@ -1481,7 +1481,7 @@ main(int  argc,
     std::cout << std::endl;
 
     //if parameter given: print Z-matrix to file.
-    if (partitionFunctionFileName.size() > 0 & writePartitionFunctions) {
+    if ((partitionFunctionFileName.size() > 0) & writePartitionFunctions) {
       ofstream ptFile;
       ptFile.open(partitionFunctionFileName);
       ptFile
@@ -1609,8 +1609,8 @@ main(int  argc,
     if (startStateMinimum != NULL)
       delete startStateMinimum;
 
-    if (&final_Rate != NULL)
-      delete &final_Rate;
+    //if (&final_Rate != NULL)
+    delete &final_Rate;
 
     pourRNA_cmdline_parser_free(&args_info);
 

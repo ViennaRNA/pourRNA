@@ -51,7 +51,7 @@ StatePairCollector(size_t                           currentMinID,
                    Concurrent_Queue<MyState>        *discoveredMinima,
                    double                           boltzmannWeightTemperature,
                    unsigned int                     move_set,
-                   PairHashMap::HashMap&            all_saddles,
+                   PairHashMap::HashMap*            all_saddles,
                    const char                       *sourceStructure,
                    const char                       *targetStructure,
                    int                              maxBPdist);
@@ -110,7 +110,7 @@ int                             MaxBPdist;
 HashSet::UnorderedHashSet       MininaToIgnore;
 
 
-PairHashMap::HashMap&           All_Saddles;
+PairHashMap::HashMap*           All_Saddles;
 MyState                         *current_min;
 
 std::mutex                      mutex_;

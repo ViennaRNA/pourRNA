@@ -31,7 +31,8 @@ class PairHashMap
 {
 public:
 
-struct PairMapHash {
+class PairMapHash {
+  public:
   std::uint64_t
   operator()(const std::pair<MyState, MyState>& k) const
   {
@@ -42,13 +43,14 @@ struct PairMapHash {
     std::uint64_t second =
       SpookyHash::Hash32(k.second.structure, sizeof(short) * (k.second.structure[0] + 1), 0);
 
-    first << 32;
+    first = first << 32;
     first += second;
     return first;
   }
 };
 
-struct PairMapEqual {
+class PairMapEqual {
+public:
   bool
   operator()(const std::pair<MyState, MyState>& lhs,
              const std::pair<MyState, MyState>& rhs) const
