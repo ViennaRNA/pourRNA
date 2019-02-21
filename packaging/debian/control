@@ -1,0 +1,26 @@
+Source: pourrna
+Maintainer: Gregor Entzian <entzian@tbi.univie.ac.at>
+Uploaders: Gregor Entzian <entzian@tbi.univie.ac.at>
+Section: science
+Priority: optional
+Standards-Version: 3.9.8
+Build-Depends: debhelper (>= 9.0), autotools-dev, gengetopt, viennarna-dev (>=2.4.11)
+
+Package: pourrna
+Provides: pourrna
+Conflicts: pourrna
+Section: science
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, viennarna-dev (>=2.4.11)
+Description: Compute local minima and respective transition rates of an RNA 
+ energy landscape.
+ pourRNA takes an RNA sequence as input and explores the landscape topology 
+ locally. This means the flooding algorithm will be applied for each gradient
+ basin. The partition function for the basin and also for the transitions to 
+ neighbored minima will be calculated during the flooding.
+ In order to speed up the computation of the rate matrix, local filtering
+ techniques can be applied. These filters prune non-relevant transitions 
+ directly after flooding a gradient basin. As a result, the transition rates 
+ for the filtered landscape topology can be calculated faster than with global 
+ approaches. The advantage increases with increasing size of the energy 
+ landscape.

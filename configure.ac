@@ -50,7 +50,7 @@ AC_LANG([C++])
 
 # include openMP for multithreading.
 dnl Check for OpenMP and prepare flags
-AX_OPENMP([],[])
+#AX_OPENMP([],[]) # not used
 
 #AC_SUBST(OPENMP_CXXFLAGS)
 AC_SUBST(AM_CXXFLAGS,"$OPENMP_CXXFLAGS")
@@ -79,12 +79,12 @@ AC_ARG_ENABLE([debug],
 AC_MSG_RESULT([$debuger])
 if test x"$debuger" = x"yes"; then
 	AC_DEFINE([DEBUG], [], [Run in DEBUG mode with additional assertions and debug output])
-	AM_CXXFLAGS="$AM_CXXFLAGS -pg -g -Wno-uninitialized -O0"
+	AM_CXXFLAGS="$AM_CXXFLAGS -pg -g -Wno-uninitialized -O0 -pthread"
 	AM_LDFLAGS="$AM_LDFLAGS -g -Wno-uninitialized -O0"
 	#AM_CXXFLAGS="$AM_CXXFLAGS -g -O0 -Wall -Werror -Wno-uninitialized -Wno-deprecated"
 else
 	AC_DEFINE([NDEBUG], [], [Run in normal mode with minimal assertions])
-	AM_CXXFLAGS="$AM_CXXFLAGS -O3 -fno-strict-aliasing -Wno-uninitialized -Wno-deprecated"
+	AM_CXXFLAGS="$AM_CXXFLAGS -O3 -fno-strict-aliasing -Wno-uninitialized -Wno-deprecated -pthread"
 fi
 
 
@@ -122,7 +122,7 @@ AC_HEADER_STDC
 # BEGIN VIENNA CHECK
 ###############################################################################
 # check for Vienna RNA headers
-AC_MSG_CHECKING([for the Vienna RNA package 2.* headers])
+AC_MSG_CHECKING([for the Vienna RNA package >=2.4.11 headers])
 OLD_CXXFLAGS=$CXXFLAGS
 OLD_LDFLAGS=$LDFLAGS
 CXXFLAGS="$CXXFLAGS $AM_CXXFLAGS"
@@ -131,7 +131,7 @@ AC_COMPILE_IFELSE(
      [AC_LANG_SOURCE([[#include <ViennaRNA/neighbor.h>]])],
      [ 
 		AC_MSG_RESULT([yes])
-		AC_CHECK_LIB([RNA], [fold_par], [RNANOTFOUND=0], [ RNANOTFOUND=1])
+		AC_CHECK_LIB([RNA], [vrna_neighbors], [RNANOTFOUND=0], [ RNANOTFOUND=1])
      ],
      [
        AC_MSG_RESULT([no])
@@ -144,7 +144,7 @@ LDFLAGS=$OLD_LDFLAGS
 # error output if ViennaRNA not found
 if test "$RNANOTFOUND" = "1"; then
 	AC_MSG_NOTICE()
-	AC_MSG_NOTICE([The Vienna RNA C library >= 2.* is required.])
+	AC_MSG_NOTICE([The Vienna RNA C library >= 2.4.11 is required.])
 	AC_MSG_NOTICE([ -> It can be obtained from http://www.tbi.univie.ac.at/.])
 	AC_MSG_NOTICE()
  	if test "$RNAPATHSET" = "1"; then
@@ -187,4 +187,5 @@ AC_CONFIG_FILES([src/Makefile])
 AC_CONFIG_FILES([misc/Makefile])
 
 # generate the final Makefile etc.
-AC_OUTPUT
+AC_OUTPUT([packaging/pourRNA.spec packaging/PKGBUILD])
+

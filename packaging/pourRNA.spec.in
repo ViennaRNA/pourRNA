@@ -1,0 +1,60 @@
+# pourRNA.spec
+
+%{!?_pkgdocdir: %global _pkgdocdir %%{_docdir}/%{name}}
+
+Name:           pourRNA
+Version:        @PACKAGE_VERSION@
+Release:        1%{?dist}
+Summary:        Compute local minima and respective transition rates of an RNA energy landscape.
+
+Vendor:         Gregor Entzian <entzian@tbi.univie.ac.at>
+#Packager:       Gregor Entzian <entzian@tbi.univie.ac.at>
+
+Group:          -
+License:        GPLv2
+URL:            https://github.com/ViennaRNA/pourRNA
+Source0:        pourRNA_%{version}.tar.gz
+BuildRoot:      %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
+
+BuildRequires:  autoconf
+BuildRequires:  automake
+BuildRequires:  rpm-devel
+
+BuildRequires:  libstdc++-devel gengetopt
+%if 0%{?suse_version}
+BuildRequires:  viennarna-devel
+%else
+BuildRequires:  viennarna (>=2.4.11)
+%endif
+
+BuildRequires:  gcc gcc-c++
+
+
+%description
+Compute local minima and respective transition rates of an RNA energy landscape.
+
+Requires: libstdc++-devel
+%if 0%{?suse_version}
+BuildRequires:  viennarna-devel
+%else
+Requires: viennarna (>=2.4.11)
+%endif
+
+%prep
+%setup -n pourRNA-%{version} -q
+
+%build
+%configure
+make
+
+%install
+rm -rf $RPM_BUILD_ROOT
+
+%{__make} install DESTDIR=$RPM_BUILD_ROOT
+
+%clean
+rm -rf $RPM_BUILD_ROOT
+
+%files
+%defattr(-,root,root,-)
+%{_bindir}/*
