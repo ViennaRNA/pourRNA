@@ -5,9 +5,16 @@ compiler:
 - g++
 
 before_install:
-  - sudo add-apt-repository ppa:j-4/vienna-rna -y
-  - sudo apt-get update -q
-  - sudo apt-get install viennarna-dev -y
+#  - sudo add-apt-repository ppa:j-4/vienna-rna -y
+#  - sudo apt-get update -q
+#  - sudo apt-get install viennarna-dev -y
+wget https://www.tbi.univie.ac.at/RNA/download/sourcecode/2_4_x/ViennaRNA-2.4.11.tar.gz
+tar -zxvf ViennaRNA-2.4.11.tar.gz
+cd ViennaRNA-2.4.11
+./configure
+make
+sudo make install
+
   
 addons:
   apt:
