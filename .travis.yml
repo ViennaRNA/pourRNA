@@ -8,9 +8,10 @@ before_install:
    - wget https://www.tbi.univie.ac.at/RNA/download/sourcecode/2_4_x/ViennaRNA-2.4.11.tar.gz
    - tar -zxvf ViennaRNA-2.4.11.tar.gz
    - cd ViennaRNA-2.4.11
-   - ./configure
+   - ./configure --disable-mpfr --without-swig --without-doc --without-tutorial --without-kinfold --without-forester --without-kinwalker --without-rnalocmin --disable-check-executables --disable-lto
    - make
    - sudo make install
+   - cd ..
 
 
 addons:
