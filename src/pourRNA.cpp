@@ -36,6 +36,7 @@ extern "C" {
 #include <ViennaRNA/data_structures.h>
 #include <ViennaRNA/utils/structures.h>
 #include <ViennaRNA/neighbor.h>
+#include <ViennaRNA/file_formats.h>
 }
 #include "BIUlibPart/MatrixSparse.hh"
 #include "RNAkinetics/RateMatrixUtil.h"
@@ -590,6 +591,28 @@ typedef struct less_second_ {
 } less_second;
 
 
+std::string read_sequence_from_stdin(){
+   char          *rec_sequence, *rec_id, **rec_rest;
+   unsigned int  rec_type;
+   unsigned int  read_opt = 0;
+
+   rec_id          = NULL;
+   rec_rest        = NULL;
+
+   rec_type = vrna_file_fasta_read_record(&rec_id,
+                                          &rec_sequence,
+                                          &rec_rest,
+                                          stdin,
+                                          read_opt);
+   if (rec_type & (VRNA_INPUT_ERROR | VRNA_INPUT_QUIT))
+        return "";
+   std::string result_sequence = "";
+   if(rec_type & VRNA_INPUT_SEQUENCE)
+     result_sequence = std::string(rec_sequence);
+
+  return result_sequence;
+}
+
 int
 main(int  argc,
      char **argv)
@@ -687,7 +710,10 @@ main(int  argc,
     // parse sequence
     std::string rnaSequence = "";
     if (!args_info.sequence_given) {
-      throw ArgException("No RNA sequence given");
+
+      rnaSequence = read_sequence_from_stdin();
+      if(rnaSequence == "")
+        throw ArgException("No RNA sequence given");
     } else {
       rnaSequence = std::string(args_info.sequence_arg);
       if (!StructureUtils::IsValidSequence(rnaSequence)) {
@@ -1405,18 +1431,25 @@ main(int  argc,
     }
 
     std::cout << std::endl;
-    int         structure_length  = strlen(mfeStructure) + 1;
-    std::string out               = "MFE structure: ";
+    std::string out               = "Sequence: ";
     printf("%s", out.c_str());
     int         offset          = 31;
     int         padding_length  = offset - out.length(); //structure_length - out.length();
     std::string pad             = std::string(padding_length, ' ');
+    printf("%s%s\n", pad.c_str(), rnaSequence.c_str());
+
+    out = "MFE structure: ";
+    printf("%s", out.c_str());
+    padding_length  = offset - out.length();
+    pad             = std::string(padding_length, ' ');
     printf("%s%s\n", pad.c_str(), mfeStructure);
+
     out = "The start state is: ";
     printf("%s", out.c_str());
     padding_length  = offset - out.length();
     pad             = std::string(padding_length, ' ');
     printf("%s%s\n", pad.c_str(), rna_start_str.c_str());
+
     out = "The start state ends in basin: ";
     printf("%s", out.c_str());
     padding_length  = offset - out.length();
