@@ -18,7 +18,7 @@ To configure, compile and install execute the following commands on your command
 ```
 Dependencies:
   - [ViennaRNA library (>= 2.4.11)](https://www.tbi.univie.ac.at/RNA/#download)
-  - [gengetopt (https://www.gnu.org/software/gengetopt/gengetopt.html)]
+  - [gengetopt](https://www.gnu.org/software/gengetopt/gengetopt.html)
 
 If you download the [release](https://github.com/ViennaRNA/pourRNA/releases), you can skip `autoreconf -i` and you don't need gengetopt.
 
