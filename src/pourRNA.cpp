@@ -686,10 +686,10 @@ main(int  argc,
   try {
     // parse sequence
     std::string rnaSequence = "";
-    if (!args_info.seq_given) {
+    if (!args_info.sequence_given) {
       throw ArgException("No RNA sequence given");
     } else {
-      rnaSequence = std::string(args_info.seq_arg);
+      rnaSequence = std::string(args_info.sequence_arg);
       if (!StructureUtils::IsValidSequence(rnaSequence)) {
         error_Mas << "Sequence " << rnaSequence << " is no valid Sequence ";
         throw ArgException(error_Mas.str());
@@ -698,11 +698,11 @@ main(int  argc,
 
     // parse structure
     std::string rna_start_str = "";
-    if (!args_info.startStr_given) {
+    if (!args_info.start_structure_given) {
       // initialize open chain structure
       rna_start_str = std::string(rnaSequence.size(), '.');
     } else {
-      rna_start_str = std::string(args_info.startStr_arg);
+      rna_start_str = std::string(args_info.start_structure_arg);
       if (!StructureUtils::IsValidStructure(rna_start_str)) {
         error_Mas << " start Structure " << rna_start_str
                   << " is no valid structure";
@@ -711,8 +711,8 @@ main(int  argc,
     }
 
     std::string rna_final_str = "";
-    if (args_info.finalStr_given) {
-      rna_final_str = args_info.finalStr_arg;
+    if (args_info.final_structure_given) {
+      rna_final_str = args_info.final_structure_arg;
       if (!StructureUtils::IsValidStructure(rna_final_str)
           || rna_final_str.size() == 0) {
         error_Mas << " final Structure " << rna_final_str
@@ -722,12 +722,12 @@ main(int  argc,
     }
 
     int maxBP_add = 0;
-    if (args_info.maxBPdist_add_given) {
-      maxBP_add = args_info.maxBPdist_add_arg;
+    if (args_info.max_bp_dist_add_given) {
+      maxBP_add = args_info.max_bp_dist_add_arg;
       //if (maxBPdist < 0)
       //  throw ArgException("The base pair distance has to be positive!");
-      if(!args_info.finalStr_given || !args_info.startStr_given)
-        throw ArgException("Error: maxBPdist_add expects that you also set a start structure and a final structure!");
+      if(!args_info.final_structure_given || !args_info.start_structure_given)
+        throw ArgException("Error: max-bp-dist-add expects that you also set a start structure and a final structure!");
     }
 
     std::list<std::string> start_structure_list;
@@ -754,53 +754,53 @@ main(int  argc,
     std::unordered_map<size_t, MyState> MinimaForReverseSearch;
 
     // set best K filter if required
-    if (args_info.filterBestK_given) {
-      filterValueK      = args_info.filterBestK_arg;
+    if (args_info.filter_best_k_given) {
+      filterValueK      = args_info.filter_best_k_arg;
       enableBestKFilter = true;
     }
 
     // set dynamic best K filter if required
-    if (args_info.dynamicBestK_given)
+    if (args_info.dynamic_best_k_given)
       dynamicBestK = true;
 
     // set Energy filter if required
-    if (args_info.filterMinE_given) {
-      filterValueE          = args_info.filterMinE_arg;
+    if (args_info.filter_min_e_given) {
+      filterValueE          = args_info.filter_min_e_arg;
       enableDeltaMinEFilter = true;
     }
 
     // set maxToStore variable for the states in each gradient basin.
-    if (args_info.maxToQueue_given)
-      maxToQueue = args_info.maxToQueue_arg;
+    if (args_info.max_to_queue_given)
+      maxToQueue = args_info.max_to_queue_arg;
 
     // set maxToHash variable for the states to be hashed in a gradient walk.
-    if (args_info.maxToHash_given)
-      maxToHash = args_info.maxToHash_arg;
+    if (args_info.max_to_hash_given)
+      maxToHash = args_info.max_to_hash_arg;
 
     // set dynamicMaxToHash variable for estimating the maximal number of states to be hashed in a gradient walk,
     // by considering the maximal available physical memory.
-    if (args_info.dynamicMaxToHash_given)
+    if (args_info.dynamic_max_to_hash_given)
       dynamicMaxToHash = true;
 
     // set the maximum energy that a state is allowed to have to be considered by the flooder.
-    if (args_info.maxEnergy_given)
-      maxEnergy = args_info.maxEnergy_arg;
+    if (args_info.max_energy_given)
+      maxEnergy = args_info.max_energy_arg;
 
     // set the maximum energy difference that states in a basin can have w.r.t. the local minimum.
-    if (args_info.deltaE_given)
-      deltaE = args_info.deltaE_arg;
+    if (args_info.delta_e_given)
+      deltaE = args_info.delta_e_arg;
 
-    // set maxThreads for parallelized computation.
+    // set max_threads for parallelized computation.
     int maxThreads = 1;
-    if (args_info.maxThreads_given) {
-      maxThreads = args_info.maxThreads_arg;
+    if (args_info.max_threads_given) {
+      maxThreads = args_info.max_threads_arg;
       if (maxThreads < 1)
         throw ArgException("you should use at least one thread.");
     }
 
-    if (args_info.energyFile_given) {
+    if (args_info.energy_file_given) {
       // set output file name for energies.
-      energyFileName  = args_info.energyFile_arg;
+      energyFileName  = args_info.energy_file_arg;
       logEnergies     = true;
     }
 
@@ -809,27 +809,27 @@ main(int  argc,
       binary_rates_file = args_info.binary_rates_file_arg;
 
     //partitionFunctions
-    if (args_info.partitionFunctions_given) {
+    if (args_info.partition_functions_given) {
       // set output file name for partitionfunctions.
-      partitionFunctionFileName = args_info.partitionFunctions_arg;
+      partitionFunctionFileName = args_info.partition_functions_arg;
       writePartitionFunctions   = true;
     }
 
     //dotPlot
-    if (args_info.dotPlot_given) {
+    if (args_info.dot_plot_given) {
       // set output file name for dotPlot.
-      dotPlotFileName = args_info.dotPlot_arg;
+      dotPlotFileName = args_info.dot_plot_arg;
       writeDotplot    = true;
     }
 
-    if (args_info.dotPlot_per_basin_given) {
-      dotPlotPerBasinFileName = args_info.dotPlot_per_basin_arg;
+    if (args_info.dot_plot_per_basin_given) {
+      dotPlotPerBasinFileName = args_info.dot_plot_per_basin_arg;
       writeDotplotPerBasin    = true;
     }
 
-    if (args_info.transProb_given) {
+    if (args_info.transition_prob_given) {
       // set output stream
-      std::string outfile_name = std::string(args_info.transProb_arg);
+      std::string outfile_name = std::string(args_info.transition_prob_arg);
       if (outfile_name.compare("STDOUT") == 0) {
         transOut = out;
       } else {
@@ -839,7 +839,7 @@ main(int  argc,
         if (!transOutFile->is_open()) {
           std::ostringstream oss;
           oss << "cannot open output file '"
-              << args_info.transProb_arg << "'";
+              << args_info.transition_prob_arg << "'";
           throw ArgException(oss.str());
         }
 
@@ -1063,7 +1063,7 @@ main(int  argc,
     // insert the index of current minima to toDo_list
     toDo_List.push_back(currentMinID);
 
-    if(args_info.maxBPdist_add_given){
+    if(args_info.max_bp_dist_add_given){
       maxBPdist = vrna_bp_distance(startStructureMinimum, endStructureMinimum);
       maxBPdist += maxBP_add;
     }
@@ -1077,7 +1077,7 @@ main(int  argc,
       auto    it_min            = Minima.find(*start_struct_min);
       if (it_min == Minima.end()) {
         bool allow_min = true;
-        if(args_info.maxBPdist_add_given){
+        if(args_info.max_bp_dist_add_given){
             int start_dist = vrna_bp_distance(startStructureMinimum, start_struct_min->toString().c_str());
             int final_dist = vrna_bp_distance(endStructureMinimum, start_struct_min->toString().c_str());
             if(start_dist + final_dist > maxBPdist){
@@ -1216,7 +1216,7 @@ main(int  argc,
               }
 
               // stop exploration at final structure only if no maximal base pair distance is given!
-              if(!args_info.maxBPdist_add_given){
+              if(!args_info.max_bp_dist_add_given){
                 //if final structure is in done list --> break;
                 if (!finalStructureFound && finalStructureMinimum != NULL) {
                   auto final_min_it = Minima.find(*finalStructureMinimum);
