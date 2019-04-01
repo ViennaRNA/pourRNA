@@ -151,7 +151,7 @@ p0[startIndex]=1
 time <- c(0.001 %o% 10^(seq(0,20,0.1)))  #log time steps
 
 V=t(eVectorsR)
-
+final_equilibrium_it=-1
 Pt=c()
 plotTime=c()
 startP0=c(p0)
@@ -167,10 +167,21 @@ for(i in time){
     print(i)
     break
   }
-  if(sum(abs(c(t1) - c(p8[1,]))) < 1e-9){
+  if(sum(abs(c(t1) - c(p8[1,]))) < 1e-7){
     print("equilibrium reached!")
-    break
+    if(final_equilibrium_it == -1){
+      final_equilibrium_it = 10
+    }
+    #break
   }
+  if(final_equilibrium_it > 0){
+    final_equilibrium_it = final_equilibrium_it -1
+    if(final_equilibrium_it == 0){
+      break
+    }
+  }
+  
+  
   if(length(Pt) == 0){
     Pt = c(t1)
   } else {
