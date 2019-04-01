@@ -22,6 +22,10 @@ Dependencies:
 
 If you download the [release](https://github.com/ViennaRNA/pourRNA/releases), you can skip `autoreconf -i` and you don't need gengetopt.
 
+To install this package with conda run:
+```
+conda install -c bioconda pourrna
+```
 
 ## Execute
 The minimal input is an RNA sequence. Either per standard input (from a *.fasta file)
