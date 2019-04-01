@@ -30,13 +30,13 @@ cat rna.fasta | pourRNA
 ```
 or per command line argument
 ```
-pourRNA --sequence="GACCGGAAGGUCCGCCUUCC"
+pourRNA --sequence="CUAGUUAGGAACGGAAUUAAUUAGGAAAAAGCUGAUUAG"
 ```
 
 The content of the file rna.fasta should look similar to this:
 ```
 > fasta header
-GACCGGAAGGUCCGCCUUCC
+CUAGUUAGGAACGGAAUUAAUUAGGAAAAAGCUGAUUAG
 ```
 
 
@@ -63,10 +63,10 @@ As a second step you need one or several start structures for the initial popula
 ```
 cat rna_barriers_states.out | grep -P "\s*\d+\s[\.]+\s+\-?\d*\.?\d*"
 ```
-In this example the index of our start structure is 12.
+In this example the index of our start structure is 34.
 With this we can start treekin:
 ```
-cat ./rna_barriers_rates.out | treekin -m I --bar=./rna_barriers_states.out --p0 12=1.0 > treekin.out
+cat ./rna_barriers_rates.out | treekin -m I --bar=./rna_barriers_states.out --p0 34=1.0 > treekin.out
 ```
 The treekin output is a matrix with the time steps in the first column and the population densities for all local minima in the other columns.
 This file can be visualized for example with the tool 'gracebat'.
@@ -80,7 +80,7 @@ The final kinetics.pdf shows the folding process from the initial population unt
 If you don't have access to treekin and want to use the R script within the scripts directory of this project, you can compute the kinetics pdf file as follows:
 ```
 cat rna.fasta | pourRNA --barriers-like-output=rna_barriers --binary-rates-file=rna_rate_matrix
-Rscript ./scripts/read_matrix_plot_kinetics_sparse_colors.R --binary_matrix ./rna_rate_matrix --states_file ./rna_barriers_states.out --initial_state=12
+Rscript ./scripts/read_matrix_plot_kinetics.R --binary_matrix ./rna_rate_matrix --states_file ./rna_barriers_states.out --initial_state=34
 ```
 The output of this call is the file `rna_rate_matrix.pdf` within the current directory.
 
