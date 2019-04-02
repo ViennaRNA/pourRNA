@@ -648,9 +648,9 @@ main(int  argc,
   // increases K if the MFE structure is not in the done list and start the exploration again.
   bool                                                dynamicBestK = false;
 
-  // value for min. E filter. -1 = do not filter.
+  // value for max-neigh-e filter.
   double                                              filterValueE          = 0;
-  bool                                                enableDeltaMinEFilter = false;
+  bool                                                enableMax_Neigh_E_Filter = false;
 
   //max base pair distance filter
   int                                                 maxBPdist = 65536;
@@ -790,9 +790,9 @@ main(int  argc,
       dynamicBestK = true;
 
     // set Energy filter if required
-    if (args_info.filter_min_e_given) {
-      filterValueE          = args_info.filter_min_e_arg;
-      enableDeltaMinEFilter = true;
+    if (args_info.max_neigh_e_given) {
+      filterValueE          = args_info.max_neigh_e_arg;
+      enableMax_Neigh_E_Filter = true;
     }
 
     // set maxToStore variable for the states in each gradient basin.
@@ -1006,7 +1006,7 @@ main(int  argc,
     }
 
     // set Energy filter if required
-    if (enableDeltaMinEFilter) {
+    if (enableMax_Neigh_E_Filter) {
       neighbor_E_Filter = new NeighMin_E_Filter(filterValueE);
       neighborFilter    = neighbor_E_Filter;
     }
@@ -1192,7 +1192,7 @@ main(int  argc,
               if(!finalStructureFound){
                 //test if new discovered minima are on the stack (pull all available minima)
                 //TODO: warning! This kind of asynchronous flooding disables some Filter Options.
-                if (!enableBestKFilter && !enableDeltaMinEFilter) {
+                if (!enableBestKFilter && !enableMax_Neigh_E_Filter) {
                   while (!discoveredMinimaForEachThread[index].empty()) {
                     MyState newMin =
                       discoveredMinimaForEachThread[index].pop();

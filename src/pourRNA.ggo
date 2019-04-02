@@ -66,9 +66,10 @@ option  "dynamic-best-k" -
 flag
 off
 
-option  "filter-min-e" -
-"reduces outgoing transitions to the Neighbor minima, which have\
- Energy lower than current (E(minima)+filterValue) for each gradient basin\n"
+option  "max-neigh-e" -
+"reduces outgoing transitions to the neighbored minima, for which the\
+ energy is lower than the energy of the current minimum plus the filter value.\
+ (E(neighbored minimum) < E(current minimum) + filterValue) for each gradient basin.\n"
 double
 optional
 
