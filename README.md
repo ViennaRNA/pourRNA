@@ -5,7 +5,7 @@
 
 # pourRNA
 
-A tool that computes local minima and respective transition rates of an RNA energy landscape.
+For a given RNA, pourRNA identifies local minima and computes respective gradient basins and transition rates of the energy landscape. This is done by efficient local flooding techniques in combination with heuristics to guide which gradient basins are explored and considered.
 
 ## Installation
 
@@ -20,8 +20,26 @@ If you have an Arch, openSUSE, Debian or Ubuntu linux, you can download the pre-
 ```
 https://www.tbi.univie.ac.at/~entzian/pourRNA_build/
 ```
+### From [release](https://github.com/ViennaRNA/pourRNA/releases) Source
 
-### From Source
+You can download the source tar balls for the individual releases from the [release page](https://github.com/ViennaRNA/pourRNA/releases).
+
+To configure, compile and install execute the following commands on your command line:
+```
+./configure [--help for additional configuration options]
+make
+make install
+```
+Dependencies:
+  - [ViennaRNA library (>= 2.4.11)](https://www.tbi.univie.ac.at/RNA/#download)
+
+If you installed the ViennaRNA library in a non-standard directory, you have to give the path to the main directory of the ViennaRNA library:
+```
+./configure --with-RNA=/path/to/ViennaRNA
+```
+
+
+### From github Source
 
 To configure, compile and install execute the following commands on your command line:
 ```
@@ -38,8 +56,6 @@ If you installed the ViennaRNA library in a non-standard directory, you have to 
 ```
 ./configure --with-RNA=/path/to/ViennaRNA
 ```
-
-If you download the [release](https://github.com/ViennaRNA/pourRNA/releases), you can skip `autoreconf -i` and you don't need gengetopt.
 
 
 ## First Steps
@@ -61,7 +77,7 @@ CUAGUUAGGAACGGAAUUAAUUAGGAAAAAGCUGAUUAG
 ```
 
 
-The output consists of the representative structures of the local minima and the transition rates between adjacent local minima.
+The output consists of the representative structures (local minima) of the explored gradient basins and the transition rates between them.
 You can adjust the output and speed up the computation by using additional command line parameters. All parameters are shown by
 ```
 pourRNA --help
@@ -119,7 +135,7 @@ cat rna.fasta | pourRNA --max-threads=8
 A global energy threshold can be set with `--max-energy=` a value in kcal/mol. This energy is an **absolute** threshold.
 If you want to include, for example, the open chain structure (without any base pairs), then you should set this threshold above zero. The default value is 5 kcal/mol.
 
-This filter can also be applied on a local level, which is called `--delta-e=` a value in kcal/mol. This energy is the maximum energy threshold **relative** to the energy of each basin that is currently flooded. So it makes a difference if you start the exploration with the open chain structure or with the MFE structure.
+This filter can also be applied on a local level, which is called `--delta-e=` a value in kcal/mol. This energy is the maximum energy threshold **relative** to the minimal energy (local minimum) of each basin that is currently flooded. So it makes a difference if you start the exploration with the open chain structure or with the MFE structure.
 
 ![depiction of the maxEnery and deltaE filter](doc/figures/deltaE_MaxE_filter.svg)
 
@@ -127,13 +143,13 @@ This filter can also be applied on a local level, which is called `--delta-e=` a
 ### Macro state filter: maxNeighE and kBest
 Using these filters you can compute approximate RNA folding kinetics, which is much faster. 
 However, these filters can lead to very different results if they are too restrictive.
-The --max-neigh-e filter reduces outgoing transitions to the neighbored minima, for which the energy is lower than
+The `--max-neigh-e` filter reduces outgoing transitions to the neighbored minima, for which the energy is lower than
 the energy of the current minimum plus the filter value (E(neighbored minimum) < E(current minimum) + filterValue).
-This helps to avoid the exploration of minima that are too high in the energy landscape to contribute much to the final folding kinetics.
+This helps to avoid the exploration of minima that are too high in the energy landscape and thus often have a low contribution to the final folding kinetics.
 
 ![depiction of the maxNeighE filter](doc/figures/maxNeighE.svg)
 
-The --filter-best-k filter follows takes an integer k as input. From a given initial structure it explores only the k neighbored basins, with the highest transition rates. 
+The `--filter-best-k` filter follows takes an integer k as input. From a given initial structure it explores only the k neighbored basins, with the highest transition rates. 
 
 Both filters can be applied at the same time, however, the order of these filters is important (in order to get reproducible results) because the highest rates are not not necessarily leading to energetically lower neighbored gradient basins. 
 Thus, we first have to prune all "up-hill" transitions before reducing the remaining to the k best
