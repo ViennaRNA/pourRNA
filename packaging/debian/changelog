@@ -1,5 +1,10 @@
-pourrna (1.0.1-1) UNRELEASED; urgency=medium
+pourrna (1.0.1-1.1) UNRELEASED; urgency=medium
 
+  [ Gregor Entzian ]
   * Initial release.
 
- -- Gregor Entzian <entzian@tbi.univie.ac.at>  Wed, 20 Feb 2019 18:41:41 +0100
+  [ Gregor Entzian ]
+  * Changed command line parameters
+  + Man page
+
+ -- GE <entzian@tbi.univie.ac.at>  Thu, 04 Apr 2019 14:55:01 -0400
