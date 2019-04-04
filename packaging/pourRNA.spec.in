@@ -20,22 +20,20 @@ BuildRequires:  autoconf
 BuildRequires:  automake
 BuildRequires:  rpm-devel
 
-BuildRequires:  libstdc++-devel gengetopt
+BuildRequires:  libstdc++-devel gcc gcc-c++ gengetopt
 %if 0%{?suse_version}
 BuildRequires:  viennarna-devel
 %else
-BuildRequires:  viennarna (>=2.4.11)
+BuildRequires:  viennarna-devel (>=2.4.11)
 %endif
-
-BuildRequires:  gcc gcc-c++
 
 
 %description
 Compute local minima and respective transition rates of an RNA energy landscape.
 
-Requires: libstdc++-devel
+Requires: libstdc++
 %if 0%{?suse_version}
-BuildRequires:  viennarna-devel
+Requires:  viennarna
 %else
 Requires: viennarna (>=2.4.11)
 %endif
@@ -58,3 +56,4 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %defattr(-,root,root,-)
 %{_bindir}/*
+%{_datadir}/pourRNA/
