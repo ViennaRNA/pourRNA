@@ -1,7 +1,7 @@
 AUTOMAKE_OPTIONS = foreign
 
 # the subdirectories of the project to go into
-SUBDIRS = src misc
+SUBDIRS = src misc doc
 
 pkgconfigdir = $(libdir)/pkgconfig
 

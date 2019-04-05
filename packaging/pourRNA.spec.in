@@ -42,7 +42,7 @@ Requires: viennarna (>=2.4.11)
 %setup -n pourRNA-%{version} -q
 
 %build
-%configure
+%configure --prefix=%{_prefix} --docdir=%{_pkgdocdir} --mandir=%{_mandir}
 make
 
 %install
@@ -57,3 +57,5 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-,root,root,-)
 %{_bindir}/*
 %{_datadir}/pourRNA/
+%doc README.md
+%{_mandir}/*/*

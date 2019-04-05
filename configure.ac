@@ -190,6 +190,7 @@ AC_SUBST([LIBS])
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_FILES([src/Makefile])
 AC_CONFIG_FILES([misc/Makefile])
+AC_CONFIG_FILES([doc/Makefile])
 
 # generate the final Makefile etc.
 AC_OUTPUT([packaging/pourRNA.spec packaging/PKGBUILD])
