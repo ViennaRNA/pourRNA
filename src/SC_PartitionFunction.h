@@ -25,6 +25,7 @@ public:
  * to the container
  */
 SC_PartitionFunction(double temperature = 37.0,
+                     double gas_constant = 0.00198717,
                      bool   storeEnergies = false);
 
 /*! sets the partition function sum to 0 and calculate the gasconstant (RT)
@@ -34,6 +35,7 @@ SC_PartitionFunction(double temperature = 37.0,
  */
 virtual
 void initialize(const double  temperature,
+                const double  gas_constant,
                 const bool    storeEnergies = false);
 
 
@@ -122,19 +124,11 @@ bool              StoreEnergies;
 std::vector<int>  Energies;
 //! The partition function sum to fill;
 double            Z;
-//! Units from ELL::LandscapeTopology.
-//! Conversion factor * Joule --> kcal
-const double      JOULE_TO_KCAL;
-//! Gas constant R = 8.314472
-//! unit : Joule / (Kelvin * mol)
-const double      GAS_CONSTANT_R;
-//! gas constant at temperature T = 37 Celsius = 310.15 Kelvin
-double            GAS_CONSTANT_RT;
+//! Gas constant unit : kcal / (Kelvin * mol)
+const double      GAS_CONSTANT_KCAL;
 //! The temperature scaled "Boltzmann" constant used to compute Boltzmann weights.
 double            kT;
 };
 
-//SC_PartitionFunction::JOULE_TO_KCAL = 0.000239;
-//SC_PartitionFunction::GAS_CONSTANT_R = 8.314472;
 
 #endif /* SC_PARTITIONFUNCTION_H_ */

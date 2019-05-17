@@ -362,7 +362,9 @@ printEquilibriumDensities(SC_PartitionFunction::Z_Matrix& z,
   // calc. sum of all basin partition functions.
   for (size_t c = 0; c < sortedMinimaIDs.size(); c++) {
     nextMinID = sortedMinimaIDs[c].first;
-    sumZb     += z[SC_PartitionFunction::PairID(nextMinID, nextMinID)].getZ();
+    SC_PartitionFunction::Z_Matrix::const_iterator pf_it = z.find(SC_PartitionFunction::PairID(nextMinID, nextMinID));
+    if(pf_it != z.end())
+      sumZb     += pf_it->second.getZ(); //z[SC_PartitionFunction::PairID(nextMinID, nextMinID)].getZ();
   }
   double            equilibriumDensity;
   out << "(";
@@ -370,8 +372,9 @@ printEquilibriumDensities(SC_PartitionFunction::Z_Matrix& z,
   sstmp << std::scientific;
   for (size_t c = 0; c < sortedMinimaIDs.size(); c++) {
     nextMinID           = sortedMinimaIDs[c].first;
-    equilibriumDensity  =
-      z[SC_PartitionFunction::PairID(nextMinID, nextMinID)].getZ() / sumZb;
+    SC_PartitionFunction::Z_Matrix::const_iterator pf_it = z.find(SC_PartitionFunction::PairID(nextMinID, nextMinID));
+    if(pf_it != z.end())
+      equilibriumDensity  = pf_it->second.getZ() / sumZb; //z[SC_PartitionFunction::PairID(nextMinID, nextMinID)].getZ() / sumZb;
     // print probability and state
     sstmp << equilibriumDensity;
     // print spacer if needed

@@ -10,11 +10,12 @@
 #include <sstream>
 
 SC_DotPlot::SC_DotPlot (const double  temperature,
+                        const double  gas_constant,
                         const bool    storeEnergies) :
-  SC_PartitionFunction(), bpWeightSum()
+  SC_PartitionFunction(temperature, gas_constant, storeEnergies), bpWeightSum()
 {
   // initialize data structures
-  initialize(temperature, storeEnergies);
+  // initialize(temperature, storeEnergies);
 }
 
 
@@ -61,10 +62,11 @@ SC_DotPlot::~SC_DotPlot ()
 
 void
 SC_DotPlot::initialize(const double temperature,
+                       const double gas_constant,
                        const bool   storeEnergies)
 {
   // super class function
-  SC_PartitionFunction::initialize(temperature, storeEnergies);
+  SC_PartitionFunction::initialize(temperature, gas_constant, storeEnergies);
 
   // init local data structures
   bpWeightSum.clear();

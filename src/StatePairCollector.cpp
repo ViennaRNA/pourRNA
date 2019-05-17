@@ -6,6 +6,7 @@
  */
 
 #include "StatePairCollector.h"
+#include "SC_PartitionFunction.h"
 
 StatePairCollector::StatePairCollector(size_t                           currentMinID,
                                        PairHashTable::HashTable&        minima,
@@ -13,6 +14,7 @@ StatePairCollector::StatePairCollector(size_t                           currentM
                                        const size_t                     maxGradWalkHashed,
                                        Concurrent_Queue<MyState>        *discoveredMinima,
                                        double                           boltzmannWeightTemperature,
+                                       double                           gas_constant,
                                        unsigned int                     move_set,
                                        PairHashMap::HashMap*            all_saddles,
                                        const char                       *sourceStructure,
@@ -21,7 +23,7 @@ StatePairCollector::StatePairCollector(size_t                           currentM
   CurMinID(currentMinID), Minima(minima), Z(z), GradWalk(
     move_set, maxGradWalkHashed), NumberOfOuterStates(0), DiscoveredMinima(
     discoveredMinima), BoltzmannWeightTemperature(
-    boltzmannWeightTemperature), All_Saddles(all_saddles),
+    boltzmannWeightTemperature), GasConstant(gas_constant), All_Saddles(all_saddles),
   SourceStructure(sourceStructure), TargetStructure(targetStructure), MaxBPdist(maxBPdist),
   MininaToIgnore()
 {
@@ -122,7 +124,7 @@ StatePairCollector::add(vrna_fold_compound_t  *vc,
   SC_PartitionFunction::Z_Matrix::iterator  zIt = Z.find(pairID);
   if (zIt == Z.end())
     // vc->params->temperature is in Celsius.
-    Z[pairID].initialize(vc->params->temperature);
+    Z[pairID].initialize(BoltzmannWeightTemperature, GasConstant);
 
   if (firstIsSmaller) {
     // update Z matrix with basin state

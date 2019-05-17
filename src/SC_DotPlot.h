@@ -35,7 +35,8 @@ public:
  * @param storeEnergies whether or not to store a list of all energies added
  * to the container
  */
-SC_DotPlot (const double  temperature = 37.0,
+SC_DotPlot (const double  temperature,
+            const double  gas_constant,
             const bool    storeEnergies = false);
 
 /*! resets the data structure and calculate the gasconstant (RT)
@@ -46,6 +47,7 @@ SC_DotPlot (const double  temperature = 37.0,
 virtual
 void
 initialize(const double temperature,
+           const double gas_constant,
            const bool   storeEnergies = false);
 
 

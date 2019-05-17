@@ -238,6 +238,7 @@ struct flooderInputParameter {
   NeighMinFilter            *Filter;
   Concurrent_Queue<MyState> *DiscoveredMinima;
   double                    TemperatureForBoltzmannWeight;
+  double                    GasConstant;
   unsigned int              Move_set;
   PairHashMap::HashMap      *All_Saddles;
   int                       MaxBPdist;
@@ -306,6 +307,7 @@ floodBasin(vrna_fold_compound_t   *vc,
                          outParameter->PartitionFunctions, inParameter->MaxToHash,
                          inParameter->DiscoveredMinima,
                          inParameter->TemperatureForBoltzmannWeight,
+                         inParameter->GasConstant,
                          inParameter->Move_set,
                          inParameter->All_Saddles,
                          inParameter->SourceStructure,
@@ -604,12 +606,18 @@ std::string read_sequence_from_stdin(){
                                           &rec_rest,
                                           stdin,
                                           read_opt);
-   if (rec_type & (VRNA_INPUT_ERROR | VRNA_INPUT_QUIT))
+   if (rec_type & (VRNA_INPUT_ERROR | VRNA_INPUT_QUIT)){
+        free(rec_sequence);
+        free(rec_id);
+        free(rec_rest);
         return "";
+   }
    std::string result_sequence = "";
    if(rec_type & VRNA_INPUT_SEQUENCE)
      result_sequence = std::string(rec_sequence);
-
+   free(rec_sequence);
+   free(rec_id);
+   free(rec_rest);
   return result_sequence;
 }
 
@@ -681,6 +689,8 @@ main(int  argc,
   double                                              temperatureForEnergy = 37;
   // paramter for the temperature for the Boltzmann weight in celsius.
   double                                              temperatureForBoltzmannWeight = 37;
+  
+  double                                              gas_constant = 0.00198717; /* in [kcal/(K*mol)] */
 
   // How to treat \"dangling end\" energies for bases adjacent to helices in free ends and multi-loops
   int                                                 danglingEnd = 2;
@@ -888,6 +898,10 @@ main(int  argc,
       temperatureForEnergy = args_info.temperature_arg;
       if (!(args_info.boltzmann_temp_given))
         temperatureForBoltzmannWeight = temperatureForEnergy;
+    }
+    
+    if (args_info.gas_constant_given) {
+      gas_constant = args_info.gas_constant_arg;
     }
 
     if (args_info.boltzmann_temp_given)
@@ -1305,6 +1319,7 @@ main(int  argc,
                   }
                   inParameter->TemperatureForBoltzmannWeight =
                     temperatureForBoltzmannWeight;
+		  inParameter->GasConstant = gas_constant;
                   inParameter->Move_set         = move_set;
                   if(args_info.saddle_file_given)
                     inParameter->All_Saddles      = &all_saddles;
@@ -1321,11 +1336,13 @@ main(int  argc,
                   if (writeDotplot) {
                     outParameter->ScBasin = new SC_DotPlot(
                       temperatureForBoltzmannWeight,
+                      gas_constant,
                       logEnergies);
                   } else {
                     outParameter->ScBasin =
                       new SC_PartitionFunction(
                         temperatureForBoltzmannWeight,
+                        gas_constant,
                         logEnergies);
                   }
 

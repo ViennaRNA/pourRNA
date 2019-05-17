@@ -50,6 +50,7 @@ StatePairCollector(size_t                           currentMinID,
                    const size_t                     maxGradWalkHashed,
                    Concurrent_Queue<MyState>        *discoveredMinima,
                    double                           boltzmannWeightTemperature,
+                   double                           gas_constant,
                    unsigned int                     move_set,
                    PairHashMap::HashMap*            all_saddles,
                    const char                       *sourceStructure,
@@ -89,7 +90,8 @@ private:
 // ! identifier of the current minimum.
 const size_t                    CurMinID;
 // ! Temperature for the Boltzmann weight (not the structure energies)
-double                          BoltzmannWeightTemperature;
+double                          BoltzmannWeightTemperature; /* in Celsius */
+double                          GasConstant; /* in kcal/(K*mol) */
 // ! minima map: structure, index.
 PairHashTable::HashTable&       Minima;
 // ! the partition funcion matrix.

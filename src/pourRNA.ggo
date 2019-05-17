@@ -123,6 +123,15 @@ double
 default="37"
 optional
 
+option  "gas-constant" G
+"Set the gas constant in [kcal/(K*mol)]. You need this in order to compare the rate matrix with the results of other tools.\n\
+ViennaRNA package: 0.00198717 kcal/(K*mol)\n\
+Barriers:          0.00198717 kcal/(K*mol)\n\
+ELL Library:       0.0019871588 kcal/(K*mol)\n"
+double
+default="0.00198717"
+optional
+
 option  "dangling-end" d
 "How to treat \"dangling end\" energies for bases adjacent to helices in free ends and multi-loops.\n"
 int
