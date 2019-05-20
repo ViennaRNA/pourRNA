@@ -123,6 +123,32 @@ The output of this call is the file `rna_rate_matrix.pdf` within the current dir
 ![depiction of the RNA folding kinetics](doc/figures/example_kinetics.svg)
 
 
+### Comparison with barriers
+You can easily test if the printed rate matrix is similar to the output of the tool barriers. However, you should know that the default parameters will not work.
+At first you have to make shure that you compute the whole state space for both tools by setting the same maximal energy threshold (`RNAsubopt -e 1000` and `pourRNA --max-energy 1000`).
+Note that the RNAsubopt threshold is relative to the MFE and the pourRNA threshold is absolute.
+In barriers you have to set the minimum height to introduce a new basin to 0 (i.e. `--minh 0`). In barriers versions <= 1.6.0 you have to make shure that shift moves are disabled (`-M RNA-noShift`).
+
+Compute the barriers rates file (rates.out):
+```
+echo "GGGGGGACCCCCC" | RNAsubopt -e 1000 -s | barriers --rates --minh 0 -M RNA-noShift > 13nt_barriers.out
+```
+
+Compute the pourRNA rates file (13nt_pourRNA_rates.out):
+```
+echo "GGGGGGACCCCCC" | pourRNA --max-energy 1000 --barriers-like-output=13nt_pourRNA
+```
+
+Compare both files:
+```
+meld rates.out 13nt_pourRNA_rates.out
+```
+
+All rates should be exactly the same in both files, except for the diagonal.
+The barriers diagonal is different from pourRNA. However, often it does not matter because some post-processing tools (e.g. treekin) recompute the diagonal. 
+The correct diagonal has the rates `q(i,i) = -sum_{j not equal i} q(i,j)` for the i-th row and the j-th column.
+
+
 ## Parameters
 
 ### max-threads
@@ -219,6 +245,7 @@ or
 ```
 pourRNA --help
 ```
+
 
 
 In case you run into problems, please contact us!
