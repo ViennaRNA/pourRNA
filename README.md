@@ -84,6 +84,13 @@ pourRNA --help
 ```
 
 ### Post-processing
+
+#### required tools
+- [gracebat](http://plasma-gate.weizmann.ac.il/Grace/) alternative [R](https://www.r-project.org/) (with additional packages)
+- [treekin](https://www.tbi.univie.ac.at/RNA/Treekin/) alternative [R](https://www.r-project.org/) (with additional packages)
+- [ps2pdf](https://ghostscript.com/download/gsdnld.html)
+- [meld](https://gitlab.gnome.org/GNOME/meld) alternative any other diff-tool
+
 If you are only interested in the thermodynamic equilibrium of the Markov process, you can simply extract the line with the equilibrium densities for the local minima:
 ```
 cat rna.fasta | pourRNA | grep "Equilibrium Densities:" -A1
