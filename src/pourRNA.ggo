@@ -53,6 +53,10 @@ option  "max-threads" -
 int
 optional
 
+option  "skip-diagonal" -
+"Skip the computation of the diagonal of the rate matrix (it can be skipped because some post-processing tools like treekin compute it per default)."
+flag
+off
 
 section "Filter"
 

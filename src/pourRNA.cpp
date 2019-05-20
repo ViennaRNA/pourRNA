@@ -138,7 +138,8 @@ getMaximalNeighborsOfAMacroState(SC_PartitionFunction::Z_Matrix& z,
  */
 biu::MatrixSparseC<double> &
 calculateRateMatrix(SC_PartitionFunction::Z_Matrix& z,
-                    std::unordered_set<size_t>& done_List)
+                    std::unordered_set<size_t>& done_List,
+                    bool computeDiagonal = false)
 {
   size_t max_size = 0;
   size_t done_id;
@@ -215,15 +216,18 @@ calculateRateMatrix(SC_PartitionFunction::Z_Matrix& z,
       }
     }
   }   // end for
-  //don't compute diagonal
-  /*
-  for (auto from_it = done_List.begin(); from_it != done_List.end(); from_it++) {
-    double sum = 0.0;
-    for (auto to_it = done_List.begin(); to_it != done_List.end(); to_it++) {
-      sum += final_Rate.at(*from_it, *to_it);
+  // compute diagonal
+  if(computeDiagonal){
+    double sum;
+    for (auto from_it = done_List.begin(); from_it != done_List.end(); from_it++) {
+      sum = 0.0;
+      for (auto to_it = done_List.begin(); to_it != done_List.end(); to_it++) {
+        if(*from_it != *to_it)
+          sum += final_Rate.at(*from_it, *to_it);
+      }
+      final_Rate.at(*from_it, *from_it) = -sum;
     }
-    final_Rate.at(*from_it, *from_it) = -sum;
-  }*/
+  }
   return final_Rate;
 }
 
@@ -692,6 +696,9 @@ main(int  argc,
   
   double                                              gas_constant = 0.00198717; /* in [kcal/(K*mol)] */
 
+  // compute the diagonal of the rate matrix (can be skipped because some post-processing tools like treekin recompute it)
+  bool                                                computeDiagonal = true;
+
   // How to treat \"dangling end\" energies for bases adjacent to helices in free ends and multi-loops
   int                                                 danglingEnd = 2;
   // The move set type (see neighbor.h vrna_package)
@@ -892,6 +899,11 @@ main(int  argc,
         throw ArgException(oss.str());
       }
     }
+
+    if (args_info.skip_diagonal_given)
+      computeDiagonal = false;
+    else
+      computeDiagonal = true;
 
     if (args_info.temperature_given) {
       // set temperatureForEnergy.
@@ -1502,8 +1514,7 @@ main(int  argc,
       done_List,
       MinimaForReverseSearch);
       */
-    biu::MatrixSparseC<double>&  final_Rate = calculateRateMatrix(z,
-                                                                   done_List);
+    biu::MatrixSparseC<double>&  final_Rate = calculateRateMatrix(z, done_List, computeDiagonal);
 
     // To store the States after applying all the Filtering Techniques
     //std::unordered_map<size_t, MyState>         final_minima;
