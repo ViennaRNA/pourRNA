@@ -1,6 +1,6 @@
 
 m4_define([pourRNA_version_major], [1])
-m4_define([pourRNA_version_minor], [1])
+m4_define([pourRNA_version_minor], [2])
 m4_define([pourRNA_version_patch], [0])
 
 AC_PREREQ([2.59])
