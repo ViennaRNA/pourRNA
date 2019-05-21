@@ -12,7 +12,7 @@
 #include <map>
 extern "C" {
 #include <ViennaRNA/utils.h>
-#include <ViennaRNA/PS_dot.h>
+#include <ViennaRNA/plotting/probabilities.h>
 }
 
 /**
