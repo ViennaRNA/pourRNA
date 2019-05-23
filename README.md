@@ -16,10 +16,41 @@ conda install -c bioconda pourrna
 ```
 
 ### From Linux Package
-If you have an Arch, openSUSE, Debian or Ubuntu linux, you can download the pre-compiled package from:
-```
-https://www.tbi.univie.ac.at/~entzian/pourRNA_build/
-```
+<table><thead><tr>
+<th> Arch </th>
+<th> Debian </th>
+<th> Ubuntu </th>
+<th> openSUSE </th>
+</tr></thead><tbody><tr>
+<td style="vertical-align:top">
+<details><summary>Arch_Extra</summary><p><a href="https://download.opensuse.org/repositories/home:/entzian/Arch_Extra/x86_64/pourRNA-1.2.0-1-x86_64.pkg.tar.xz"> pourRNA - 1.2.0 - x86_64</a></p>
+</details></td>
+<td style="vertical-align:top">
+<details><summary>Debian_9.0</summary><p><a href="https://download.opensuse.org/repositories/home:/entzian/Debian_9.0/i386/pourrna_1.2.0-1_i386.deb"> pourrna - 1.2.0 - 32 bit</a></p>
+<p><a href="https://download.opensuse.org/repositories/home:/entzian/Debian_9.0/amd64/pourrna_1.2.0-1_amd64.deb"> pourrna - 1.2.0 - 64 bit</a></p>
+</details><details><summary>Debian_8.0</summary><p><a href="https://download.opensuse.org/repositories/home:/entzian/Debian_8.0/i386/pourrna_1.2.0-1_i386.deb"> pourrna - 1.2.0 - 32 bit</a></p>
+<p><a href="https://download.opensuse.org/repositories/home:/entzian/Debian_8.0/amd64/pourrna_1.2.0-1_amd64.deb"> pourrna - 1.2.0 - 64 bit</a></p>
+</details></td>
+<td style="vertical-align:top">
+<details><summary>xUbuntu_18.10</summary><p><a href="https://download.opensuse.org/repositories/home:/entzian/xUbuntu_18.10/amd64/pourrna_1.2.0-1_amd64.deb"> pourrna - 1.2.0 - 64 bit</a></p>
+</details><details><summary>xUbuntu_18.04</summary><p><a href="https://download.opensuse.org/repositories/home:/entzian/xUbuntu_18.04/amd64/pourrna_1.2.0-1_amd64.deb"> pourrna - 1.2.0 - 64 bit</a></p>
+</details><details><summary>xUbuntu_17.10</summary><p><a href="https://download.opensuse.org/repositories/home:/entzian/xUbuntu_17.10/amd64/pourrna_1.2.0-1_amd64.deb"> pourrna - 1.2.0 - 64 bit</a></p>
+</details><details><summary>xUbuntu_14.04</summary><p><a href="https://download.opensuse.org/repositories/home:/entzian/xUbuntu_14.04/i386/pourrna_1.2.0-1_i386.deb"> pourrna - 1.2.0 - 32 bit</a></p>
+<p><a href="https://download.opensuse.org/repositories/home:/entzian/xUbuntu_14.04/amd64/pourrna_1.2.0-1_amd64.deb"> pourrna - 1.2.0 - 64 bit</a></p>
+</details></td>
+<td style="vertical-align:top">
+<details><summary>openSUSE_Tumbleweed</summary><p><a href="https://download.opensuse.org/repositories/home:/entzian/openSUSE_Tumbleweed/x86_64/pourRNA-1.2.0-51.1.x86_64.rpm"> pourRNA - 1.2.0 - x86_64</a></p>
+</details><details><summary>openSUSE_Leap_42.3</summary><p><a href="https://download.opensuse.org/repositories/home:/entzian/openSUSE_Leap_42.3/x86_64/pourRNA-1.2.0-51.1.x86_64.rpm"> pourRNA - 1.2.0 - x86_64</a></p>
+</details><details><summary>openSUSE_Leap_42.2</summary><p><a href="https://download.opensuse.org/repositories/home:/entzian/openSUSE_Leap_42.2/x86_64/pourRNA-1.2.0-51.1.x86_64.rpm"> pourRNA - 1.2.0 - x86_64</a></p>
+</details><details><summary>openSUSE_Leap_15.1</summary><p><a href="https://download.opensuse.org/repositories/home:/entzian/openSUSE_Leap_15.1/x86_64/pourRNA-1.2.0-lp151.51.1.x86_64.rpm"> pourRNA - 1.2.0 - x86_64</a></p>
+</details><details><summary>openSUSE_Leap_15.0</summary><p><a href="https://download.opensuse.org/repositories/home:/entzian/openSUSE_Leap_15.0/x86_64/pourRNA-1.2.0-lp150.51.1.x86_64.rpm"> pourRNA - 1.2.0 - x86_64</a></p>
+</details></td>
+</tr></tbody></table>
+
+An alternative download location is here:
+[https://www.tbi.univie.ac.at/~entzian/pourRNA_build/](https://www.tbi.univie.ac.at/~entzian/pourRNA_build/)
+
+
 ### From [release](https://github.com/ViennaRNA/pourRNA/releases) Source
 
 You can download the source tar balls for the individual releases from the [release page](https://github.com/ViennaRNA/pourRNA/releases).
