@@ -101,10 +101,8 @@ if(!is.null(fileNameStructures)){
 }
 
 n=nrow(rate_matrix)
-#Q = as.matrix(rate_matrix)
 Q = rate_matrix
-#Q=t(Q)
-#typeof(Q[0,0])
+
 #compute the diagonal
 for(i in 1:n){
   Q[i,i]=0
@@ -114,36 +112,19 @@ for(i in 1:n){
 n_eigenvalues = n
 str(le <- eigs(Q, k = n_eigenvalues, which = "LM", opts = list(retvec = TRUE), maxitr=1000, tol=1e-10)) # or dsyMatrix
 eValues = le$values
-#eValues
 eVectorsL = le$vectors
-#eVectorsL #apply(eVectorsL, 2, as.numeric)
-#eVectorsL
-
 eVectorsR = t(solve(eVectorsL))
-#eVectorsR
-
-#Q = as.matrix(Q)
-#ev=eigen(Q)
-#eValues=ev$val
-#eValues
-#eVectorsL=ev$vec
-#eValues
-#eVectorsL
-
-print("eigenvalues computed")
-#eVectorsR=t(solve(ev$vec))
+print("eigenvalues and vectors computed")
 
 #equilibr. density
-#which.max(eValues)
-#p8 = eVectorsL[which.max(eValues),]
 b <- rep(0, 1, n)
 for(i in 1:n){
   b[i]=-Q[i,i]
 }
-p8 = solve(t(Q),b)
+p8 = solve(t(Q),b, tol=1.47516e-22)
 p8 = p8 / sum(p8)
 p8 = t(p8)
-print("eigenvectors computed")
+print("equilibrium density computed")
 
 ## initial distribution
 p0 <- rep(0, 1, n)
