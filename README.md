@@ -32,6 +32,7 @@ conda install -c bioconda pourrna
 <p><a href="https://download.opensuse.org/repositories/home:/entzian/Debian_8.0/amd64/pourrna_1.2.0-1_amd64.deb"> pourrna - 1.2.0 - 64 bit</a></p>
 </details></td>
 <td style="vertical-align:top">
+<details><summary>xUbuntu_19.04</summary><p><a href="https://download.opensuse.org/repositories/home:/entzian/xUbuntu_19.04/amd64/pourrna_1.2.0-1_amd64.deb"> pourrna - 1.2.0 - 64 bit</a></p></details>
 <details><summary>xUbuntu_18.10</summary><p><a href="https://download.opensuse.org/repositories/home:/entzian/xUbuntu_18.10/amd64/pourrna_1.2.0-1_amd64.deb"> pourrna - 1.2.0 - 64 bit</a></p>
 </details><details><summary>xUbuntu_18.04</summary><p><a href="https://download.opensuse.org/repositories/home:/entzian/xUbuntu_18.04/amd64/pourrna_1.2.0-1_amd64.deb"> pourrna - 1.2.0 - 64 bit</a></p>
 </details><details><summary>xUbuntu_17.10</summary><p><a href="https://download.opensuse.org/repositories/home:/entzian/xUbuntu_17.10/amd64/pourrna_1.2.0-1_amd64.deb"> pourrna - 1.2.0 - 64 bit</a></p>
