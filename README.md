@@ -285,6 +285,9 @@ or
 pourRNA --help
 ```
 
+## Reference
+If you are using this software, we recommend to read and cite the corresponding publication:
+[G. Entzian and M. Raden (2019)](https://doi.org/10.1093/bioinformatics/btz583) "pourRNA - a time- and memory-efficient approach for the guided exploration of RNA energy landscapes", Bioinformatics
 
 
 In case you run into problems, please contact us!
