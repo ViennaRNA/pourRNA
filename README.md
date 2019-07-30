@@ -1,7 +1,8 @@
 [![GitHub release](https://img.shields.io/github/release/ViennaRNA/pourRNA.svg)](https://github.com/ViennaRNA/pourRNA/releases)
 [![Build Status](https://travis-ci.org/ViennaRNA/pourRNA.svg?branch=master)](https://travis-ci.org/ViennaRNA/pourRNA)
-[![Github All Releases](https://img.shields.io/github/downloads/ViennaRNA/pourRNA/total.svg)](https://github.com/ViennaRNA/pourRNA/releases)
-[![Conda](https://img.shields.io/conda/v/bioconda/pourRNA.svg)](https://anaconda.org/bioconda/pourRNA)
+[![Conda](https://img.shields.io/conda/v/bioconda/pourRNA.svg)](https://anaconda.org/bioconda/pourRNA)<br>
+Release Tar: [![Github All Releases](https://img.shields.io/github/downloads/ViennaRNA/pourRNA/total.svg)](https://github.com/ViennaRNA/pourRNA/releases)<br>
+Conda: [![Conda Downloads](https://anaconda.org/bioconda/pourrna/badges/downloads.svg)](https://anaconda.org/bioconda/pourRNA)<br>
 
 # pourRNA
 
@@ -286,8 +287,9 @@ pourRNA --help
 ```
 
 ## Reference
-If you are using this software, we recommend to read and cite the corresponding publication:
+If you are using this software, we recommend to read and cite the corresponding publication:<br>
 [G. Entzian and M. Raden (2019)](https://doi.org/10.1093/bioinformatics/btz583) "pourRNA - a time- and memory-efficient approach for the guided exploration of RNA energy landscapes", Bioinformatics
+
 
 
 In case you run into problems, please contact us!
