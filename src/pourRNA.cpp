@@ -997,6 +997,10 @@ main(int  argc,
       }
     }
 
+    std::string mapped_structures_filename = "";
+    if(args_info.map_structures_given)
+      mapped_structures_filename = std::string(args_info.map_structures_arg);
+
     if (args_info.verbose_given)
       verbose = true;
 
@@ -1120,6 +1124,12 @@ main(int  argc,
       maxBPdist += maxBP_add;
     }
 
+    ofstream mapped_structures_file;
+    if (start_structure_list.size() > 0  && mapped_structures_filename.compare("") != 0){
+      mapped_structures_file.open(mapped_structures_filename);
+      mapped_structures_file << "from input, to basin" << std::endl;
+    }
+
     for (auto it = start_structure_list.begin(); it != start_structure_list.end(); it++) {
       short   *tmpMinPairTable  = vrna_ptable(it->c_str());
       int     energy            = vrna_eval_structure_pt(vc, tmpMinPairTable);
@@ -1144,7 +1154,15 @@ main(int  argc,
         }
       }
 
+      char * mapped_to_basin = vrna_db_from_ptable(start_struct_min->structure);
+      mapped_structures_file << it->c_str() << ", " << mapped_to_basin << std::endl;
+      free(mapped_to_basin);
+
       delete start_struct_min;
+    }
+
+    if (start_structure_list.size() > 0 && mapped_structures_filename.compare("") != 0){
+      mapped_structures_file.close();
     }
 
     ////// init dynamic-Best-K feature /////
