@@ -70,7 +70,7 @@ read_binary_rate_matrix <- function(rate_matrix_file) {
     for(j in 1:n_states){
       rate_from_to = readBin(newdata, what="double" , size = 8, n = 1, endian = "little")
       if(rate_from_to != 0.0){
-        rate_matrix[i, j] = rate_from_to
+        rate_matrix[j, i] = rate_from_to
       }
     }
   }

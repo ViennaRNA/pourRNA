@@ -143,7 +143,7 @@ write_binary_rates_file(std::string rates_file,
     size_t              rowMinID;
     for (size_t r = 0; r < sortedMinimaIDs.size(); r++) {
       rowMinID  = sortedMinimaIDs[r].first;
-      rate      = R.at(nextMinID, rowMinID); //columnVector[rowMinID];
+      rate      = R.at(rowMinID, nextMinID); //columnVector[rowMinID];
       fwrite(&rate, sizeof(double), 1, BINOUT);
     }
   }
