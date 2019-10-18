@@ -81,7 +81,9 @@ void
 write_barriers_like_output(std::string file_prefix,
                         const biu::MatrixSparseC<double>& R,
                         const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs,
-                        std::string sequence);
+                        std::string sequence,
+                        bool basin_size,
+                        std::unordered_map<size_t, size_t> minimum_index_and_basin_size);
 
 /**
  * ! print the number of non-zero rates.

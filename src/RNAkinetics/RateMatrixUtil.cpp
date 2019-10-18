@@ -209,7 +209,9 @@ void
 write_barriers_like_output(std::string file_prefix,
                         const biu::MatrixSparseC<double>& R,
                         const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs,
-                        std::string sequence)
+                        std::string sequence,
+                        bool basin_size,
+                        std::unordered_map<size_t, size_t> minimum_index_and_basin_size)
 {
   assertbiu(R.numColumns() == R.numRows(), "R is no square matrix");
 
@@ -250,7 +252,13 @@ write_barriers_like_output(std::string file_prefix,
   for (size_t c = 0; c < n; c++) {
     //nextMinID = sortedMinimaIDs[c].first; // --> use output ID.
     state = sortedMinimaIDs[c].second;
-    fprintf(states_file, "%4ld %s %6.2f\n", c+1, state->toString().c_str(), state->getEnergy()/100.0);
+    if(basin_size){
+      size_t bsize = minimum_index_and_basin_size[sortedMinimaIDs[c].first];
+      fprintf(states_file, "%4ld %s %6.2f %ld\n", c+1, state->toString().c_str(), state->getEnergy()/100.0, bsize);
+    }
+    else{
+      fprintf(states_file, "%4ld %s %6.2f\n", c+1, state->toString().c_str(), state->getEnergy()/100.0);
+    }
   }
   fclose(states_file);
 }

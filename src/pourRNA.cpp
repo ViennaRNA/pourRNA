@@ -407,6 +407,7 @@ merge_results(std::vector<std::pair<flooderInputParameter *,
               SC_DotPlot::DotPlot &dotplot,
               PairHashTable::HashTable &Minima,
               std::unordered_map<size_t, MyState> &MinimaForReverseSearch,
+              std::unordered_map<size_t, size_t> &Minimum_index_and_basin_size,
               SC_PartitionFunction::Z_Matrix &z,
               bool dynamicBestK,
               std::unordered_map<size_t, std::vector<size_t> > &dynamicBestKFilterNeighborList,
@@ -495,6 +496,9 @@ merge_results(std::vector<std::pair<flooderInputParameter *,
       //assingn total id to localID.
       mapOldIndexToNewIndex.insert({ oldIndex, newIndex });
     }
+
+    size_t count =outParameter->ScBasin->get_state_count();
+    Minimum_index_and_basin_size[inParameter->BasinID] = count;
 
     SC_PartitionFunction::Z_Matrix& localZ =
       outParameter->PartitionFunctions;
@@ -703,6 +707,7 @@ main(int  argc,
   int                                                 danglingEnd = 2;
   // The move set type (see neighbor.h vrna_package)
   unsigned int                                        move_set  = 0;
+  bool                                                basin_size = false;
   bool                                                verbose   = false;
 
   // parameter: path to file for energy model that is placed in the share/misc folder of this build.
@@ -889,6 +894,8 @@ main(int  argc,
         transOut = transOutFile;
       }
     }
+
+    basin_size = args_info.basin_size_flag;
 
     if (args_info.dangling_end_given) {
       // set dangling ends.
@@ -1096,6 +1103,8 @@ main(int  argc,
     Minima.insert({ MyState(*startStateMinimum), currentMinID });
     MinimaForReverseSearch.insert({ currentMinID, MyState(*startStateMinimum) });
 
+    std::unordered_map<size_t, size_t> minimum_index_and_basin_size;
+
     ///// for tests only -> write file with all Energies ///
     std::unordered_set<size_t> addedMinIDs;
     ofstream                energyFile;
@@ -1278,6 +1287,7 @@ main(int  argc,
                 merge_results(threadParameter, logEnergies,
                               energyFile, addedMinIDs, writeDotplot,
                               dotplot, Minima, MinimaForReverseSearch,
+                              minimum_index_and_basin_size,
                               z, dynamicBestK,
                               dynamicBestKFilterNeighborList,
                               toDo_List, done_List, verbose);
@@ -1597,6 +1607,16 @@ main(int  argc,
 
     print_number_of_rates(final_Rate, sortedMinimaIDs, std::cout);
 
+    if (basin_size){
+      std::cout << std::endl;
+      std::cout << "Minimum_id, Basin_size" << std::endl;
+      size_t i = 1;
+      for (auto it = sortedMinimaIDs.begin(); it != sortedMinimaIDs.end(); it++, i++){
+        fprintf(stdout, "%ld, %ld\n", i, minimum_index_and_basin_size[it->first]);
+      }
+    }
+
+
     if (!binary_rates_file.empty())
       write_binary_rates_file(binary_rates_file, final_Rate, sortedMinimaIDs);
 
@@ -1642,7 +1662,9 @@ main(int  argc,
       write_barriers_like_output(barriers_prefix,
                                   final_Rate,
                                   sortedMinimaIDs,
-                                  rnaSequence);
+                                  rnaSequence,
+                                  basin_size,
+                                  minimum_index_and_basin_size);
     }
 
     if(args_info.binary_rates_file_sparse_given){

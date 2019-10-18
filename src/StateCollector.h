@@ -48,6 +48,11 @@ getMaxEnergy()
 {
   return (double)MaxEnergy / 100.0;
 }
+
+size_t get_state_count(){
+  return StateCount;
+}
+
 };
 
 #endif /* STATECOLLECTOR_H_ */
