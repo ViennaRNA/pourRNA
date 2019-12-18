@@ -8,6 +8,10 @@
 #include "SC_DotPlot.h"
 
 #include <sstream>
+extern "C" {
+#include <ViennaRNA/utils.h>
+#include <ViennaRNA/plotting/probabilities.h>
+}
 
 SC_DotPlot::SC_DotPlot (const double  temperature,
                         const double  gas_constant,
@@ -137,7 +141,7 @@ SC_DotPlot::writeDotPlot_PS(const std::string & absoluteFileName,
     // get char array handles for sequence and filename
     char  *seqChar    = (char *)sequence.c_str();
     char  *fileChar   = (char *)absoluteFileName.c_str();
-    char  *emptyChar  = (char *)std::string().c_str();
+    char  *emptyChar  = NULL; //(char *)std::string().c_str();
 
     // write dot plot postscript file and check for success
     allSane = (1 == PS_dot_plot_list(seqChar, fileChar, bpProbVienna, &mfeViennaDummy, emptyChar));

@@ -10,10 +10,6 @@
 
 #include "SC_PartitionFunction.h"
 #include <map>
-extern "C" {
-#include <ViennaRNA/utils.h>
-#include <ViennaRNA/plotting/probabilities.h>
-}
 
 /**
  * ! This state collector updates the base pair probabilities and the partition
