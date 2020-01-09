@@ -8,6 +8,7 @@
 #include "SC_DotPlot.h"
 
 #include <sstream>
+#include <fstream>
 extern "C" {
 #include <ViennaRNA/utils.h>
 #include <ViennaRNA/plotting/probabilities.h>
@@ -147,6 +148,142 @@ SC_DotPlot::writeDotPlot_PS(const std::string & absoluteFileName,
     allSane = (1 == PS_dot_plot_list(seqChar, fileChar, bpProbVienna, &mfeViennaDummy, emptyChar));
   }
 
+  // free memory
+  free(bpProbVienna);
+
+  // return whether or not all went fine
+  return allSane;
+}
+
+bool
+SC_DotPlot::writeDotPlot_PS_with_mfe_and_mea(const std::string & absoluteFileName,
+                            const std::string & sequence,
+                            const DotPlot &     dotPlot,
+                            const std::string & mfe_structure,
+                            const std::string & mea_structure)
+{
+  // check if filename given
+  if (absoluteFileName.empty())
+    return false;
+
+  // check if sequence given
+  if (sequence.empty())
+    return false;
+
+  // allocate data structure for vienna package
+  plist *bpProbVienna = (plist *)space((dotPlot.size() + 1) * sizeof(plist));
+  plist mfeViennaDummy;
+
+  // fill dummy content = end of list marking entry
+  mfeViennaDummy.i    = 0;
+  mfeViennaDummy.j    = 0;
+  mfeViennaDummy.p    = 0;
+  mfeViennaDummy.type = 0;
+
+  // mark end of base pair prob list
+  size_t                  i = dotPlot.size();
+  bpProbVienna[i] = mfeViennaDummy;
+
+  // copy base pair probabilities
+  bool                    allSane = true;
+  DotPlot::const_iterator bp2weight;
+  for (i = 0, bp2weight = dotPlot.begin(); allSane && bp2weight != dotPlot.end(); bp2weight++) {
+    // check if entry is sane given the sequence
+    allSane = bp2weight->first.first < sequence.size() && bp2weight->first.second < sequence.size()
+              && bp2weight->second >= 0.0 && bp2weight->second <= 1.0;
+    if (allSane) {
+      // NOTE: need to shift the indices by 1 for Vienna package data
+      bpProbVienna[i].i     = 1 + bp2weight->first.first;
+      bpProbVienna[i].j     = 1 + bp2weight->first.second;
+      bpProbVienna[i].p     = bp2weight->second;
+      bpProbVienna[i].type  = 0;
+      i++;
+    } else {
+      return false;
+    }
+  }
+  if (allSane) {
+    // get char array handles for sequence and filename
+    char  *seqChar    = (char *)sequence.c_str();
+    char  *fileChar   = (char *)absoluteFileName.c_str();
+    char  *emptyChar  = NULL; //(char *)std::string().c_str();
+
+    // write dot plot postscript file and check for success
+    allSane = (1 == PS_dot_plot_list(seqChar, fileChar, bpProbVienna, &mfeViennaDummy, emptyChar));
+
+    if (allSane){
+      std::string line;
+      std::ifstream infile_s(fileChar);
+      std::stringstream infile;
+      infile << infile_s.rdbuf();
+      infile_s.close();
+
+      std::fstream outfile (fileChar, std::fstream::binary | std::fstream::in | std::fstream::out);
+      long position = 0;
+      while (std::getline(infile, line))
+      {
+        // find box definition and skip 4 lines
+        if (line.rfind("/box {", 0) == 0) {
+          for(int i = 0; i < 4; i++){
+            std::getline(infile, line);
+          }
+          position = infile.tellg();
+          outfile.seekp(position, std::fstream::beg);
+
+          std::string rect_definitions;
+          rect_definitions.append("          /rect_flat { %size x y box - draws box centered on x,y\n");
+          rect_definitions.append("             2 index 0.5 mul sub            % x -= 0.5\n");
+          rect_definitions.append("             exch 2 index 0.5 mul sub exch  % y -= 0.5\n");
+          rect_definitions.append("             3 -1 roll dup 0.5 mul rectfill\n");
+          rect_definitions.append("          } bind def\n");
+
+          rect_definitions.append("          /lboxl {\n");
+          rect_definitions.append("             0 0 1 setrgbcolor\n");
+          rect_definitions.append("             3 1 roll\n");
+          rect_definitions.append("             len exch sub 1 add rect_flat\n");
+          rect_definitions.append("             0 0 0 setrgbcolor\n");
+          rect_definitions.append( "          } bind def\n");
+
+          rect_definitions.append("          /lboxu {\n");
+          rect_definitions.append("             1 0 0 setrgbcolor\n");
+          rect_definitions.append("             3 1 roll\n");
+          rect_definitions.append("             len exch sub 1.5 add rect_flat\n");
+          rect_definitions.append("             0 0 0 setrgbcolor\n");
+          rect_definitions.append("          } bind def\n");
+
+          outfile << rect_definitions;
+
+          short *mfe_pt = vrna_ptable(mfe_structure.c_str());
+          short *mea_pt = vrna_ptable(mea_structure.c_str());
+          std::string one_sf = "1.0000000";
+          std::stringstream out_lines;
+
+          while (std::getline(infile, line)){
+            if (line.rfind("showpage",0) == 0) {
+              position = infile.tellg();
+              outfile.seekp(position + rect_definitions.length() -9, std::fstream::beg);
+              for (int i = 1; i <= mfe_pt[0]; i++) {
+                if (mfe_pt[i] > i) {
+                  out_lines  << i << " " << mfe_pt[i] << " " << one_sf << " " << "lboxu\n";
+                }
+              }
+
+              for (int i = 1; i <= mea_pt[0]; i++) {
+                if (mea_pt[i] > i) {
+                  out_lines << i << " " << mea_pt[i] << " " << one_sf << " " << "lboxl\n";
+                }
+              }
+              std::string oline = out_lines.str();
+              outfile << oline;
+            }
+            outfile << line + "\n"; // append overwritten lines.
+          }
+          break;
+        }
+      }
+      outfile.close();
+    }
+  }
   // free memory
   free(bpProbVienna);
 

@@ -113,6 +113,14 @@ writeDotPlot_PS(const std::string & absoluteFileName,
                 const std::string & sequence,
                 const DotPlot &     dotPlot);
 
+static
+bool
+writeDotPlot_PS_with_mfe_and_mea(const std::string & absoluteFileName,
+                            const std::string & sequence,
+                            const DotPlot &     dotPlot,
+                            const std::string & mfe_structure,
+                            const std::string & mea_structure);
+
 
 /*! Reads the dot plot information from a postscript file produced by the
  * vienna rna package.
