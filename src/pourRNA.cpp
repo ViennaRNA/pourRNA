@@ -1701,10 +1701,11 @@ main(int  argc,
         std::string dp_file_pattern = dotPlotPerBasinFileName +  "_%u.ps";
         int res = asprintf(&dp_file_name, dp_file_pattern.c_str(), min_id);
         if(res < 0) fprintf(stderr, "Error: failed to concatenate dotplot name!");
-        //SC_DotPlot::writeDotPlot_PS(dp_file_name, rnaSequence, dp);
-        // TODO: plot MEA and basin_mfe_representative in different colors. in the lower left triangle.
+
         std::string mfe(mfeStructure);
-        std::string mea(mfeStructure); // TODO: compute mea structure.
+        char * mea_structure = SC_DotPlot::mea_from_dotplot(sequence, dp, vc->exp_params);
+        std::string mea(mea_structure);
+        free(mea_structure);
         SC_DotPlot::writeDotPlot_PS_with_mfe_and_mea(dp_file_name, rnaSequence, dp, mfe, mea);
 
         free(dp_file_name);

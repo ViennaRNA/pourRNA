@@ -12,6 +12,9 @@
 extern "C" {
 #include <ViennaRNA/utils.h>
 #include <ViennaRNA/plotting/probabilities.h>
+
+#include <ViennaRNA/utils/structures.h> //plist types
+#include <ViennaRNA/MEA.h>
 }
 
 SC_DotPlot::SC_DotPlot (const double  temperature,
@@ -278,6 +281,8 @@ SC_DotPlot::writeDotPlot_PS_with_mfe_and_mea(const std::string & absoluteFileNam
             }
             outfile << line + "\n"; // append overwritten lines.
           }
+          free(mfe_pt);
+          free(mea_pt);
           break;
         }
       }
@@ -289,6 +294,33 @@ SC_DotPlot::writeDotPlot_PS_with_mfe_and_mea(const std::string & absoluteFileNam
 
   // return whether or not all went fine
   return allSane;
+}
+
+char * SC_DotPlot::mea_from_dotplot(const std::string & sequence, const DotPlot &     dotPlot, vrna_exp_param_t  *params){
+  double weight;
+  size_t nbp, n;
+  nbp = dotPlot.size();
+  vrna_ep_t *plist = (vrna_ep_t*)calloc(nbp+1, sizeof(vrna_ep_t));
+  n = 0;
+  for (auto bp2weight = dotPlot.begin(); bp2weight != dotPlot.end(); bp2weight++){
+      plist[n].i = bp2weight->first.first +1;
+      plist[n].j = bp2weight->first.second +1;
+      plist[n].p = bp2weight->second;
+      plist[n].type = VRNA_PLIST_TYPE_BASEPAIR;
+      n++;
+  }
+  // list terminator
+  plist[n].i = 0;
+  plist[n].j = 0;
+  plist[n].p = 0;
+  char *mea_structure = (char *)calloc(sequence.length()+1, sizeof(char));
+  //vrna_exp_param_t  *params = vrna_exp_params(NULL);
+  memset(mea_structure, '.', sequence.length() * sizeof(char));
+  mea_structure[sequence.length()] = '\0';
+
+  float mea = MEA_seq(plist, sequence.c_str(), mea_structure, 2.0, params);
+  free(plist);
+  return mea_structure;
 }
 
 

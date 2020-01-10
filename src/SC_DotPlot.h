@@ -11,6 +11,10 @@
 #include "SC_PartitionFunction.h"
 #include <map>
 
+extern "C" {
+  #include <ViennaRNA/params.h>
+}
+
 /**
  * ! This state collector updates the base pair probabilities and the partition
  * function for the given ensemble if a state is added.
@@ -113,6 +117,17 @@ writeDotPlot_PS(const std::string & absoluteFileName,
                 const std::string & sequence,
                 const DotPlot &     dotPlot);
 
+/*! Writes the dot plot in vienna postscript format to file. The mfe and mea
+ * structure are printed in the lower triangle (red and blue respectively).
+ * The base pair probabilities are plotted in the upper triangle.
+ * @param absoluteFileName the absolute file name to create and write the
+ *           dot plot to
+ * @param sequence the sequence of the RNA molecule the dot plot is about
+ * @param dotPlot the dot plot base pair probabilities to print
+ * @param mfe_structure the mfe structure in dot-bracket format
+ * @param mea_structure the mea structure in dot-bracket format
+ * @return true if the write was successful; false otherwise
+ */
 static
 bool
 writeDotPlot_PS_with_mfe_and_mea(const std::string & absoluteFileName,
@@ -120,6 +135,9 @@ writeDotPlot_PS_with_mfe_and_mea(const std::string & absoluteFileName,
                             const DotPlot &     dotPlot,
                             const std::string & mfe_structure,
                             const std::string & mea_structure);
+
+static
+char * mea_from_dotplot(const std::string & sequence, const DotPlot &     dotPlot, vrna_exp_param_t  *params);
 
 
 /*! Reads the dot plot information from a postscript file produced by the
