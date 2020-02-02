@@ -142,13 +142,13 @@ getMaximalNeighborsOfAMacroState(SC_PartitionFunction::Z_Matrix& z,
  */
 biu::MatrixSparseC<double> &
 calculateRateMatrix(SC_PartitionFunction::Z_Matrix& z,
-                    std::unordered_set<size_t>& done_List,
+                    std::vector<std::pair<size_t, MyState *> >& done_List,
                     bool computeDiagonal = false)
 {
   size_t max_size = 0;
   size_t done_id;
   for (auto done_it = done_List.begin(); done_it != done_List.end(); done_it++) {
-    done_id = *done_it;
+    done_id = done_it->first;
     if(done_id > max_size)
       max_size = done_id;
   }
@@ -156,12 +156,11 @@ calculateRateMatrix(SC_PartitionFunction::Z_Matrix& z,
   biu::MatrixSparseC<double>&                 final_Rate = *new biu::MatrixSparseC<double>(
       max_size, max_size, 0.0);
   // iterate through all elements of done List to produce the final rate matrix
-  std::unordered_set<size_t>::const_iterator  toIt;//    = done_List.begin();
-  std::unordered_set<size_t>::const_iterator  fromIt  = done_List.begin();
+  auto  fromIt  = done_List.begin();
   for (std::uint32_t from = 0; from < done_List.size(); from++, fromIt++ ) {
     // copy according rates
-    std::uint32_t  fromOrig = *fromIt;
-    toIt = std::next(fromIt, 1); //done_List.begin();
+    std::uint32_t  fromOrig = fromIt->first;
+    auto toIt = std::next(fromIt, 1); //done_List.begin();
 
     SC_PartitionFunction::PairID  basinID =
       SC_PartitionFunction::PairID(fromOrig, fromOrig);
@@ -173,7 +172,7 @@ calculateRateMatrix(SC_PartitionFunction::Z_Matrix& z,
 
     if (z_basin > 0.0) {
       for (std::uint32_t to = from + 1; to < done_List.size(); to++ , toIt++) {
-        std::uint32_t toOrig = *toIt;
+        std::uint32_t toOrig = toIt->first;
         // copy non-diagonal entries
         //if (toOrig != fromOrig) {
           //compute the rate from row-state two column-state
@@ -226,10 +225,10 @@ calculateRateMatrix(SC_PartitionFunction::Z_Matrix& z,
     for (auto from_it = done_List.begin(); from_it != done_List.end(); from_it++) {
       sum = 0.0;
       for (auto to_it = done_List.begin(); to_it != done_List.end(); to_it++) {
-        if(*from_it != *to_it)
-          sum += final_Rate.at(*from_it, *to_it);
+        if(from_it->first != to_it->first)
+          sum += final_Rate.at(from_it->first, to_it->first);
       }
-      final_Rate.at(*from_it, *from_it) = -sum;
+      final_Rate.at(from_it->first, from_it->first) = -sum;
     }
   }
   return final_Rate;
@@ -1572,7 +1571,6 @@ main(int  argc,
       done_List,
       MinimaForReverseSearch);
       */
-    biu::MatrixSparseC<double>&  final_Rate = calculateRateMatrix(z, done_List, computeDiagonal);
 
     // To store the States after applying all the Filtering Techniques
     //std::unordered_map<size_t, MyState>         final_minima;
@@ -1605,7 +1603,7 @@ main(int  argc,
     if (args_info.minh_given || args_info.dynamic_minh_given){
       double adjusted_minh = minh;
       if (args_info.dynamic_minh_given){
-        adjusted_minh = bt.determin_optimal_min_h(dynamic_minh_max_states, minimal_saddle_list);
+        adjusted_minh = bt.determin_optimal_min_h(dynamic_minh_max_states, minimal_saddle_list, sortedMinimaIDs);
         if (verbose){
           fprintf(stdout, "The dynamic minh for maximal %ld states is: %.2f\n", dynamic_minh_max_states, adjusted_minh);
         }
@@ -1613,7 +1611,6 @@ main(int  argc,
       std::unordered_map<size_t, size_t> merge_state_map = bt.filter_minh(minimal_saddle_list, sortedMinimaIDs, adjusted_minh);
       if (args_info.minh_given || args_info.dynamic_minh_given){
         // merge partition functions and dotplots and assign new IDs!
-        std::vector<size_t> minh_filtered_minima_ids;
         std::unordered_map<size_t, std::unordered_set<size_t>> representatives_and_clustered_ids;
         for(size_t i =0; i < sortedMinimaIDs.size(); i++){
           size_t state_index = sortedMinimaIDs[i].first;
@@ -1623,14 +1620,13 @@ main(int  argc,
             // merge this state into its deeper neighbors.
             size_t new_state_index;
             std::unordered_set<size_t> states_to_cluster;
-            size_t max_rounds = minimal_saddle_list.size(); //prevent endless loops.
+            size_t max_rounds = merge_state_map.size(); //prevent endless loops.
             while(it_merged != merge_state_map.end() && max_rounds > 0){
                 new_state_index = it_merged->second;
                 it_merged = merge_state_map.find(new_state_index);
                 states_to_cluster.insert(new_state_index);
                 max_rounds--;
             }
-            minh_filtered_minima_ids.push_back(new_state_index);
             representatives_and_clustered_ids[new_state_index].insert(states_to_cluster.begin(), states_to_cluster.end());
           }
         }
@@ -1642,7 +1638,7 @@ main(int  argc,
           size_t rep_id_from_done_list = sortedMinimaIDs[representative].first;
           // remove representative from cluster such that we don't merge it twice.
           it->second.erase(representative);
-          size_t state_id_from_done_list;
+          size_t state_id_from_done_list = rep_id_from_done_list;
           SC_PartitionFunction* pf_rep = &z.at(SC_PartitionFunction::PairID(state_id_from_done_list, state_id_from_done_list));
           double pf_rep_value = pf_rep->getZ();
           // TODO: sum up all other properties of SC_PartitionFunction (for example the Energies) this is currently not supported for minh-clustering.
@@ -1663,25 +1659,75 @@ main(int  argc,
                 (*dp_rep)[it_dp->first] += it_dp->second;
               }
             }
+            // add all transition partition functions to the representative
+            //TODO: correct this
+            for(auto it_i = sortedMinimaIDs.begin(); it_i != sortedMinimaIDs.end(); it_i++){
+              size_t neighbor_id = it_i->first;
+              if ((neighbor_id != state_id_from_done_list) && (neighbor_id != rep_id_from_done_list)){
+                SC_PartitionFunction::PairID transition_key_cluster_neighbor = SC_PartitionFunction::PairID(state_id_from_done_list, neighbor_id);
+                auto it_trans = z.find(transition_key_cluster_neighbor);
+                if (it_trans != z.end()){
+                  double pf_trans_cluster = it_trans->second.getZ();
+                  SC_PartitionFunction::PairID transition_key_rep = SC_PartitionFunction::PairID(rep_id_from_done_list, neighbor_id);
+                  auto it_trans_rep = z.find(transition_key_rep);
+                  if (it_trans_rep != z.end()){
+                    double pf_trans_rep = it_trans_rep->second.getZ();
+                    it_trans_rep->second.setZ(pf_trans_rep + pf_trans_cluster);
+                  }
+                  else{
+                    z[transition_key_rep].setZ(pf_trans_cluster);
+                  }
+                }
+              }
+            }
           }
           pf_rep->setZ(pf_rep_value);
         }
 
+        if (basin_size){
+          // merge basin sizes.
+          // TODO: correct this
+          for(auto it = representatives_and_clustered_ids.begin(); it != representatives_and_clustered_ids.end(); it++){
+            size_t basin_rep_global_id = sortedMinimaIDs[it->first].first;
+            for(auto itc = it->second.begin(); itc != it->second.end(); itc++){
+              minimum_index_and_basin_size[basin_rep_global_id] += minimum_index_and_basin_size[sortedMinimaIDs[*itc].first];
+            }
+          }
+        }
+
         // then create new sorted_min list and hash map for output --> simply filter the original list and assign new IDs.
         for(size_t min_index = sortedMinimaIDs.size(); min_index > 0; min_index--){
-          if(merge_state_map.find(sortedMinimaIDs[min_index-1].first) != merge_state_map.end()){
+          if(merge_state_map.find(min_index-1) != merge_state_map.end()){
             sorted_min_and_output_ids->erase(*(sortedMinimaIDs[min_index-1].second));
             sortedMinimaIDs.erase(sortedMinimaIDs.begin() + min_index-1);
           }
         }
         // assign new ids (still sorted).
+        std::unordered_map<size_t, size_t> map_ids;
         for(size_t i = 0; i < sortedMinimaIDs.size(); i++){
+          map_ids[(*sorted_min_and_output_ids)[*(sortedMinimaIDs[i].second)]] = i;
           (*sorted_min_and_output_ids)[*(sortedMinimaIDs[i].second)] = i;
         }
+        // adjust saddle list to new ids.
+        for(auto it = minimal_saddle_list.begin(); it != minimal_saddle_list.end(); it++){
+          it->minimum_from = map_ids[it->minimum_from];
+          it->minimum_to = map_ids[it->minimum_to];
+        }
+
+        if (basin_size){
+          // filter and adjust ids.
+          std::unordered_map<size_t, size_t> minimum_index_and_basin_size_filtered;
+          for(auto it = sortedMinimaIDs.begin(); it != sortedMinimaIDs.end(); it++){
+            minimum_index_and_basin_size_filtered[it->first] = minimum_index_and_basin_size[it->first];
+          }
+          minimum_index_and_basin_size.clear();
+          minimum_index_and_basin_size.insert(minimum_index_and_basin_size_filtered.begin(), minimum_index_and_basin_size_filtered.end());
+        }
+
       }
     }
 
-
+    biu::MatrixSparseC<double>&  final_Rate = calculateRateMatrix(z, sortedMinimaIDs, computeDiagonal);
 
     // Print the Final rate matrix of the States in Final minima set.
     printRateMatrixSorted(final_Rate, sortedMinimaIDs, *transOut);
@@ -1712,6 +1758,7 @@ main(int  argc,
 
     //dotplot
     if (writeDotplot) {
+      //TODO: merge dot plot if minh clustering is enabled
       SC_DotPlot::DotPlot normalizedDotplot =
         SC_DotPlot::getBasePairProbabilities(dotplot,
                                              partitionFunctionLandscape);

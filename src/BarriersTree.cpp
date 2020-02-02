@@ -401,12 +401,12 @@ std::vector<node_t*> BarriersTree::create_barrier_tree(
  * @param minimal_saddle_list - the list of minimal saddles for each state.
  * @return the minimal min_h that fulfills the maximal state criterion.
  */
-double BarriersTree::determin_optimal_min_h(size_t maximal_number_of_states, std::vector<saddle_t> &minimal_saddle_list){
+double BarriersTree::determin_optimal_min_h(size_t maximal_number_of_states, std::vector<saddle_t> &minimal_saddle_list, std::vector<std::pair<size_t, MyState *>> &sortedMinimaIDs){
   double min_h = 0;
   int* barrier_list = new int[minimal_saddle_list.size()];
   size_t n =  minimal_saddle_list.size();
   for(size_t i = 0; i < n; i++){
-    barrier_list[i] = minimal_saddle_list[i].saddle - minimal_saddle_list[i].minimum_from;
+    barrier_list[i] = minimal_saddle_list[i].saddle - sortedMinimaIDs[minimal_saddle_list[i].minimum_from].second->energy;
   }
   // sort from highest to lowest barrier.
   std::sort(barrier_list, barrier_list + n, std::greater<int>());
@@ -417,7 +417,7 @@ double BarriersTree::determin_optimal_min_h(size_t maximal_number_of_states, std
   while(barrier_list[max_index_plus_one] == barrier_list[max_index_plus_one-1] && max_index_plus_one >= 0){
     max_index_plus_one--;
   }
-  min_h = barrier_list[max_index_plus_one-1];
+  min_h = (double)barrier_list[max_index_plus_one-1] / 100.0;
   return min_h;
 }
 
@@ -434,12 +434,15 @@ std::unordered_map<size_t, size_t> BarriersTree::filter_minh(std::vector<saddle_
   size_t number_result_states = minimal_saddle_list.size();
   double barrier_height;
   size_t state_index, neighbor_index;
-  for(size_t i =0; i < minimal_saddle_list.size(); i++){
+  size_t i;
+  for(size_t ii = minimal_saddle_list.size(); ii > 0; ii--){
+    i = ii-1;
     state_index = minimal_saddle_list[i].minimum_from;
-    barrier_height = (double)(minimal_saddle_list[i].saddle - sortedMinimaIDs[minimal_saddle_list[i].minimum_from].second->energy)/100.0;
+    barrier_height = (double)(minimal_saddle_list[i].saddle - sortedMinimaIDs[state_index].second->energy)/100.0;
     if (barrier_height < min_h){
       neighbor_index = minimal_saddle_list[i].minimum_to;
       merge_state_map[state_index] = neighbor_index;
+      minimal_saddle_list.erase(minimal_saddle_list.begin() + i);
       number_result_states--;
       continue;
     }
