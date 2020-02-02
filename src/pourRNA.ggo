@@ -190,6 +190,11 @@ option  "saddle-file" -
 string
 optional
 
+option  "barrier-tree-file" -
+"Writes the barries tree in NEWICK text fromat into the file."
+string
+optional
+
 option  "barriers-like-output" -
 "Output the rates file and the structures in a format similar to the tool barriers. \
 For the same prefix is used for both files."

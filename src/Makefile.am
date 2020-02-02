@@ -2,7 +2,7 @@ AUTOMAKE_OPTIONS = subdir-objects
 
 # the program to build
 bin_PROGRAMS = 	pourRNA
-				
+
 SUFFIXES = _cmdl.c _cmdl.h .ggo
 
 GENGETOPT_CMDL =  pourRNA_cmdl.c pourRNA_cmdl.h
@@ -22,6 +22,8 @@ _cmdl.c_cmdl.h :
 
 # pourRNA sources
 pourRNA_SOURCES =  ${GENGETOPT_CMDL} \
+                   BarriersTree.h \
+                   BarriersTree.cpp \
                    SpookyHash/SpookyV2.h \
                    SpookyHash/SpookyV2.cpp \
                    SpookyHash/SpookyHashMap.h \

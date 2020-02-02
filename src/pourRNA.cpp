@@ -26,6 +26,7 @@
 #include <string>
 #include <iostream>
 #include <unistd.h>
+#include <algorithm>
 extern "C" {
 #include "pourRNA_cmdl.h"
 #include <ViennaRNA/move_set.h>
@@ -44,9 +45,12 @@ extern "C" {
 #include "Flooder.h"
 #include "TypeID.h"
 #include "SC_DotPlot.h"
+#include "StatePairCollector.h"
 
 #include "Concurrent_Queue.h"
 #include "PairHashMap.h"
+
+#include "BarriersTree.h"
 
 /*! Exception class for exceptions thrown during argument and input parsing.
  */
@@ -244,7 +248,7 @@ struct flooderInputParameter {
   double                    TemperatureForBoltzmannWeight;
   double                    GasConstant;
   unsigned int              Move_set;
-  PairHashMap::HashMap      *All_Saddles;
+  StatePairCollector::MapOfMaps                 *All_Saddles;
   int                       MaxBPdist;
   char                      *SourceStructure;
   char                      *TargetStructure;
@@ -395,7 +399,6 @@ estimateMaxToHash(size_t  numberOfHashMaps,
 
   return entriesPerHashMap;
 }
-
 
 int
 merge_results(std::vector<std::pair<flooderInputParameter *,
@@ -633,7 +636,7 @@ int
 main(int  argc,
      char **argv)
 {
-  PairHashMap::HashMap                                all_saddles;
+  StatePairCollector::MapOfMaps                                all_saddles;
 
   //init stopwatch:
   std::chrono::time_point<std::chrono::system_clock>  start, end;
@@ -720,6 +723,8 @@ main(int  argc,
    * memory is used with large sequences.
    */
   bool                    dynamicMaxToHash = false;
+
+
 
   //---------------------------- Parsing the Parameters---------------------------------
 
@@ -1359,9 +1364,9 @@ main(int  argc,
                   }
                   inParameter->TemperatureForBoltzmannWeight =
                     temperatureForBoltzmannWeight;
-		  inParameter->GasConstant = gas_constant;
+		              inParameter->GasConstant = gas_constant;
                   inParameter->Move_set         = move_set;
-                  if(args_info.saddle_file_given)
+                  if(args_info.saddle_file_given || args_info.barrier_tree_file_given)
                     inParameter->All_Saddles      = &all_saddles;
                   else
                     inParameter->All_Saddles      = NULL;
@@ -1531,6 +1536,7 @@ main(int  argc,
 
     std::cout << std::endl;
 
+
     // Calculate the final Rate Matrix:
     *transOut
     << "              --------------THE FINAL RATE MATRIX----------------------- "
@@ -1553,6 +1559,7 @@ main(int  argc,
     //  final_minima.insert({ *fromIt, MinimaForReverseSearch.at(*fromIt) });
     //}
 
+    // sortedMinimaIDs will be sorted by energy, it contains the global id from the done list and the minimum pointer.
     std::vector<std::pair<size_t, MyState *> > sortedMinimaIDs;
     for (size_t from = 0; from < done_List.size(); from++, fromIt++)
       sortedMinimaIDs.push_back(
@@ -1560,11 +1567,12 @@ main(int  argc,
 
     std::sort(sortedMinimaIDs.begin(), sortedMinimaIDs.end(), less_second());
 
+
     // Print the Final rate matrix of the States in Final minima set.
     // printRateMatrix (*final_Rate, final_minima, *transOut, true);
     PairHashTable::HashTable *sorted_min_and_output_ids = printRateMatrixSorted(final_Rate,
-                                                                                sortedMinimaIDs,
-                                                                                *transOut);
+                                                                                     sortedMinimaIDs,
+                                                                                     *transOut);
     std::cout << std::endl;
     printEquilibriumDensities(z, sortedMinimaIDs, *transOut);
     std::cout << std::endl;
@@ -1674,6 +1682,30 @@ main(int  argc,
                                     sortedMinimaIDs);
     }
 
+    // write barriers tree
+    if (args_info.barrier_tree_file_given){
+      std::unordered_map<size_t, int> structure_index_to_energy;
+      for(auto it = sorted_min_and_output_ids->begin(); it != sorted_min_and_output_ids->end(); it++){
+        structure_index_to_energy[it->second] = it->first.energy;
+      }
+
+      size_t output_mfe_id = sortedMinimaIDs[0].first;
+      int output_mfe = sortedMinimaIDs[0].second->energy;
+      structure_index_to_energy[output_mfe_id] = output_mfe;
+
+      std::vector<node_t*> forest = bt.create_barrier_tree(minimal_saddle_list, structure_index_to_energy);
+      //node_t* tree = forest[0]; //TODO: search mfe tree.
+      std::cout << std::endl;
+      //bt.free_tree(tree);
+      for(size_t t = 0; t < forest.size(); t++){
+        std::string newick_tree = bt.newick_string_builder(forest[t]);
+        std::ofstream tree_file(args_info.barrier_tree_file_arg);
+        tree_file << newick_tree << std::endl;
+        tree_file.close();
+        //std::cout << newick_tree << std::endl;
+        bt.free_tree(forest[t]);
+      }
+    }
 
     /***********Garbage collection ************/
     if (startStructureMinimum != NULL)
