@@ -93,6 +93,7 @@ StatePairCollector::add(vrna_fold_compound_t  *vc,
       std::pair<MyState, MyState>   state_pair  = std::pair<MyState, MyState>({ *a, *b });
 
       std::unique_lock<std::mutex>  mlock(mutex_);
+
       auto saddles_from_a = (*All_Saddles)[*a];
       auto saddle_a_b = saddles_from_a.find(*b);
       if (saddle_a_b == saddles_from_a.end()){

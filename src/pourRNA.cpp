@@ -470,8 +470,6 @@ merge_results(std::vector<std::pair<flooderInputParameter *,
         else
           dotplot[it->first] = it->second;
       }
-
-
     }
 
     if (writeDotplotPerBasin){
@@ -733,6 +731,8 @@ main(int  argc,
    */
   bool                    dynamicMaxToHash = false;
 
+  double minh = -1;
+  size_t dynamic_minh_max_states = ULONG_LONG_MAX;
 
 
   //---------------------------- Parsing the Parameters---------------------------------
@@ -1021,6 +1021,16 @@ main(int  argc,
     std::string mapped_structures_filename = "";
     if(args_info.map_structures_given)
       mapped_structures_filename = std::string(args_info.map_structures_arg);
+
+    if (args_info.minh_given){
+      minh = args_info.minh_arg;
+    }
+
+    if (args_info.dynamic_minh_given) {
+      dynamic_minh_max_states = args_info.dynamic_minh_arg;
+      if (minh < 0)
+        minh = 0.01;
+    }
 
     if (args_info.verbose_given)
       verbose = true;
@@ -1379,7 +1389,8 @@ main(int  argc,
                     temperatureForBoltzmannWeight;
                   inParameter->GasConstant = gas_constant;
                   inParameter->Move_set         = move_set;
-                  if(args_info.saddle_file_given || args_info.barrier_tree_file_given)
+
+                  if(args_info.saddle_file_given || args_info.barrier_tree_file_given || args_info.minh_given || args_info.dynamic_minh_given)
                     inParameter->All_Saddles      = &all_saddles;
                   else
                     inParameter->All_Saddles      = NULL;
@@ -1585,10 +1596,92 @@ main(int  argc,
       (*sorted_min_and_output_ids)[*(sortedMinimaIDs[c].second)] = c;
     }
 
+    // filter minh -- requires saddles.
     BarriersTree bt;
     std::vector<saddle_t> minimal_saddle_list;
-    if (args_info.barrier_tree_file_given)
+    if (args_info.barrier_tree_file_given || args_info.minh_given || args_info.dynamic_minh_given)
       minimal_saddle_list = bt.create_minimal_saddle_list(sortedMinimaIDs, *sorted_min_and_output_ids, all_saddles);
+
+    if (args_info.minh_given || args_info.dynamic_minh_given){
+      double adjusted_minh = minh;
+      if (args_info.dynamic_minh_given){
+        adjusted_minh = bt.determin_optimal_min_h(dynamic_minh_max_states, minimal_saddle_list);
+        if (verbose){
+          fprintf(stdout, "The dynamic minh for maximal %ld states is: %.2f\n", dynamic_minh_max_states, adjusted_minh);
+        }
+      }
+      std::unordered_map<size_t, size_t> merge_state_map = bt.filter_minh(minimal_saddle_list, sortedMinimaIDs, adjusted_minh);
+      if (args_info.minh_given || args_info.dynamic_minh_given){
+        // merge partition functions and dotplots and assign new IDs!
+        std::vector<size_t> minh_filtered_minima_ids;
+        std::unordered_map<size_t, std::unordered_set<size_t>> representatives_and_clustered_ids;
+        for(size_t i =0; i < sortedMinimaIDs.size(); i++){
+          size_t state_index = sortedMinimaIDs[i].first;
+          //size_t neighbor_index = minimal_saddle_list[i].minimum_to;
+          auto it_merged = merge_state_map.find(state_index);
+          if(it_merged != merge_state_map.end()){
+            // merge this state into its deeper neighbors.
+            size_t new_state_index;
+            std::unordered_set<size_t> states_to_cluster;
+            size_t max_rounds = minimal_saddle_list.size(); //prevent endless loops.
+            while(it_merged != merge_state_map.end() && max_rounds > 0){
+                new_state_index = it_merged->second;
+                it_merged = merge_state_map.find(new_state_index);
+                states_to_cluster.insert(new_state_index);
+                max_rounds--;
+            }
+            minh_filtered_minima_ids.push_back(new_state_index);
+            representatives_and_clustered_ids[new_state_index].insert(states_to_cluster.begin(), states_to_cluster.end());
+          }
+        }
+
+        // now do the actual merging..
+        for(auto it = representatives_and_clustered_ids.begin(); it != representatives_and_clustered_ids.end(); it++){
+          size_t representative = it->first;
+          MyState *rep_minimum = sortedMinimaIDs[representative].second;
+          size_t rep_id_from_done_list = sortedMinimaIDs[representative].first;
+          // remove representative from cluster such that we don't merge it twice.
+          it->second.erase(representative);
+          size_t state_id_from_done_list;
+          SC_PartitionFunction* pf_rep = &z.at(SC_PartitionFunction::PairID(state_id_from_done_list, state_id_from_done_list));
+          double pf_rep_value = pf_rep->getZ();
+          // TODO: sum up all other properties of SC_PartitionFunction (for example the Energies) this is currently not supported for minh-clustering.
+          SC_DotPlot::DotPlot* dp_rep;
+          if(writeDotplotPerBasin){
+            dp_rep = &dot_plot_per_basin[*rep_minimum];
+          }
+          for(auto it_cluster = it->second.begin(); it_cluster != it->second.end(); it_cluster++){
+            // add all clustered partition functions to the representative.
+            state_id_from_done_list = sortedMinimaIDs[*it_cluster].first;
+            pf_rep_value += z.at(SC_PartitionFunction::PairID(state_id_from_done_list, state_id_from_done_list)).getZ();
+            if(writeDotplotPerBasin){
+              // add all clustered dotplots to the representative.
+              MyState *state = sortedMinimaIDs[state_id_from_done_list].second;
+              //*dp_rep += dot_plot_per_basin[*state];
+              SC_DotPlot::DotPlot* dp_state = &dot_plot_per_basin[*state];
+              for(auto it_dp = dp_state->begin(); it_dp != dp_state->end(); it_dp++){
+                (*dp_rep)[it_dp->first] += it_dp->second;
+              }
+            }
+          }
+          pf_rep->setZ(pf_rep_value);
+        }
+
+        // then create new sorted_min list and hash map for output --> simply filter the original list and assign new IDs.
+        for(size_t min_index = sortedMinimaIDs.size(); min_index > 0; min_index--){
+          if(merge_state_map.find(sortedMinimaIDs[min_index-1].first) != merge_state_map.end()){
+            sorted_min_and_output_ids->erase(*(sortedMinimaIDs[min_index-1].second));
+            sortedMinimaIDs.erase(sortedMinimaIDs.begin() + min_index-1);
+          }
+        }
+        // assign new ids (still sorted).
+        for(size_t i = 0; i < sortedMinimaIDs.size(); i++){
+          (*sorted_min_and_output_ids)[*(sortedMinimaIDs[i].second)] = i;
+        }
+      }
+    }
+
+
 
     // Print the Final rate matrix of the States in Final minima set.
     printRateMatrixSorted(final_Rate, sortedMinimaIDs, *transOut);

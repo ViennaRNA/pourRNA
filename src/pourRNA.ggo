@@ -118,6 +118,18 @@ int
 default="65536"
 optional
 
+option  "minh" -
+"Set the minimal global saddle height (in kcal/mol). All basins with a lower minimal \
+saddle will be merged to the neighbored basin with lower energy\n"
+double
+optional
+
+option  "dynamic-minh" -
+"Enter the maximum number of macro states. The minh energy will be adjusted on-the-fly. Basins are merged like in the minh option. \
+A recommended maximum number of macro states is ~10000.\n"
+int
+optional
+
 
 section "RNA model parameters"
 
