@@ -1613,25 +1613,24 @@ main(int  argc,
         // merge partition functions and dotplots and assign new IDs!
         std::unordered_map<size_t, std::unordered_set<size_t>> representatives_and_clustered_ids;
         for(size_t i =0; i < sortedMinimaIDs.size(); i++){
-          size_t state_index = sortedMinimaIDs[i].first;
-          //size_t neighbor_index = minimal_saddle_list[i].minimum_to;
+          size_t state_index = i;
           auto it_merged = merge_state_map.find(state_index);
           if(it_merged != merge_state_map.end()){
             // merge this state into its deeper neighbors.
-            size_t new_state_index;
+            size_t cluster_root_state_index;
             std::unordered_set<size_t> states_to_cluster;
             size_t max_rounds = merge_state_map.size(); //prevent endless loops.
             while(it_merged != merge_state_map.end() && max_rounds > 0){
-                new_state_index = it_merged->second;
-                it_merged = merge_state_map.find(new_state_index);
-                states_to_cluster.insert(new_state_index);
+                cluster_root_state_index = it_merged->second;
+                it_merged = merge_state_map.find(cluster_root_state_index);
+                states_to_cluster.insert(cluster_root_state_index);
                 max_rounds--;
             }
-            representatives_and_clustered_ids[new_state_index].insert(states_to_cluster.begin(), states_to_cluster.end());
+            representatives_and_clustered_ids[cluster_root_state_index].insert(state_index);
           }
         }
 
-        // now do the actual merging..
+        // now do the actual merging of dotplots, partition functions, saddles etc.
         for(auto it = representatives_and_clustered_ids.begin(); it != representatives_and_clustered_ids.end(); it++){
           size_t representative = it->first;
           MyState *rep_minimum = sortedMinimaIDs[representative].second;
@@ -1652,7 +1651,7 @@ main(int  argc,
             pf_rep_value += z.at(SC_PartitionFunction::PairID(state_id_from_done_list, state_id_from_done_list)).getZ();
             if(writeDotplotPerBasin){
               // add all clustered dotplots to the representative.
-              MyState *state = sortedMinimaIDs[state_id_from_done_list].second;
+              MyState *state = sortedMinimaIDs[*it_cluster].second;
               //*dp_rep += dot_plot_per_basin[*state];
               SC_DotPlot::DotPlot* dp_state = &dot_plot_per_basin[*state];
               for(auto it_dp = dp_state->begin(); it_dp != dp_state->end(); it_dp++){
@@ -1660,7 +1659,6 @@ main(int  argc,
               }
             }
             // add all transition partition functions to the representative
-            //TODO: correct this
             for(auto it_i = sortedMinimaIDs.begin(); it_i != sortedMinimaIDs.end(); it_i++){
               size_t neighbor_id = it_i->first;
               if ((neighbor_id != state_id_from_done_list) && (neighbor_id != rep_id_from_done_list)){
@@ -1680,13 +1678,43 @@ main(int  argc,
                 }
               }
             }
+            // merge all saddles to the representative.
+            if (args_info.saddle_file_arg){
+              MyState *state = sortedMinimaIDs[*it_cluster].second;
+              auto it_saddles = all_saddles.find(*state);
+              //all_saddles[*rep_minimum].insert();
+              // insert minimal saddle to neighbor which is not in the same cluster
+              for(auto it_saddle = it_saddles->second.begin(); it_saddle != it_saddles->second.end(); it_saddle++){
+                auto it_output_id = sorted_min_and_output_ids->find(it_saddle->first);
+                if (it_output_id != sorted_min_and_output_ids->end()){
+                  size_t output_id = it_output_id->second;
+                  if (it->second.find(output_id) == it->second.end() && output_id != representative){
+                    // if not in the same cluster --> add transition
+                    auto rep_neighbor_it = all_saddles[*rep_minimum].find(it_saddle->first);
+                    if (rep_neighbor_it != all_saddles[*rep_minimum].end()){
+                      // replace saddle if smaller
+                      if(it_saddle->second.energy < rep_neighbor_it->second.energy){
+                        all_saddles[*rep_minimum][it_saddle->first] = it_saddle->second;
+                        all_saddles[it_saddle->first][*rep_minimum] = it_saddle->second;
+                      }
+                    }
+                    else{
+                      // add new saddle
+                      all_saddles[*rep_minimum][it_saddle->first] = it_saddle->second;
+                      all_saddles[it_saddle->first][*rep_minimum] = it_saddle->second;
+                    }
+                  }
+                }
+              }
+              // remove merged saddles
+              all_saddles.erase(*state);
+            }
           }
           pf_rep->setZ(pf_rep_value);
         }
 
         if (basin_size){
           // merge basin sizes.
-          // TODO: correct this
           for(auto it = representatives_and_clustered_ids.begin(); it != representatives_and_clustered_ids.end(); it++){
             size_t basin_rep_global_id = sortedMinimaIDs[it->first].first;
             for(auto itc = it->second.begin(); itc != it->second.end(); itc++){
@@ -1758,7 +1786,6 @@ main(int  argc,
 
     //dotplot
     if (writeDotplot) {
-      //TODO: merge dot plot if minh clustering is enabled
       SC_DotPlot::DotPlot normalizedDotplot =
         SC_DotPlot::getBasePairProbabilities(dotplot,
                                              partitionFunctionLandscape);
@@ -1777,7 +1804,7 @@ main(int  argc,
     if (basin_size){
       std::cout << std::endl;
       std::cout << "Minimum_id, Basin_size" << std::endl;
-      size_t i = 1;
+      size_t i = 0;
       for (auto it = sortedMinimaIDs.begin(); it != sortedMinimaIDs.end(); it++, i++){
         fprintf(stdout, "%ld, %ld\n", i, minimum_index_and_basin_size[it->first]);
       }
@@ -1802,23 +1829,23 @@ main(int  argc,
 
       for (auto it = all_saddles.begin(); it != all_saddles.end(); it++) {
         const MyState *state_from = &it->first;
-        for (auto it_to = it->second.begin(); it_to != it->second.end(); it_to++) {
-          const MyState *state_to = &it_to->first;
-          const MyState *state_saddle = &it_to->second;
-          double                              saddle_height = state_saddle->energy / 100.0;
-          std::string                         s1            = state_from->toString();
-          std::string                         s2            = state_to->toString();
-          std::string                         saddle        = state_saddle->toString();
-          int                                 id_from       = -1;
-          int                                 id_to         = -1;
-          auto id_from_it = sorted_min_and_output_ids->find(*state_from);
-          auto id_to_it   = sorted_min_and_output_ids->find(*state_to);
-          if (id_from_it != sorted_min_and_output_ids->end() && id_to_it != sorted_min_and_output_ids->end()){
-              id_from = id_from_it->second;
-              id_to = id_to_it->second;
-              std::fprintf(saddle_file,"%d, %s, %.2f, %d, %s, %.2f, %s, %.2f\n", id_from,
-                                    s1.c_str(), state_from->energy / 100.0,
-                                    id_to, s2.c_str(), state_to->energy / 100.0, saddle.c_str(), saddle_height);
+        auto id_from_it = sorted_min_and_output_ids->find(*state_from);
+        if (id_from_it != sorted_min_and_output_ids->end()){
+          for (auto it_to = it->second.begin(); it_to != it->second.end(); it_to++) {
+            const MyState *state_to = &it_to->first;
+            auto id_to_it   = sorted_min_and_output_ids->find(*state_to);
+            if ( id_to_it != sorted_min_and_output_ids->end()){
+              const MyState *state_saddle = &it_to->second;
+              double                              saddle_height = state_saddle->energy / 100.0;
+              std::string                         s1            = state_from->toString();
+              std::string                         s2            = state_to->toString();
+              std::string                         saddle        = state_saddle->toString();
+                int id_from = id_from_it->second;
+                int id_to = id_to_it->second;
+                std::fprintf(saddle_file,"%d, %s, %.2f, %d, %s, %.2f, %s, %.2f\n", id_from,
+                                      s1.c_str(), state_from->energy / 100.0,
+                                      id_to, s2.c_str(), state_to->energy / 100.0, saddle.c_str(), saddle_height);
+            }
           }
         }
       }
