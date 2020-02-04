@@ -23,6 +23,7 @@ typedef struct node_{
   int minimum_energy;
   int saddle;
   int branch_length;
+  size_t node_index;
 } node_t;
 
 typedef struct saddle_{
@@ -37,6 +38,7 @@ public:
   virtual ~BarriersTree();
   std::vector<node_t*> create_barrier_tree(std::vector<saddle_t> minimal_saddle_list, std::unordered_map<size_t, int> structure_index_to_energy);
   std::string newick_string_builder(node_t* root);
+  std::string svg_string_builder(node_t *tree, int mfe, size_t *inorder_index);
   std::vector<saddle_t> create_minimal_saddle_list(std::vector<std::pair<size_t, MyState *> > &sortedMinimaIDs, PairHashTable::HashTable &sorted_min_and_output_ids,StatePairCollector::MapOfMaps &all_saddles);
   double determin_optimal_min_h(size_t maximal_number_of_states, std::vector<saddle_t> &minimal_saddle_list);
   std::unordered_map<size_t, size_t> filter_minh(std::vector<saddle_t> &minimal_saddle_list, std::vector<std::pair<size_t, MyState *>> &sortedMinimaIDs, double min_h);

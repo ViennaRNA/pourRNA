@@ -484,6 +484,90 @@ std::string BarriersTree::newick_string_builder(node_t *tree) {
   return sub_tree_string;
 }
 
+/**
+ * Create a vector graphic of the tree.
+ * It does an inorder traversal of the tree in order to determine the x-coordinates.
+ * @param tree - the barriers tree.
+ * @param mfe - the minimum free energy in dcal/mol
+ * @param inorder_index - a pointer to an index variable.
+ * @return - returns the svg as string.
+ */
+std::string BarriersTree::svg_string_builder(node_t *tree, int mfe, size_t* inorder_index) {
+  // traverse tree from lowest left to right.
+  float node_scale = 20;
+  float legend_margin = 50;
+  std::string sub_tree_string = ""; //"(";
+  if (tree->left_child != NULL || tree->right_child != NULL) {
+    size_t left_idx, current_idx, right_idx;
+    //sub_tree_string += "(";
+    if (tree->left_child != NULL) {
+      sub_tree_string += this->svg_string_builder(tree->left_child, mfe, inorder_index);
+      sub_tree_string += "";
+    }
+    left_idx = tree->left_child->node_index;
+    *inorder_index += 1;
+    current_idx = *inorder_index;
+    tree->node_index = current_idx;
+    // draw root
+    if (tree->right_child != NULL) {
+      sub_tree_string += this->svg_string_builder(tree->right_child, mfe, inorder_index);
+      sub_tree_string += "";
+    }
+    right_idx = tree->right_child->node_index;
+
+    // line from left to middle and from middle to parent
+    sub_tree_string += "<path d=\"M " + std::to_string(legend_margin + (float)left_idx * node_scale) + " "+ std::to_string(-tree->saddle);
+    sub_tree_string += " l "+ std::to_string((((float)current_idx - (float)left_idx)) * node_scale) + " "+ std::to_string(0);
+    sub_tree_string += " l "+ std::to_string(0) + " "+ std::to_string(-tree->branch_length);
+    sub_tree_string +=" \" stroke=\"black\" stroke-width=\"3\" fill=\"none\" />\n";
+
+    // line from middle to right.
+    sub_tree_string += "<path d=\"M " + std::to_string(legend_margin +(float)current_idx * node_scale) + " "+ std::to_string(-tree->saddle);
+    sub_tree_string += " l "+ std::to_string(((float)right_idx - (float)current_idx) * node_scale) + " "+ std::to_string(0);
+    sub_tree_string +=" \" stroke=\"black\" stroke-width=\"3\" fill=\"none\" />\n";
+
+  } else {
+    // it is a leaf node --> add index
+    *inorder_index += 1;
+    tree->node_index = *inorder_index;
+    sub_tree_string += "<text x=\""+std::to_string(legend_margin+ (float)*inorder_index * node_scale - 5)+"\" y=\""+std::to_string(-tree->minimum_energy + 20)+
+        "\" fill=\"black\">"+std::to_string(tree->minimum_id)+"</text>\n";
+
+    // line from node to saddle
+    sub_tree_string += "<path d=\"M " + std::to_string(legend_margin + *inorder_index * node_scale) + " "+ std::to_string(-tree->minimum_energy)+
+                                     " l "+ std::to_string(0) + " "+ std::to_string(-tree->branch_length) +
+                                     " \" stroke=\"black\" stroke-width=\"3\" fill=\"none\" />\n";
+  }
+  if (tree->parent == NULL) {
+    // create a viewbox, that allows negative indices.
+    int upper_tree_bound = std::ceil((tree->saddle)/100.0) *100.0;
+    int lower_tree_bound = std::floor((mfe)/100.0)*100.0;
+    int tree_height = upper_tree_bound - lower_tree_bound;
+    double double_border = 100.0;
+    sub_tree_string = "<svg height=\""+std::to_string(tree_height+double_border)+"\" width=\""+std::to_string(legend_margin+ (float)*inorder_index * node_scale + double_border)+ "\"" +
+        "  viewBox=\""+std::to_string(-double_border/2)+" "+std::to_string(-upper_tree_bound - double_border/2)+" "+std::to_string(legend_margin +(float)*inorder_index * node_scale+ double_border)+" "+std::to_string(tree_height+ double_border)+"\">\n"
+        + sub_tree_string;
+    //add ruler.
+    double ruler_offset = -upper_tree_bound;
+    sub_tree_string += "<text x=\""+std::to_string(0)+"\" y=\""+std::to_string(ruler_offset - 20)+
+                  "\" fill=\"black\">Energy [kcal/mol]</text>\n";
+    sub_tree_string += "<line x1=\""+std::to_string(0)+"\" y1=\""+std::to_string(ruler_offset)+
+        "\" x2=\""+std::to_string(0)+"\" y2=\""+std::to_string(-lower_tree_bound)+"\" style=\"stroke:rgb(0,0,0);stroke-width:2\" />";
+    // add ticks
+    for (int i = -upper_tree_bound; i <= -lower_tree_bound; i+= 100){
+      sub_tree_string += "<line x1=\""+std::to_string(0)+"\" y1=\""+std::to_string(i)+
+              "\" x2=\""+std::to_string(1*(legend_margin/10))+"\" y2=\""+std::to_string(i)+"\" style=\"stroke:rgb(0,0,0);stroke-width:2\" />";
+      // add tick label
+      char tick_label[50];
+      sprintf(tick_label,"%.2f",-i/100.0);
+      sub_tree_string += "<text x=\""+std::to_string(1*(legend_margin/10) + 10)+"\" y=\""+std::to_string(i + 3)+
+              "\" fill=\"black\">"+tick_label+"</text>\n";
+    }
+    sub_tree_string += " </svg>\n";
+  }
+  return sub_tree_string;
+}
+
 void BarriersTree::free_tree(node_t* tree){
   if (tree->left_child != NULL || tree->right_child != NULL) {
     if (tree->left_child != NULL) {

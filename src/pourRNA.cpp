@@ -1710,6 +1710,14 @@ main(int  argc,
         tree_file << newick_tree << std::endl;
         tree_file.close();
         //std::cout << newick_tree << std::endl;
+      }
+      size_t inorder_index = 0;
+      std::string svg_tree = bt.svg_string_builder(forest[0], output_mfe, &inorder_index);
+      std::ofstream tree_file(std::string(args_info.barrier_tree_file_arg) + "_tree.svg");
+      tree_file << svg_tree << std::endl;
+      tree_file.close();
+
+      for(size_t t = 0; t < forest.size(); t++){
         bt.free_tree(forest[t]);
       }
     }
