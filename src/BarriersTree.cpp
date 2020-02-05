@@ -515,28 +515,38 @@ std::string BarriersTree::svg_string_builder(node_t *tree, int mfe, size_t* inor
     }
     right_idx = tree->right_child->node_index;
 
-    // line from left to middle and from middle to parent
-    sub_tree_string += "<path d=\"M " + std::to_string(legend_margin + (float)left_idx * node_scale) + " "+ std::to_string(-tree->saddle);
-    sub_tree_string += " l "+ std::to_string((((float)current_idx - (float)left_idx)) * node_scale) + " "+ std::to_string(0);
-    sub_tree_string += " l "+ std::to_string(0) + " "+ std::to_string(-tree->branch_length);
-    sub_tree_string +=" \" stroke=\"black\" stroke-width=\"3\" fill=\"none\" />\n";
+    // line from current to parent
+    sub_tree_string += "<path class=\"barrier\" d=\"M " + std::to_string(legend_margin + (float)tree->node_index * node_scale) + " "+ std::to_string(-tree->saddle);
+    sub_tree_string += " l "+ std::to_string(0) + " "+ std::to_string(-tree->branch_length) + "\" stroke-width=\"3\" fill=\"none\"/>\n";
 
-    // line from middle to right.
-    sub_tree_string += "<path d=\"M " + std::to_string(legend_margin +(float)current_idx * node_scale) + " "+ std::to_string(-tree->saddle);
-    sub_tree_string += " l "+ std::to_string(((float)right_idx - (float)current_idx) * node_scale) + " "+ std::to_string(0);
-    sub_tree_string +=" \" stroke=\"black\" stroke-width=\"3\" fill=\"none\" />\n";
+    // line from left to right.
+    sub_tree_string += "<path class=\"saddle\" d=\"M " + std::to_string(legend_margin +(float)tree->left_child->node_index * node_scale) + " "+ std::to_string(-tree->saddle);
+    sub_tree_string += " l "+ std::to_string(((float)tree->right_child->node_index - (float)tree->left_child->node_index) * node_scale) + " "+ std::to_string(0) + " \" stroke-width=\"3\" fill=\"none\"/>\n";
 
+    // branch label
+    char branch_label[50];
+    sprintf(branch_label,"%.2f",tree->branch_length/100.0);
+    float x = legend_margin + (float)tree->node_index * node_scale;
+    float y = (-tree->saddle -tree->branch_length/2.0);
+    sub_tree_string += "<text x=\""+std::to_string(x - 15)+"\" y=\""+std::to_string(y - 5)+
+                  "\" transform=\"rotate(-90 "+std::to_string(x)+","+std::to_string(y)+")\">"+branch_label+"</text>\n";
   } else {
     // it is a leaf node --> add index
     *inorder_index += 1;
     tree->node_index = *inorder_index;
-    sub_tree_string += "<text x=\""+std::to_string(legend_margin+ (float)*inorder_index * node_scale - 5)+"\" y=\""+std::to_string(-tree->minimum_energy + 20)+
+    sub_tree_string += "<text class=\"leaf_label\" x=\""+std::to_string(legend_margin+ (float)*inorder_index * node_scale - 5)+"\" y=\""+std::to_string(-tree->minimum_energy + 20)+
         "\" fill=\"black\">"+std::to_string(tree->minimum_id)+"</text>\n";
 
     // line from node to saddle
-    sub_tree_string += "<path d=\"M " + std::to_string(legend_margin + *inorder_index * node_scale) + " "+ std::to_string(-tree->minimum_energy)+
-                                     " l "+ std::to_string(0) + " "+ std::to_string(-tree->branch_length) +
-                                     " \" stroke=\"black\" stroke-width=\"3\" fill=\"none\" />\n";
+    sub_tree_string += "<path class=\"barrier\" d=\"M " + std::to_string(legend_margin + *inorder_index * node_scale) + " "+ std::to_string(-tree->minimum_energy)+
+                                     " l "+ std::to_string(0) + " "+ std::to_string(-tree->branch_length) + "\" stroke-width=\"3\" fill=\"none\"/>\n";
+    // branch label
+    char branch_label[50];
+    sprintf(branch_label,"%.2f",tree->branch_length/100.0);
+    float x = legend_margin + (float)tree->node_index * node_scale;
+    float y = (-tree->minimum_energy  - tree->branch_length/2.0);
+    sub_tree_string += "<text class=\"barrier_label\" x=\""+std::to_string(x - 15)+"\" y=\""+std::to_string(y - 5)+
+                  "\" transform=\"rotate(-90 "+std::to_string(x)+","+std::to_string(y)+")\">"+branch_label+"</text>\n";
   }
   if (tree->parent == NULL) {
     // create a viewbox, that allows negative indices.
@@ -546,23 +556,25 @@ std::string BarriersTree::svg_string_builder(node_t *tree, int mfe, size_t* inor
     double double_border = 100.0;
     sub_tree_string = "<svg height=\""+std::to_string(tree_height+double_border)+"\" width=\""+std::to_string(legend_margin+ (float)*inorder_index * node_scale + double_border)+ "\"" +
         "  viewBox=\""+std::to_string(-double_border/2)+" "+std::to_string(-upper_tree_bound - double_border/2)+" "+std::to_string(legend_margin +(float)*inorder_index * node_scale+ double_border)+" "+std::to_string(tree_height+ double_border)+"\">\n"
-        + sub_tree_string;
+        + "<g class=\"tree\" stroke=\"black\">\n" +sub_tree_string + "</g>\n";
     //add ruler.
     double ruler_offset = -upper_tree_bound;
+    sub_tree_string +=  "<g class=\"ruler\">\n";
     sub_tree_string += "<text x=\""+std::to_string(0)+"\" y=\""+std::to_string(ruler_offset - 20)+
                   "\" fill=\"black\">Energy [kcal/mol]</text>\n";
     sub_tree_string += "<line x1=\""+std::to_string(0)+"\" y1=\""+std::to_string(ruler_offset)+
-        "\" x2=\""+std::to_string(0)+"\" y2=\""+std::to_string(-lower_tree_bound)+"\" style=\"stroke:rgb(0,0,0);stroke-width:2\" />";
+        "\" x2=\""+std::to_string(0)+"\" y2=\""+std::to_string(-lower_tree_bound)+"\" style=\"stroke:rgb(0,0,0);stroke-width:2\"/>\n";
     // add ticks
     for (int i = -upper_tree_bound; i <= -lower_tree_bound; i+= 100){
       sub_tree_string += "<line x1=\""+std::to_string(0)+"\" y1=\""+std::to_string(i)+
-              "\" x2=\""+std::to_string(1*(legend_margin/10))+"\" y2=\""+std::to_string(i)+"\" style=\"stroke:rgb(0,0,0);stroke-width:2\" />";
+              "\" x2=\""+std::to_string(1*(legend_margin/10))+"\" y2=\""+std::to_string(i)+"\" style=\"stroke:rgb(0,0,0);stroke-width:2\"/>\n";
       // add tick label
       char tick_label[50];
       sprintf(tick_label,"%.2f",-i/100.0);
       sub_tree_string += "<text x=\""+std::to_string(1*(legend_margin/10) + 10)+"\" y=\""+std::to_string(i + 3)+
               "\" fill=\"black\">"+tick_label+"</text>\n";
     }
+    sub_tree_string += "</g>\n";
     sub_tree_string += " </svg>\n";
   }
   return sub_tree_string;
