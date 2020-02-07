@@ -1612,6 +1612,7 @@ main(int  argc,
       if (args_info.minh_given || args_info.dynamic_minh_given){
         // merge partition functions and dotplots and assign new IDs!
         std::unordered_map<size_t, std::unordered_set<size_t>> representatives_and_clustered_ids;
+        std::unordered_map<size_t, size_t> merged_min_to_representative;
         for(size_t i =0; i < sortedMinimaIDs.size(); i++){
           size_t state_index = i;
           auto it_merged = merge_state_map.find(state_index);
@@ -1626,6 +1627,7 @@ main(int  argc,
                 states_to_cluster.insert(cluster_root_state_index);
                 max_rounds--;
             }
+            merged_min_to_representative[state_index] = cluster_root_state_index;
             representatives_and_clustered_ids[cluster_root_state_index].insert(state_index);
           }
         }
@@ -1676,14 +1678,23 @@ main(int  argc,
                   pf_trans_cluster_reverse = it_trans_r->second.getZ();
                 pf_trans_cluster = std::max(pf_trans_cluster, pf_trans_cluster_reverse);
                 if ((it_trans != z.end()) || (it_trans_r != z.end())){
-                  SC_PartitionFunction::PairID transition_key_rep = SC_PartitionFunction::PairID(rep_id_from_done_list, neighbor_id);
+                  // map neighbor to its cluster -- update clustered contact surface
+                  size_t neighbors_cluster_id = sortedMinimaIDs[neighbor_ouput_id].first;
+                  auto itneighbor_cluster = merged_min_to_representative.find(neighbor_ouput_id);
+                  if(itneighbor_cluster != merged_min_to_representative.end()){
+                    neighbors_cluster_id = sortedMinimaIDs[itneighbor_cluster->second].first;
+                  }
+                  if (neighbors_cluster_id == rep_id_from_done_list)
+                    continue;
+
+                  SC_PartitionFunction::PairID transition_key_rep = SC_PartitionFunction::PairID(rep_id_from_done_list, neighbors_cluster_id);
                   auto it_trans_rep = z.find(transition_key_rep);
                   if (it_trans_rep != z.end()){
                     double pf_trans_rep = it_trans_rep->second.getZ();
                     it_trans_rep->second.setZ(pf_trans_rep + pf_trans_cluster);
                   }
                   else{
-                    SC_PartitionFunction::PairID transition_key_rep_reverse = SC_PartitionFunction::PairID(neighbor_id, rep_id_from_done_list);
+                    SC_PartitionFunction::PairID transition_key_rep_reverse = SC_PartitionFunction::PairID(neighbors_cluster_id, rep_id_from_done_list);
                     auto it_trans_rep_r = z.find(transition_key_rep_reverse);
                     if (it_trans_rep_r != z.end()){
                       double pf_trans_rep_r = it_trans_rep_r->second.getZ();
