@@ -1816,7 +1816,7 @@ main(int  argc,
         z.at(SC_PartitionFunction::PairID(minIndex, minIndex)).getZ();
     }
     std::cout << "The overall partition function is: "
-              << partitionFunctionLandscape << std::endl;
+              << partitionFunctionLandscape * SC_PartitionFunction().getBoltzmannWeight(MyState((int)(mfeEnergy*100),NULL)) << std::endl;
 
     //dotplot
     if (writeDotplot) {
