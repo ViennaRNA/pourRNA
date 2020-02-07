@@ -9,6 +9,7 @@
 
 SC_PartitionFunction::SC_PartitionFunction (const double  temperature,
                                             const double  gas_constant,
+                                            double        mfe,
                                             const bool    storeEnergies)
   :
   StateCollector(),
@@ -16,6 +17,7 @@ SC_PartitionFunction::SC_PartitionFunction (const double  temperature,
   Energies(),
   Z(0.0),
   GAS_CONSTANT_KCAL(gas_constant),
+  MFE(mfe),
   kT(GAS_CONSTANT_KCAL * (temperature + 273.15))
 {
   // initialize data structures
@@ -41,6 +43,7 @@ SC_PartitionFunction::~SC_PartitionFunction ()
 void
 SC_PartitionFunction::initialize(const double temperature,
                                  const double gas_constant,
+                                 double mfe,
                                  const bool   storeEnergies)
 {
   // update constant parameters
@@ -51,4 +54,5 @@ SC_PartitionFunction::initialize(const double temperature,
   // init data structures
   Z = 0.0;
   Energies.clear();
+  MFE = mfe;
 }

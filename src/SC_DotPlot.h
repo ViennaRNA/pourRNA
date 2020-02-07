@@ -37,6 +37,7 @@ public:
  */
 SC_DotPlot (const double  temperature,
             const double  gas_constant,
+            double mfe,
             const bool    storeEnergies = false);
 
 /*! resets the data structure and calculate the gasconstant (RT)
@@ -48,6 +49,7 @@ virtual
 void
 initialize(const double temperature,
            const double gas_constant,
+           double mfe,
            const bool   storeEnergies = false);
 
 

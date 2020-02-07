@@ -15,6 +15,7 @@ StatePairCollector::StatePairCollector(size_t                           currentM
                                        Concurrent_Queue<MyState>        *discoveredMinima,
                                        double                           boltzmannWeightTemperature,
                                        double                           gas_constant,
+                                       double                           mfe,
                                        unsigned int                     move_set,
                                        MapOfMaps*                       all_saddles,
                                        const char                       *sourceStructure,
@@ -23,7 +24,7 @@ StatePairCollector::StatePairCollector(size_t                           currentM
   CurMinID(currentMinID), Minima(minima), Z(z), GradWalk(
     move_set, maxGradWalkHashed), NumberOfOuterStates(0), DiscoveredMinima(
     discoveredMinima), BoltzmannWeightTemperature(
-    boltzmannWeightTemperature), GasConstant(gas_constant), All_Saddles(all_saddles),
+    boltzmannWeightTemperature), GasConstant(gas_constant), MFE(mfe), All_Saddles(all_saddles),
   SourceStructure(sourceStructure), TargetStructure(targetStructure), MaxBPdist(maxBPdist),
   MininaToIgnore()
 {
@@ -123,7 +124,7 @@ StatePairCollector::add(vrna_fold_compound_t  *vc,
   SC_PartitionFunction::Z_Matrix::iterator  zIt = Z.find(pairID);
   if (zIt == Z.end())
     // vc->params->temperature is in Celsius.
-    Z[pairID].initialize(BoltzmannWeightTemperature, GasConstant);
+    Z[pairID].initialize(BoltzmannWeightTemperature, GasConstant, MFE);
 
   if (firstIsSmaller) {
     // update Z matrix with basin state

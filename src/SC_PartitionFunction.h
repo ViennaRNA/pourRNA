@@ -26,6 +26,7 @@ public:
  */
 SC_PartitionFunction(double temperature = 37.0,
                      double gas_constant = 0.00198717,
+                     double mfe = 0,
                      bool   storeEnergies = false);
 
 /*! sets the partition function sum to 0 and calculate the gasconstant (RT)
@@ -36,6 +37,7 @@ SC_PartitionFunction(double temperature = 37.0,
 virtual
 void initialize(const double  temperature,
                 const double  gas_constant,
+                double mfe,
                 const bool    storeEnergies = false);
 
 
@@ -69,7 +71,7 @@ setZ(double z = 0)
 
 /*!
  * Computes the Boltzmann weight of the given state based on its energy and
- * the currently used temperature.
+ * the currently used temperature. It is scaled by the minimum free energy!
  * @param state the state of interest
  * @return the Boltzmann weight of the state
  */
@@ -79,7 +81,7 @@ getBoltzmannWeight(const MyState & state) const
 {
   // NOTE: need to divide energy from vienna package by 100 to get kcal/mol
   //(calculate with float energies to be consistent with RNA_Explore from RNAKinetics-Package.
-  return std::exp((-(double)(state.energy) / 100.0) / kT);
+  return std::exp((MFE -(double)(state.energy) / 100.0) / kT);
 }
 
 
@@ -128,6 +130,8 @@ double            Z;
 const double      GAS_CONSTANT_KCAL;
 //! The temperature scaled "Boltzmann" constant used to compute Boltzmann weights.
 double            kT;
+//! The global minimum free energy -> used for scaling
+double            MFE;
 };
 
 

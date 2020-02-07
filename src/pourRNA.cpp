@@ -251,6 +251,7 @@ struct flooderInputParameter {
   int                       MaxBPdist;
   char                      *SourceStructure;
   char                      *TargetStructure;
+  double                    MFE; //used for pf scaling
   ~flooderInputParameter()
   {
     if (CurrentMinimum != NULL)
@@ -315,6 +316,7 @@ floodBasin(vrna_fold_compound_t   *vc,
                          inParameter->DiscoveredMinima,
                          inParameter->TemperatureForBoltzmannWeight,
                          inParameter->GasConstant,
+                         inParameter->MFE,
                          inParameter->Move_set,
                          inParameter->All_Saddles,
                          inParameter->SourceStructure,
@@ -1204,7 +1206,7 @@ main(int  argc,
     bool                                              finalStructureFound = false;
     char                                              *mfeStructure       = (char *)vrna_alloc(
       (vc->length + 1) * sizeof(char));
-    float                                             mfeEnergy = vrna_mfe(vc, mfeStructure);
+    double                                            mfeEnergy = (double)vrna_mfe(vc, mfeStructure);
 
     //init dynamic k-best filter list.
     std::unordered_map<size_t, std::vector<size_t> >  dynamicBestKFilterNeighborList;
@@ -1372,6 +1374,7 @@ main(int  argc,
                   inParameter->Filter           = neighborFilter;
                   inParameter->MaxEnergy        = maxEnergy;
                   inParameter->DeltaE           = deltaE;
+                  inParameter->MFE              = mfeEnergy;
 
                   // check if we can report the minima on-the-fly, or if we have to buffer them for macro-state filtering
                   if (inParameter->Filter == NULL) {
@@ -1405,12 +1408,14 @@ main(int  argc,
                     outParameter->ScBasin = new SC_DotPlot(
                       temperatureForBoltzmannWeight,
                       gas_constant,
+                      mfeEnergy,
                       logEnergies);
                   } else {
                     outParameter->ScBasin =
                       new SC_PartitionFunction(
                         temperatureForBoltzmannWeight,
                         gas_constant,
+                        mfeEnergy,
                         logEnergies);
                   }
 

@@ -56,6 +56,7 @@ StatePairCollector(size_t                           currentMinID,
                    Concurrent_Queue<MyState>        *discoveredMinima,
                    double                           boltzmannWeightTemperature,
                    double                           gas_constant,
+                   double                           mfe,
                    unsigned int                     move_set,
                    MapOfMaps*                       all_saddles,
                    const char                       *sourceStructure,
@@ -96,6 +97,8 @@ const size_t                    CurMinID;
 // ! Temperature for the Boltzmann weight (not the structure energies)
 double                          BoltzmannWeightTemperature; /* in Celsius */
 double                          GasConstant; /* in kcal/(K*mol) */
+// ! global minimum free energy - used for pf scaling
+double                          MFE;
 // ! minima map: structure, index.
 PairHashTable::HashTable&       Minima;
 // ! the partition funcion matrix.

@@ -19,8 +19,9 @@ extern "C" {
 
 SC_DotPlot::SC_DotPlot (const double  temperature,
                         const double  gas_constant,
+                        double mfe,
                         const bool    storeEnergies) :
-  SC_PartitionFunction(temperature, gas_constant, storeEnergies), bpWeightSum()
+  SC_PartitionFunction(temperature, gas_constant, mfe, storeEnergies), bpWeightSum()
 {
   // initialize data structures
   // initialize(temperature, storeEnergies);
@@ -71,10 +72,11 @@ SC_DotPlot::~SC_DotPlot ()
 void
 SC_DotPlot::initialize(const double temperature,
                        const double gas_constant,
+                       double mfe,
                        const bool   storeEnergies)
 {
   // super class function
-  SC_PartitionFunction::initialize(temperature, gas_constant, storeEnergies);
+  SC_PartitionFunction::initialize(temperature, gas_constant, mfe, storeEnergies);
 
   // init local data structures
   bpWeightSum.clear();
