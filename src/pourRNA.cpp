@@ -680,7 +680,7 @@ main(int  argc,
   bool                                                enableMax_Neigh_E_Filter = false;
 
   //max base pair distance filter
-  int                                                 maxBPdist = 65536;
+  int                                                 maxBPdist = -1;
 
   // file to store all energies.
   std::string                                         energyFileName = "";
@@ -780,6 +780,10 @@ main(int  argc,
           || rna_final_str.size() == 0) {
         error_Mas << " final Structure " << rna_final_str
                   << " is no valid structure";
+        throw ArgException(error_Mas.str());
+      }
+      if (args_info.max_threads_given && args_info.max_threads_arg > 1){
+        error_Mas << "the final structure is not allowed with multiple threads. Please set --max-threads=1";
         throw ArgException(error_Mas.str());
       }
     }
@@ -1540,55 +1544,9 @@ main(int  argc,
     pad             = std::string(padding_length, ' ');
     printf("%s%s\n", pad.c_str(), rna_start_str.c_str());
 
-    out = "The start state ends in basin: ";
-    printf("%s", out.c_str());
-    padding_length  = offset - out.length();
-    pad             = std::string(padding_length, ' ');
-    printf("%s%s\n", pad.c_str(), startStructureMinimum);
-    out = "The final state is: ";
-    printf("%s", out.c_str());
-    padding_length  = offset - out.length();
-    pad             = std::string(padding_length, ' ');
-    printf("%s%s\n", pad.c_str(), rna_final_str.c_str());
-    out = "The final minimum is: ";
-    printf("%s", out.c_str());
-    if (endStructureMinimum != NULL) {
-      padding_length  = offset - out.length();
-      pad             = std::string(padding_length, ' ');
-      printf("%s%s\n", pad.c_str(), endStructureMinimum);
-    } else {
-      printf("\n");
-    }
-
-    printf("Number of minima: %ld\n", done_List.size());
-
-    std::cout << std::endl;
-
-
-    // Calculate the final Rate Matrix:
-    *transOut
-    << "              --------------THE FINAL RATE MATRIX----------------------- "
-    << std::endl;
-    // the maximum number of macrostates is used to normalize the rates.
-    /*
-      size_t                      maxNeighNum = getMaximalNeighborsOfAMacroState(
-      z,
-      done_List,
-      MinimaForReverseSearch);
-      */
-
-    // To store the States after applying all the Filtering Techniques
-    //std::unordered_map<size_t, MyState>         final_minima;
-    std::unordered_set<size_t>::const_iterator  fromIt = done_List.begin();
-    //for (size_t from = 0; from < done_List.size(); from++, fromIt++) {
-      // store minimum with correct index for final rate matrix
-      // (from column-state to row-state)
-    //  final_minima.insert({ *fromIt, MinimaForReverseSearch.at(*fromIt) });
-    //}
-
     // sortedMinimaIDs will be sorted by energy, it contains the global id from the done list and the minimum pointer.
     std::vector<std::pair<size_t, MyState *> > sortedMinimaIDs;
-    for (size_t from = 0; from < done_List.size(); from++, fromIt++)
+    for (std::unordered_set<size_t>::const_iterator fromIt = done_List.begin(); fromIt != done_List.end(); fromIt++)
       sortedMinimaIDs.push_back(
         std::pair<size_t, MyState *>(*fromIt, (MyState *)&MinimaForReverseSearch.at(*fromIt)));
 
@@ -1637,6 +1595,24 @@ main(int  argc,
           }
           else{
             representatives_and_clustered_ids[state_index].insert(state_index);
+          }
+        }
+
+        // update start and final state
+        auto start_min_it = sorted_min_and_output_ids->find(*startStateMinimum);
+        if (start_min_it != sorted_min_and_output_ids->end()){
+          auto merged_it = merged_min_to_representative.find(start_min_it->second);
+          if (merged_it != merged_min_to_representative.end()){
+            startStructureMinimum = strcpy(startStructureMinimum, sortedMinimaIDs[merged_it->second].second->toString().c_str());
+          }
+        }
+        if (finalStructureMinimum != NULL){
+          auto final_min_it = sorted_min_and_output_ids->find(*finalStructureMinimum);
+          if (final_min_it != sorted_min_and_output_ids->end()){
+            auto merged_it = merged_min_to_representative.find(final_min_it->second);
+            if (merged_it != merged_min_to_representative.end()){
+              endStructureMinimum = strcpy(endStructureMinimum, sortedMinimaIDs[merged_it->second].second->toString().c_str());
+            }
           }
         }
 
@@ -1780,9 +1756,37 @@ main(int  argc,
           minimum_index_and_basin_size.clear();
           minimum_index_and_basin_size.insert(minimum_index_and_basin_size_filtered.begin(), minimum_index_and_basin_size_filtered.end());
         }
-
       }
     }
+
+    out = "The start state ends in basin: ";
+    printf("%s", out.c_str());
+    padding_length  = offset - out.length();
+    pad             = std::string(padding_length, ' ');
+    printf("%s%s\n", pad.c_str(), startStructureMinimum);
+    out = "The final state is: ";
+    printf("%s", out.c_str());
+    padding_length  = offset - out.length();
+    pad             = std::string(padding_length, ' ');
+    printf("%s%s\n", pad.c_str(), rna_final_str.c_str());
+    out = "The final minimum is: ";
+    printf("%s", out.c_str());
+    if (endStructureMinimum != NULL) {
+      padding_length  = offset - out.length();
+      pad             = std::string(padding_length, ' ');
+      printf("%s%s\n", pad.c_str(), endStructureMinimum);
+    } else {
+      printf("\n");
+    }
+
+    printf("Number of minima: %ld\n", done_List.size());
+
+    std::cout << std::endl;
+
+    // Calculate the final Rate Matrix:
+    *transOut
+    << "              --------------THE FINAL RATE MATRIX----------------------- "
+    << std::endl;
 
     biu::MatrixSparseC<double>&  final_Rate = calculateRateMatrix(z, sortedMinimaIDs, computeDiagonal);
 
