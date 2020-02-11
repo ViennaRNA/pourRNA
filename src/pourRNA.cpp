@@ -1635,6 +1635,9 @@ main(int  argc,
             merged_min_to_representative[state_index] = cluster_root_state_index;
             representatives_and_clustered_ids[cluster_root_state_index].insert(state_index);
           }
+          else{
+            representatives_and_clustered_ids[state_index].insert(state_index);
+          }
         }
 
         // now do the actual merging of dotplots, partition functions, saddles etc.
@@ -1743,7 +1746,8 @@ main(int  argc,
           for(auto it = representatives_and_clustered_ids.begin(); it != representatives_and_clustered_ids.end(); it++){
             size_t basin_rep_global_id = sortedMinimaIDs[it->first].first;
             for(auto itc = it->second.begin(); itc != it->second.end(); itc++){
-              minimum_index_and_basin_size[basin_rep_global_id] += minimum_index_and_basin_size[sortedMinimaIDs[*itc].first];
+              if (*itc != it->first)
+                minimum_index_and_basin_size[basin_rep_global_id] += minimum_index_and_basin_size[sortedMinimaIDs[*itc].first];
             }
           }
         }
