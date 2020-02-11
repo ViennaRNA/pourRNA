@@ -1642,8 +1642,8 @@ main(int  argc,
           size_t representative = it->first;
           MyState *rep_minimum = sortedMinimaIDs[representative].second;
           size_t rep_id_from_done_list = sortedMinimaIDs[representative].first;
-          // remove representative from cluster such that we don't merge it twice.
-          it->second.erase(representative);
+          // insert representative to its own cluster, because we need to sum up transitions from the rep to other clusters.
+          it->second.insert(representative);
           size_t state_id_from_done_list = rep_id_from_done_list;
           SC_PartitionFunction* pf_rep = &z.at(SC_PartitionFunction::PairID(state_id_from_done_list, state_id_from_done_list));
           double pf_rep_value = pf_rep->getZ();
@@ -1655,7 +1655,8 @@ main(int  argc,
           for(auto it_cluster = it->second.begin(); it_cluster != it->second.end(); it_cluster++){
             // add all clustered partition functions to the representative.
             state_id_from_done_list = sortedMinimaIDs[*it_cluster].first;
-            pf_rep_value += z.at(SC_PartitionFunction::PairID(state_id_from_done_list, state_id_from_done_list)).getZ();
+            if (state_id_from_done_list != rep_id_from_done_list)
+              pf_rep_value += z.at(SC_PartitionFunction::PairID(state_id_from_done_list, state_id_from_done_list)).getZ();
             if(writeDotplotPerBasin){
               // add all clustered dotplots to the representative.
               MyState *state = sortedMinimaIDs[*it_cluster].second;
@@ -1672,22 +1673,19 @@ main(int  argc,
               // if not cluster-self-loop and not rep-self-loop and not neighbor in cluster
               if ((neighbor_id != state_id_from_done_list) && (neighbor_id != rep_id_from_done_list) && (it->second.find(neighbor_ouput_id) == it->second.end())){
                 SC_PartitionFunction::PairID transition_key_cluster_neighbor = SC_PartitionFunction::PairID(state_id_from_done_list, neighbor_id);
-                SC_PartitionFunction::PairID transition_key_cluster_neighbor_reverse = SC_PartitionFunction::PairID(neighbor_id, state_id_from_done_list);
-                double pf_trans_cluster = 0.0;
-                double pf_trans_cluster_reverse = 0.0;
                 auto it_trans = z.find(transition_key_cluster_neighbor);
-                if (it_trans != z.end())
-                  pf_trans_cluster = it_trans->second.getZ();
-                auto it_trans_r = z.find(transition_key_cluster_neighbor_reverse);
-                if (it_trans_r != z.end())
-                  pf_trans_cluster_reverse = it_trans_r->second.getZ();
-                pf_trans_cluster = std::max(pf_trans_cluster, pf_trans_cluster_reverse);
-                if ((it_trans != z.end()) || (it_trans_r != z.end())){
+                if (it_trans != z.end()){
+                  double pf_trans_cluster = it_trans->second.getZ();
                   // map neighbor to its cluster -- update clustered contact surface
                   size_t neighbors_cluster_id = sortedMinimaIDs[neighbor_ouput_id].first;
                   auto itneighbor_cluster = merged_min_to_representative.find(neighbor_ouput_id);
                   if(itneighbor_cluster != merged_min_to_representative.end()){
                     neighbors_cluster_id = sortedMinimaIDs[itneighbor_cluster->second].first;
+                  }
+                  else{
+                    // if not merged into another cluster, and state_id_from == rep --> it was there before dont sum it up
+                    if (state_id_from_done_list == rep_id_from_done_list)
+                      continue;
                   }
                   if (neighbors_cluster_id == rep_id_from_done_list)
                     continue;
@@ -1695,23 +1693,16 @@ main(int  argc,
                   SC_PartitionFunction::PairID transition_key_rep = SC_PartitionFunction::PairID(rep_id_from_done_list, neighbors_cluster_id);
                   auto it_trans_rep = z.find(transition_key_rep);
                   if (it_trans_rep != z.end()){
-                    double pf_trans_rep = it_trans_rep->second.getZ();
-                    it_trans_rep->second.setZ(pf_trans_rep + pf_trans_cluster);
+                      double pf_trans_rep = it_trans_rep->second.getZ();
+                      it_trans_rep->second.setZ(pf_trans_rep + pf_trans_cluster);
                   }
                   else{
-                    SC_PartitionFunction::PairID transition_key_rep_reverse = SC_PartitionFunction::PairID(neighbors_cluster_id, rep_id_from_done_list);
-                    auto it_trans_rep_r = z.find(transition_key_rep_reverse);
-                    if (it_trans_rep_r != z.end()){
-                      double pf_trans_rep_r = it_trans_rep_r->second.getZ();
-                      it_trans_rep_r->second.setZ(pf_trans_rep_r + pf_trans_cluster);
-                    }
-                    else{
-                      z[transition_key_rep].setZ(pf_trans_cluster);
-                    }
+                    z[transition_key_rep].setZ(pf_trans_cluster);
                   }
                 }
               }
             }
+
             // merge all saddles to the representative.
             if (args_info.saddle_file_arg){
               MyState *state = sortedMinimaIDs[*it_cluster].second;
