@@ -176,8 +176,8 @@ SC_DotPlot::writeDotPlot_PS_with_mfe_and_mea(const std::string & absoluteFileNam
     return false;
 
   // allocate data structure for vienna package
-  plist *bpProbVienna = (plist *)space((dotPlot.size() + 1) * sizeof(plist));
-  plist mfeViennaDummy;
+  vrna_plist_t *bpProbVienna = (vrna_plist_t *)space((dotPlot.size() + 1) * sizeof(plist));
+  vrna_plist_t mfeViennaDummy;
 
   // fill dummy content = end of list marking entry
   mfeViennaDummy.i    = 0;
@@ -215,7 +215,6 @@ SC_DotPlot::writeDotPlot_PS_with_mfe_and_mea(const std::string & absoluteFileNam
 
     // write dot plot postscript file and check for success
     allSane = (1 == PS_dot_plot_list(seqChar, fileChar, bpProbVienna, &mfeViennaDummy, emptyChar));
-
     if (allSane){
       std::string line;
       std::ifstream infile_s(fileChar);

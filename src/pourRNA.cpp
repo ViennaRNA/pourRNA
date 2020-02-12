@@ -696,7 +696,6 @@ main(int  argc,
   // parameter for writing a postscript dotplot per basin.
   bool                                                writeDotplotPerBasin = false;
   // file name prefix for dotplots per basin.
-  //TODO: implement this!
   std::string                                         dotPlotPerBasinFileName = "";
 
   // file to store all partition functions.
@@ -1563,6 +1562,8 @@ main(int  argc,
     if (args_info.barrier_tree_file_given || args_info.minh_given || args_info.dynamic_minh_given)
       minimal_saddle_list = bt.create_minimal_saddle_list(sortedMinimaIDs, *sorted_min_and_output_ids, all_saddles);
 
+    SC_PartitionFunction::Z_Matrix z_minh;
+
     if (args_info.minh_given || args_info.dynamic_minh_given){
       double adjusted_minh = minh;
       if (args_info.dynamic_minh_given){
@@ -1593,9 +1594,6 @@ main(int  argc,
             merged_min_to_representative[state_index] = cluster_root_state_index;
             representatives_and_clustered_ids[cluster_root_state_index].insert(state_index);
           }
-          else{
-            representatives_and_clustered_ids[state_index].insert(state_index);
-          }
         }
 
         // update start and final state
@@ -1616,105 +1614,100 @@ main(int  argc,
           }
         }
 
-        // now do the actual merging of dotplots, partition functions, saddles etc.
-        for(auto it = representatives_and_clustered_ids.begin(); it != representatives_and_clustered_ids.end(); it++){
-          size_t representative = it->first;
-          MyState *rep_minimum = sortedMinimaIDs[representative].second;
-          size_t rep_id_from_done_list = sortedMinimaIDs[representative].first;
-          // insert representative to its own cluster, because we need to sum up transitions from the rep to other clusters.
-          it->second.insert(representative);
-          size_t state_id_from_done_list = rep_id_from_done_list;
-          SC_PartitionFunction* pf_rep = &z.at(SC_PartitionFunction::PairID(state_id_from_done_list, state_id_from_done_list));
-          double pf_rep_value = pf_rep->getZ();
-          // TODO: sum up all other properties of SC_PartitionFunction (for example the Energies) this is currently not supported for minh-clustering.
-          SC_DotPlot::DotPlot* dp_rep;
-          if(writeDotplotPerBasin){
-            dp_rep = &dot_plot_per_basin[*rep_minimum];
-          }
-          for(auto it_cluster = it->second.begin(); it_cluster != it->second.end(); it_cluster++){
-            // add all clustered partition functions to the representative.
-            state_id_from_done_list = sortedMinimaIDs[*it_cluster].first;
-            if (state_id_from_done_list != rep_id_from_done_list)
-              pf_rep_value += z.at(SC_PartitionFunction::PairID(state_id_from_done_list, state_id_from_done_list)).getZ();
-            if(writeDotplotPerBasin){
-              // add all clustered dotplots to the representative.
-              MyState *state = sortedMinimaIDs[*it_cluster].second;
-              //*dp_rep += dot_plot_per_basin[*state];
-              SC_DotPlot::DotPlot* dp_state = &dot_plot_per_basin[*state];
-              for(auto it_dp = dp_state->begin(); it_dp != dp_state->end(); it_dp++){
-                (*dp_rep)[it_dp->first] += it_dp->second;
+        // merge partition functions
+        for(size_t i = 0; i < sortedMinimaIDs.size(); i++){
+          size_t id_i = sortedMinimaIDs[i].first;
+          for(size_t j = 0; j < sortedMinimaIDs.size(); j++){
+            size_t id_j = sortedMinimaIDs[j].first;
+            auto trans = z.find(SC_PartitionFunction::PairID(id_i, id_j));
+            if (trans != z.end()){
+              size_t cluster_i = id_i;
+              size_t cluster_j = id_j;
+              double pf_from =  trans->second.getZ();
+              auto i_rep = merged_min_to_representative.find(i);
+              auto j_rep = merged_min_to_representative.find(j);
+              if (i_rep != merged_min_to_representative.end()){
+                cluster_i = sortedMinimaIDs[i_rep->second].first;
+              }
+              if (j_rep != merged_min_to_representative.end()){
+                cluster_j = sortedMinimaIDs[j_rep->second].first;
+              }
+              if ((cluster_i == cluster_j) && (j != i))
+                 continue; // don't add inner cluster transitions
+              auto trans_c = z_minh.find(SC_PartitionFunction::PairID(cluster_i, cluster_j));
+              if (trans_c != z_minh.end()){
+                double pf_to = trans_c->second.getZ();
+                trans_c->second.setZ(pf_to + pf_from);
+              }
+              else{
+                z_minh[SC_PartitionFunction::PairID(cluster_i, cluster_j)].setZ(pf_from);
               }
             }
-            // add all transition partition functions to the representative
-            for(auto it_i = sortedMinimaIDs.begin(); it_i != sortedMinimaIDs.end(); it_i++){
-              size_t neighbor_id = it_i->first;
-              size_t neighbor_ouput_id = (*sorted_min_and_output_ids)[*(it_i->second)];
-              // if not cluster-self-loop and not rep-self-loop and not neighbor in cluster
-              if ((neighbor_id != state_id_from_done_list) && (neighbor_id != rep_id_from_done_list) && (it->second.find(neighbor_ouput_id) == it->second.end())){
-                SC_PartitionFunction::PairID transition_key_cluster_neighbor = SC_PartitionFunction::PairID(state_id_from_done_list, neighbor_id);
-                auto it_trans = z.find(transition_key_cluster_neighbor);
-                if (it_trans != z.end()){
-                  double pf_trans_cluster = it_trans->second.getZ();
-                  // map neighbor to its cluster -- update clustered contact surface
-                  size_t neighbors_cluster_id = sortedMinimaIDs[neighbor_ouput_id].first;
-                  auto itneighbor_cluster = merged_min_to_representative.find(neighbor_ouput_id);
-                  if(itneighbor_cluster != merged_min_to_representative.end()){
-                    neighbors_cluster_id = sortedMinimaIDs[itneighbor_cluster->second].first;
-                  }
-                  else{
-                    // if not merged into another cluster, and state_id_from == rep --> it was there before dont sum it up
-                    if (state_id_from_done_list == rep_id_from_done_list)
-                      continue;
-                  }
-                  if (neighbors_cluster_id == rep_id_from_done_list)
-                    continue;
+          }
+        }
+        // replace z with new pf.
+        z.clear();
+        z = z_minh;
 
-                  SC_PartitionFunction::PairID transition_key_rep = SC_PartitionFunction::PairID(rep_id_from_done_list, neighbors_cluster_id);
-                  auto it_trans_rep = z.find(transition_key_rep);
-                  if (it_trans_rep != z.end()){
-                      double pf_trans_rep = it_trans_rep->second.getZ();
-                      it_trans_rep->second.setZ(pf_trans_rep + pf_trans_cluster);
-                  }
-                  else{
-                    z[transition_key_rep].setZ(pf_trans_cluster);
-                  }
+        // merge dotplots
+        if(writeDotplotPerBasin){
+          for(auto it = representatives_and_clustered_ids.begin(); it != representatives_and_clustered_ids.end(); it++){
+            size_t representative = it->first;
+            MyState *rep_minimum = sortedMinimaIDs[representative].second;
+            // TODO: sum up all other properties of SC_PartitionFunction (for example the Energies) this is currently not supported for minh-clustering.
+            SC_DotPlot::DotPlot* dp_rep = &dot_plot_per_basin[*rep_minimum];
+            for(auto it_cluster = it->second.begin(); it_cluster != it->second.end(); it_cluster++){
+              if (it->first != *it_cluster){
+                // add all clustered dotplots to the representative.
+                MyState *state = sortedMinimaIDs[*it_cluster].second;
+                //*dp_rep += dot_plot_per_basin[*state];
+                SC_DotPlot::DotPlot* dp_state = &dot_plot_per_basin[*state];
+                for(auto it_dp = dp_state->begin(); it_dp != dp_state->end(); it_dp++){
+                  (*dp_rep)[it_dp->first] += it_dp->second;
                 }
               }
             }
+          }
+        }
 
-            // merge all saddles to the representative.
-            if (args_info.saddle_file_arg){
-              MyState *state = sortedMinimaIDs[*it_cluster].second;
-              auto it_saddles = all_saddles.find(*state);
-              //all_saddles[*rep_minimum].insert();
-              // insert minimal saddle to neighbor which is not in the same cluster
-              for(auto it_saddle = it_saddles->second.begin(); it_saddle != it_saddles->second.end(); it_saddle++){
-                auto it_output_id = sorted_min_and_output_ids->find(it_saddle->first);
-                if (it_output_id != sorted_min_and_output_ids->end()){
-                  size_t output_id = it_output_id->second;
-                  if (it->second.find(output_id) == it->second.end() && output_id != representative){
-                    // if not in the same cluster --> add transition
-                    auto rep_neighbor_it = all_saddles[*rep_minimum].find(it_saddle->first);
-                    if (rep_neighbor_it != all_saddles[*rep_minimum].end()){
-                      // replace saddle if smaller
-                      if(it_saddle->second.energy < rep_neighbor_it->second.energy){
+        // merge saddles
+        if (args_info.saddle_file_arg){
+          for(auto it = representatives_and_clustered_ids.begin(); it != representatives_and_clustered_ids.end(); it++){
+            size_t representative = it->first;
+            MyState *rep_minimum = sortedMinimaIDs[representative].second;
+            for(auto it_cluster = it->second.begin(); it_cluster != it->second.end(); it_cluster++){
+              // merge all saddles to the representative.
+              if (args_info.saddle_file_arg){
+                MyState *state = sortedMinimaIDs[*it_cluster].second;
+                auto it_saddles = all_saddles.find(*state);
+                // insert minimal saddle to neighbor which is not in the same cluster
+                for(auto it_saddle = it_saddles->second.begin(); it_saddle != it_saddles->second.end(); it_saddle++){
+                  auto it_output_id = sorted_min_and_output_ids->find(it_saddle->first);
+                  if (it_output_id != sorted_min_and_output_ids->end()){
+                    size_t output_id = it_output_id->second;
+                    if (it->second.find(output_id) == it->second.end() && output_id != representative){
+                      // if not in the same cluster --> add transition
+                      auto rep_neighbor_it = all_saddles[*rep_minimum].find(it_saddle->first);
+                      if (rep_neighbor_it != all_saddles[*rep_minimum].end()){
+                        // replace saddle if smaller
+                        if(it_saddle->second.energy < rep_neighbor_it->second.energy){
+                          all_saddles[*rep_minimum][it_saddle->first] = it_saddle->second;
+                          all_saddles[it_saddle->first][*rep_minimum] = it_saddle->second;
+                        }
+                      }
+                      else{
+                        // add new saddle
                         all_saddles[*rep_minimum][it_saddle->first] = it_saddle->second;
                         all_saddles[it_saddle->first][*rep_minimum] = it_saddle->second;
                       }
                     }
-                    else{
-                      // add new saddle
-                      all_saddles[*rep_minimum][it_saddle->first] = it_saddle->second;
-                      all_saddles[it_saddle->first][*rep_minimum] = it_saddle->second;
-                    }
                   }
                 }
+                // remove merged saddles
+                all_saddles.erase(*state);
               }
-              // remove merged saddles
-              all_saddles.erase(*state);
             }
           }
-          pf_rep->setZ(pf_rep_value);
         }
 
         if (basin_size){
@@ -1822,9 +1815,13 @@ main(int  argc,
       SC_DotPlot::DotPlot normalizedDotplot =
         SC_DotPlot::getBasePairProbabilities(dotplot,
                                              partitionFunctionLandscape);
-      bool                dotplotWritten = SC_DotPlot::writeDotPlot_PS(dotPlotFileName,
-                                                                       rnaSequence,
-                                                                       normalizedDotplot);
+      std::string mfe(mfeStructure);
+      char * mea_structure = SC_DotPlot::mea_from_dotplot(sequence, normalizedDotplot, vc->exp_params);
+      std::string mea(mea_structure);
+      free(mea_structure);
+      bool                dotplotWritten = SC_DotPlot::writeDotPlot_PS_with_mfe_and_mea(dotPlotFileName,
+                                                                                        rnaSequence,
+                                                                                        normalizedDotplot, mfe, mea);
       if (!dotplotWritten) {
         std::cerr
         << "\nWarning: error during the writing of the dot plot file "
@@ -1941,21 +1938,20 @@ main(int  argc,
       for(auto it = sortedMinimaIDs.begin(); it != sortedMinimaIDs.end(); it++, min_id++){
         size_t minIndex = it->first;
         pf_basin = z.at(SC_PartitionFunction::PairID(minIndex, minIndex)).getZ();
-        SC_DotPlot::DotPlot dp = dot_plot_per_basin[*it->second];
-        for (SC_DotPlot::DotPlot::iterator bp2weight = dp.begin(); bp2weight != dp.end(); bp2weight++)
-            bp2weight->second /= pf_basin;
+        SC_DotPlot::DotPlot dp_tmp = dot_plot_per_basin[*it->second];
+        SC_DotPlot::DotPlot dp = SC_DotPlot::getBasePairProbabilities(dp_tmp, pf_basin);
 
         char * dp_file_name = (char *)dotPlotPerBasinFileName.c_str();
         std::string dp_file_pattern = dotPlotPerBasinFileName +  "_%u.ps";
         int res = asprintf(&dp_file_name, dp_file_pattern.c_str(), min_id);
         if(res < 0) fprintf(stderr, "Error: failed to concatenate dotplot name!");
-
-        std::string mfe(mfeStructure);
+        std::string basin_representative = it->second->toString();
         char * mea_structure = SC_DotPlot::mea_from_dotplot(sequence, dp, vc->exp_params);
         std::string mea(mea_structure);
         free(mea_structure);
-        SC_DotPlot::writeDotPlot_PS_with_mfe_and_mea(dp_file_name, rnaSequence, dp, mfe, mea);
-
+        bool sane = SC_DotPlot::writeDotPlot_PS_with_mfe_and_mea(dp_file_name, rnaSequence, dp, basin_representative, mea);
+        if (!sane)
+          fprintf(stderr,"Error: could not write the dot plot!\n");
         free(dp_file_name);
       }
     }
