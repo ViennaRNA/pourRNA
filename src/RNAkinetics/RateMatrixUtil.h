@@ -43,11 +43,18 @@ printRateMatrix(const biu::MatrixSparseC<double>& R,
  * ! print the rate matrix without zero rates and sorted.
  * @param R the rateMatrix.
  * @param minima the indices and structures of the minima.
+ * @param mea a vector with the corresponding mea structures for each local minimum.
  * @param out the outputstream, default is std::cout.
  */
 void
 printRateMatrixSorted(const biu::MatrixSparseC<double>& R,
                       const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs,
+                      std::ostream & out = std::cout);
+
+void
+printRateMatrixSortedWithMEA(const biu::MatrixSparseC<double>& R,
+                      const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs,
+                      const std::vector<std::string>& mea,
                       std::ostream & out = std::cout);
 
 

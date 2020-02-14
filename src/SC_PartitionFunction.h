@@ -21,6 +21,8 @@ class SC_PartitionFunction : public StateCollector
 public:
 /*! constructor
  * @param temperature the temperature to be used to compute Boltzmann weights
+ * @param gas_constant the gas constant in [kcal/(K*mol)]
+ * @param mfe the minimum free energy that is used for scaling ing kcal/mol.
  * @param storeEnergies whether or not to store a list of all energies added
  * to the container
  */
@@ -32,6 +34,8 @@ SC_PartitionFunction(double temperature = 37.0,
 /*! sets the partition function sum to 0 and calculate the gasconstant (RT)
  * with the given temperature in degrees Celsius.
  * @param temperature the temperature in Celsius.
+ * @param gas_constant the gas constant in [kcal/(K*mol)]
+ * @param mfe the minimum free energy that is used for scaling ing kcal/mol.
  * @param storeEnergies decides if the energies of all states will be stored in a vector.
  */
 virtual
@@ -48,6 +52,9 @@ void initialize(const double  temperature,
 virtual void
 add(const MyState& state);
 
+virtual
+SC_PartitionFunction&
+operator=(const SC_PartitionFunction& toCopy);
 
 virtual
 ~SC_PartitionFunction ();
@@ -68,7 +75,30 @@ setZ(double z = 0)
   Z = z;
 }
 
+double getGasConstant() const{
+  return GAS_CONSTANT_KCAL;
+}
 
+double getTemperature() const{
+  return Temperature;
+}
+
+double getMFE() const{
+  return MFE;
+}
+
+bool getStoreEnergies() const{
+  return StoreEnergies;
+}
+
+
+inline
+double
+getBoltzmannWeight(double energy_dcal) const
+{
+  // NOTE: need to divide energy from vienna package by 100 to get kcal/mol
+  return std::exp((MFE -energy_dcal / 100.0) / kT);
+}
 /*!
  * Computes the Boltzmann weight of the given state based on its energy and
  * the currently used temperature. It is scaled by the minimum free energy!
@@ -80,8 +110,11 @@ double
 getBoltzmannWeight(const MyState & state) const
 {
   // NOTE: need to divide energy from vienna package by 100 to get kcal/mol
-  //(calculate with float energies to be consistent with RNA_Explore from RNAKinetics-Package.
-  return std::exp((MFE -(double)(state.energy) / 100.0) / kT);
+  return getBoltzmannWeight((double)(state.energy));
+}
+
+double get_unscaled_Z() const{
+  return Z * getBoltzmannWeight(MFE*100.0);
 }
 
 
@@ -130,8 +163,10 @@ double            Z;
 const double      GAS_CONSTANT_KCAL;
 //! The temperature scaled "Boltzmann" constant used to compute Boltzmann weights.
 double            kT;
-//! The global minimum free energy -> used for scaling
+//! The global minimum free energy -> used for scaling in kcal/mol
 double            MFE;
+//! the temperature in Celsius.
+double            Temperature;
 };
 
 

@@ -18,7 +18,8 @@ SC_PartitionFunction::SC_PartitionFunction (const double  temperature,
   Z(0.0),
   GAS_CONSTANT_KCAL(gas_constant),
   MFE(mfe),
-  kT(GAS_CONSTANT_KCAL * (temperature + 273.15))
+  kT(GAS_CONSTANT_KCAL * (temperature + 273.15)),
+  Temperature(temperature)
 {
   // initialize data structures
   //initialize(temperature, storeEnergies);
@@ -55,4 +56,16 @@ SC_PartitionFunction::initialize(const double temperature,
   Z = 0.0;
   Energies.clear();
   MFE = mfe;
+  Temperature = temperature;
 }
+
+SC_PartitionFunction&
+SC_PartitionFunction::operator=(const SC_PartitionFunction& toCopy){
+  this->initialize(toCopy.getTemperature(), toCopy.getGasConstant(), toCopy.getMFE(), toCopy.getStoreEnergies());
+  const std::vector<int>& energies = toCopy.getEnergies();
+  this->Energies.assign(energies.begin(), energies.end());
+  return *this;
+}
+
+
+

@@ -1640,7 +1640,7 @@ main(int  argc,
                 trans_c->second.setZ(pf_to + pf_from);
               }
               else{
-                z_minh[SC_PartitionFunction::PairID(cluster_i, cluster_j)].setZ(pf_from);
+                z_minh[SC_PartitionFunction::PairID(cluster_i, cluster_j)] = trans->second;
               }
             }
           }
@@ -1784,7 +1784,38 @@ main(int  argc,
     biu::MatrixSparseC<double>&  final_Rate = calculateRateMatrix(z, sortedMinimaIDs, computeDiagonal);
 
     // Print the Final rate matrix of the States in Final minima set.
-    printRateMatrixSorted(final_Rate, sortedMinimaIDs, *transOut);
+    if(!writeDotplotPerBasin){
+      printRateMatrixSorted(final_Rate, sortedMinimaIDs, *transOut);
+    }
+
+    if(writeDotplotPerBasin){
+      size_t min_id = 1;
+      double pf_basin;
+      std::vector<std::string> mea_structures_per_basin;
+      for(auto it = sortedMinimaIDs.begin(); it != sortedMinimaIDs.end(); it++, min_id++){
+        size_t minIndex = it->first;
+        pf_basin = z.at(SC_PartitionFunction::PairID(minIndex, minIndex)).getZ();
+        SC_DotPlot::DotPlot dp_tmp = dot_plot_per_basin[*it->second];
+        SC_DotPlot::DotPlot dp = SC_DotPlot::getBasePairProbabilities(dp_tmp, pf_basin);
+
+        char * dp_file_name = (char *)dotPlotPerBasinFileName.c_str();
+        std::string dp_file_pattern = dotPlotPerBasinFileName +  "_%u.ps";
+        int res = asprintf(&dp_file_name, dp_file_pattern.c_str(), min_id);
+        if(res < 0) fprintf(stderr, "Error: failed to concatenate dotplot name!");
+        std::string basin_representative = it->second->toString();
+        char * mea_structure = SC_DotPlot::mea_from_dotplot(sequence, dp, vc->exp_params);
+        std::string mea(mea_structure);
+        mea_structures_per_basin.push_back(mea);
+        free(mea_structure);
+        bool sane = SC_DotPlot::writeDotPlot_PS_with_mfe_and_mea(dp_file_name, rnaSequence, dp, basin_representative, mea);
+        if (!sane)
+          fprintf(stderr,"Error: could not write the dot plot!\n");
+        free(dp_file_name);
+      }
+
+      printRateMatrixSortedWithMEA(final_Rate, sortedMinimaIDs, mea_structures_per_basin, *transOut);
+    }
+
     std::cout << std::endl;
     printEquilibriumDensities(z, sortedMinimaIDs, *transOut);
     std::cout << std::endl;
@@ -1805,10 +1836,10 @@ main(int  argc,
     for (auto it = sortedMinimaIDs.begin(); it != sortedMinimaIDs.end(); it++) {
       size_t  minIndex  = it->first;
       partitionFunctionLandscape +=
-        z.at(SC_PartitionFunction::PairID(minIndex, minIndex)).getZ();
+        z.at(SC_PartitionFunction::PairID(minIndex, minIndex)).get_unscaled_Z();
     }
     std::cout << "The overall partition function is: "
-              << partitionFunctionLandscape * SC_PartitionFunction().getBoltzmannWeight(MyState((int)(mfeEnergy*100),NULL)) << std::endl;
+              << partitionFunctionLandscape << std::endl;
 
     //dotplot
     if (writeDotplot) {

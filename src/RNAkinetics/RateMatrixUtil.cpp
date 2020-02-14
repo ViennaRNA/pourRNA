@@ -74,19 +74,29 @@ printRateMatrixSorted(const biu::MatrixSparseC<double>& R,
                       const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs,
                       std::ostream& out)
 {
+  std::vector<std::string> empty_mea;
+  printRateMatrixSortedWithMEA(R, sortedMinimaIDs, empty_mea, out);
+}
+
+void
+printRateMatrixSortedWithMEA(const biu::MatrixSparseC<double>& R,
+                      const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs,
+                      const std::vector<std::string>& mea,
+                      std::ostream & out){
   assertbiu(R.numColumns() == R.numRows(), "R is no square matrix");
   const size_t              LEAD = 6;
-
+  bool print_mea = sortedMinimaIDs.size() == mea.size();
   out << std::scientific << "\n from : to\n";
   size_t                    nextMinID;
   // print only non-empty rates
   double rate = 0.0;
   for (size_t c = 0; c < sortedMinimaIDs.size(); c++) {
     nextMinID = sortedMinimaIDs[c].first;
-    out << "\n" << std::setw(LEAD) << c << " ["
-        << /*minimaMap.at(nextMinID).toString()*/ sortedMinimaIDs[c].second->toString() << "] :";
+    if (print_mea)
+      out << "\n" << std::setw(LEAD) << c << " [" << sortedMinimaIDs[c].second->toString() << ":" << mea[c] << "] :";
+    else
+      out << "\n" << std::setw(LEAD) << c << " [" << sortedMinimaIDs[c].second->toString() << "] :";
 
-    //std::vector<double> columnVector  = R.rowVec(nextMinID);
     bool                bPrinted      = false;
     size_t              rowMinID;
     std::stringstream   sstmp;
@@ -94,8 +104,8 @@ printRateMatrixSorted(const biu::MatrixSparseC<double>& R,
     for (size_t r = 0; r < sortedMinimaIDs.size(); r++) {
       rowMinID = sortedMinimaIDs[r].first;
       rate = R.at(nextMinID, rowMinID);
-      if (/*columnVector[rowMinID]*/ rate != 0.0) {
-        sstmp << " " << r << " = " << /*columnVector[rowMinID]*/ rate << ",";
+      if (rate != 0.0) {
+        sstmp << " " << r << " = " << rate << ",";
         bPrinted = true;
       }
     }
@@ -321,13 +331,13 @@ printZMatrixSorted(const SC_PartitionFunction::Z_Matrix& z,
       auto                          tmpIt               = z.find(transitionID);
       bool                          bExists             = false;
       if (tmpIt != z.end()) {
-        z_transition  = tmpIt->second.getZ();
+        z_transition  = tmpIt->second.get_unscaled_Z();
         bExists       = true;
       }
 
       tmpIt = z.find(reverseTransitionID);
       if (tmpIt != z.end()) {
-        z_reverseTransition = tmpIt->second.getZ();
+        z_reverseTransition = tmpIt->second.get_unscaled_Z();
         bExists             = true;
       }
 
