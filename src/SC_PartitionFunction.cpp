@@ -64,6 +64,7 @@ SC_PartitionFunction::operator=(const SC_PartitionFunction& toCopy){
   this->initialize(toCopy.getTemperature(), toCopy.getGasConstant(), toCopy.getMFE(), toCopy.getStoreEnergies());
   const std::vector<int>& energies = toCopy.getEnergies();
   this->Energies.assign(energies.begin(), energies.end());
+  this->setZ(toCopy.getZ());
   return *this;
 }
 

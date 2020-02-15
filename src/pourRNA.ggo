@@ -126,9 +126,11 @@ optional
 
 option  "dynamic-minh" -
 "Enter the maximum number of macro states. The minh energy will be adjusted on-the-fly. Basins are merged like in the minh option. \
-A recommended maximum number of macro states is ~10000.\n"
+A recommended maximum number of macro states is ~10000. If a comma separated list of values is given, several output files with these \
+thresholds will be created.\n"
 int
 optional
+multiple
 
 
 section "RNA model parameters"

@@ -62,6 +62,9 @@ virtual
 void
 add(const MyState& state);
 
+virtual
+SC_DotPlot&
+operator=(const SC_DotPlot& toCopy);
 
 /*! destruction
  */

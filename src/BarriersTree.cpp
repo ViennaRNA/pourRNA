@@ -54,7 +54,8 @@ void print_sets(std::vector<std::unordered_set<size_t>*>& clusters_id_sets){
  *   @param all_saddles - a hash map, that contains all saddle states.
  *   @return a vector of minimal outgoing saddles to a deeper minimum for each state (indices according to output IDs.).
  */
-std::vector<saddle_t> BarriersTree::create_minimal_saddle_list(std::vector<std::pair<size_t, MyState *> > &sortedMinimaIDs, PairHashTable::HashTable &sorted_min_and_output_ids,StatePairCollector::MapOfMaps &all_saddles){
+std::vector<saddle_t> BarriersTree::create_minimal_saddle_list(const std::vector<std::pair<size_t, MyState *> > &sortedMinimaIDs,
+    const PairHashTable::HashTable &sorted_min_and_output_ids, const StatePairCollector::MapOfMaps &all_saddles){
   // init a saddle matrix. Indices from 0 to n according to output IDs.
   int** all_to_all_saddles = new int*[sorted_min_and_output_ids.size()];
   for(auto it = sorted_min_and_output_ids.begin(); it != sorted_min_and_output_ids.end(); it++){
@@ -401,7 +402,8 @@ std::vector<node_t*> BarriersTree::create_barrier_tree(
  * @param minimal_saddle_list - the list of minimal saddles for each state.
  * @return the minimal min_h that fulfills the maximal state criterion.
  */
-double BarriersTree::determin_optimal_min_h(size_t maximal_number_of_states, std::vector<saddle_t> &minimal_saddle_list, std::vector<std::pair<size_t, MyState *>> &sortedMinimaIDs){
+double BarriersTree::determin_optimal_min_h(const size_t maximal_number_of_states, const std::vector<saddle_t> &minimal_saddle_list,
+    const std::vector<std::pair<size_t, MyState *>> &sortedMinimaIDs){
   double min_h = 0;
   int* barrier_list = new int[minimal_saddle_list.size()];
   size_t n =  minimal_saddle_list.size();
@@ -411,13 +413,29 @@ double BarriersTree::determin_optimal_min_h(size_t maximal_number_of_states, std
   // sort from highest to lowest barrier.
   std::sort(barrier_list, barrier_list + n, std::greater<int>());
 
-  // if the minh is equal to the next state, we have to determine the next higher minh
-  // (because we will remove all states < minh, states >= minh will remain).
-  size_t max_index_plus_one = maximal_number_of_states;
-  while(barrier_list[max_index_plus_one] == barrier_list[max_index_plus_one-1] && max_index_plus_one >= 0){
-    max_index_plus_one--;
+  if(maximal_number_of_states >= n){
+    min_h = (double)barrier_list[n-1] / 100.0;
   }
-  min_h = (double)barrier_list[max_index_plus_one-1] / 100.0;
+  else if (maximal_number_of_states <= 1){
+    min_h = (double)barrier_list[0] / 100.0 + 0.01;
+    /* The minimal saddle list contains all states, except the mfe (because there is no deeper basin).
+       For the barrier at 0 we would connect with the mfe and would end up with 2 states.
+       Thus we choose the barrier a little bit higher. The minimum number of states is 1, because there
+       is not edge from the mfe.
+    */
+  }
+  else{ // if (maximal_number_of_states >= 2 && maximal_number_of_states < n)
+    // if the minh is equal to the next state, we have to determine the next higher minh
+    // (because we will remove all states < minh, states >= minh will remain).
+    size_t max_index = maximal_number_of_states-1;
+    if (barrier_list[max_index] == barrier_list[max_index+1]){
+      while(max_index > 0 && barrier_list[max_index] == barrier_list[max_index-1]){
+        max_index--;
+      }
+    }
+    min_h = (double)barrier_list[max_index-1] / 100.0;
+  }
+  delete[] barrier_list;
   return min_h;
 }
 
@@ -428,7 +446,7 @@ double BarriersTree::determin_optimal_min_h(size_t maximal_number_of_states, std
  * @param min_h - the minimum height, all states with a lower barrier will be merged into a deeper basin according to the barrier tree.
  * @return map of minima that are merged together.
  */
-std::unordered_map<size_t, size_t> BarriersTree::filter_minh(std::vector<saddle_t> &minimal_saddle_list, std::vector<std::pair<size_t, MyState *>> &sortedMinimaIDs, double min_h){
+std::unordered_map<size_t, size_t> BarriersTree::filter_minh(std::vector<saddle_t> &minimal_saddle_list, const std::vector<std::pair<size_t, MyState *>> &sortedMinimaIDs, const double min_h){
   std::unordered_map<size_t, size_t> merge_state_map;
   std::unordered_map<size_t, size_t>index_map;
   size_t number_result_states = minimal_saddle_list.size();

@@ -661,6 +661,10 @@ main(int  argc,
   std::ofstream                                       *transOutFile = NULL;
   // output container for the transition matrix.
   std::ostream                                        *transOut = &std::cout;
+  // the transition matrix file name.
+  std::string                                         rateMatrixFileName;
+  // the output saddle file
+  std::string                                         saddleFileName;
   // the maximal number of elements the underlying queue of the Flooder is allowed to contain.
   size_t                                              maxToQueue = UINT32_MAX;
   // maximum number of states to be hashed for each gradient walk.
@@ -698,6 +702,11 @@ main(int  argc,
   // file name prefix for dotplots per basin.
   std::string                                         dotPlotPerBasinFileName = "";
 
+  std::string                                         barrierTreeFileName = "";
+  // output file that contains the minh representative and the elementary gradient basins which are mapped to them.
+  std::string                                         minh_mapping_file = "";
+  // file name for barriers-like output
+  std::string                                         barriers_prefix;
   // file to store all partition functions.
   std::string                                         partitionFunctionFileName = "";
   // write partitionfunctions to a file if the name is given as parameter.
@@ -732,7 +741,7 @@ main(int  argc,
   bool                    dynamicMaxToHash = false;
 
   double minh = -1;
-  size_t dynamic_minh_max_states = ULONG_LONG_MAX;
+  std::vector<size_t> dynamic_minh_max_states;
 
 
   //---------------------------- Parsing the Parameters---------------------------------
@@ -893,14 +902,23 @@ main(int  argc,
       writeDotplotPerBasin    = true;
     }
 
+    if(args_info.barrier_tree_file_arg)
+      barrierTreeFileName = std::string(args_info.barrier_tree_file_arg);
+
+    if(args_info.barriers_like_output_given)
+      barriers_prefix = std::string(args_info.barriers_like_output_arg);
+
+    if(args_info.saddle_file_given)
+      saddleFileName = std::string(args_info.saddle_file_arg);
+
     if (args_info.transition_prob_given) {
       // set output stream
-      std::string outfile_name = std::string(args_info.transition_prob_arg);
-      if (outfile_name.compare("STDOUT") == 0) {
+      rateMatrixFileName = std::string(args_info.transition_prob_arg);
+      if (rateMatrixFileName.compare("STDOUT") == 0) {
         transOut = out;
       } else {
         transOutFile = new std::ofstream(
-          outfile_name.c_str(),
+          rateMatrixFileName.c_str(),
           std::ofstream::out);
         if (!transOutFile->is_open()) {
           std::ostringstream oss;
@@ -1031,9 +1049,10 @@ main(int  argc,
     }
 
     if (args_info.dynamic_minh_given) {
-      dynamic_minh_max_states = args_info.dynamic_minh_arg;
+      for (size_t i = 0; i < args_info.dynamic_minh_given; ++i)
+        dynamic_minh_max_states.push_back((size_t)args_info.dynamic_minh_arg[i]);
       if (minh < 0)
-        minh = 0.01;
+        minh = 0.0;
     }
 
     if (args_info.verbose_given)
@@ -1523,26 +1542,6 @@ main(int  argc,
                   << std::endl;
     }
 
-    std::cout << std::endl;
-    std::string out               = "Sequence: ";
-    printf("%s", out.c_str());
-    int         offset          = 31;
-    int         padding_length  = offset - out.length(); //structure_length - out.length();
-    std::string pad             = std::string(padding_length, ' ');
-    printf("%s%s\n", pad.c_str(), rnaSequence.c_str());
-
-    out = "MFE structure: ";
-    printf("%s", out.c_str());
-    padding_length  = offset - out.length();
-    pad             = std::string(padding_length, ' ');
-    printf("%s%s\n", pad.c_str(), mfeStructure);
-
-    out = "The start state is: ";
-    printf("%s", out.c_str());
-    padding_length  = offset - out.length();
-    pad             = std::string(padding_length, ' ');
-    printf("%s%s\n", pad.c_str(), rna_start_str.c_str());
-
     // sortedMinimaIDs will be sorted by energy, it contains the global id from the done list and the minimum pointer.
     std::vector<std::pair<size_t, MyState *> > sortedMinimaIDs;
     for (std::unordered_set<size_t>::const_iterator fromIt = done_List.begin(); fromIt != done_List.end(); fromIt++)
@@ -1564,404 +1563,605 @@ main(int  argc,
 
     SC_PartitionFunction::Z_Matrix z_minh;
 
-    if (args_info.minh_given || args_info.dynamic_minh_given){
-      double adjusted_minh = minh;
-      if (args_info.dynamic_minh_given){
-        adjusted_minh = bt.determin_optimal_min_h(dynamic_minh_max_states, minimal_saddle_list, sortedMinimaIDs);
-        if (verbose){
-          fprintf(stdout, "The dynamic minh for maximal %ld states is: %.2f\n", dynamic_minh_max_states, adjusted_minh);
-        }
+    bool change_output_filenames = false;
+    std::string tmp_dotPlotFileName,
+                tmp_dotPlotPerBasinFileName,
+                tmp_barrierTreeFileName,
+                tmp_rateMatrixFileName,
+                tmp_partitionFunctionFileName,
+                tmp_saddleFileName,
+                tmp_barriers_prefix,
+                tmp_binary_rates_file,
+                tmp_minh_mapping_file;
+
+    SC_PartitionFunction::Z_Matrix tmp_z;
+    std::vector<saddle_t> tmp_minimal_saddle_list;
+    std::vector<std::pair<size_t, MyState *>> tmp_sortedMinimaIDs;
+    PairHashTable::HashTable* tmp_sorted_min_and_output_ids = NULL;
+    std::unordered_map<MyState, SC_DotPlot::DotPlot, PairHashTable::PairTableHash, PairHashTable::PairTableEqual> tmp_dot_plot_per_basin;
+
+
+    if (dynamic_minh_max_states.size() > 1){
+      change_output_filenames = true;
+      if(args_info.dot_plot_given)
+        tmp_dotPlotFileName = dotPlotFileName;
+      if(args_info.dot_plot_per_basin_arg)
+        tmp_dotPlotPerBasinFileName = dotPlotPerBasinFileName;
+      if(args_info.barrier_tree_file_given)
+        tmp_barrierTreeFileName = barrierTreeFileName;
+      if(args_info.transition_prob_given && transOutFile != NULL)
+        tmp_rateMatrixFileName = rateMatrixFileName;
+      if(args_info.partition_functions_given)
+        tmp_partitionFunctionFileName = partitionFunctionFileName;
+      if(args_info.saddle_file_given)
+        tmp_saddleFileName = saddleFileName;
+      if(args_info.barriers_like_output_given)
+        tmp_barriers_prefix = barriers_prefix;
+      if (args_info.binary_rates_file_given)
+        tmp_binary_rates_file = binary_rates_file;
+      if(args_info.minh_given || args_info.dynamic_minh_given)
+        tmp_minh_mapping_file = minh_mapping_file;
+
+      tmp_z.insert(z.begin(), z.end());
+      tmp_minimal_saddle_list.assign(minimal_saddle_list.begin(), minimal_saddle_list.end());
+      tmp_sortedMinimaIDs.assign(sortedMinimaIDs.begin(), sortedMinimaIDs.end());
+      tmp_sorted_min_and_output_ids = new PairHashTable::HashTable();
+      tmp_sorted_min_and_output_ids->insert(sorted_min_and_output_ids->begin(), sorted_min_and_output_ids->end());
+      tmp_dot_plot_per_basin.insert(dot_plot_per_basin.begin(),dot_plot_per_basin.end());
+    }
+
+    std::vector<std::pair<MyState*, std::vector<MyState*>>> minh_representatives_and_basins;
+    do{
+      size_t minh_max_states;
+      if (dynamic_minh_max_states.size() > 0){
+        minh_max_states  = dynamic_minh_max_states[0];
+        dynamic_minh_max_states.erase(dynamic_minh_max_states.begin());
       }
-      std::unordered_map<size_t, size_t> merge_state_map = bt.filter_minh(minimal_saddle_list, sortedMinimaIDs, adjusted_minh);
       if (args_info.minh_given || args_info.dynamic_minh_given){
-        // merge partition functions and dotplots and assign new IDs!
-        std::unordered_map<size_t, std::unordered_set<size_t>> representatives_and_clustered_ids;
-        std::unordered_map<size_t, size_t> merged_min_to_representative;
-        for(size_t i =0; i < sortedMinimaIDs.size(); i++){
-          size_t state_index = i;
-          auto it_merged = merge_state_map.find(state_index);
-          if(it_merged != merge_state_map.end()){
-            // merge this state into its deeper neighbors.
-            size_t cluster_root_state_index;
-            std::unordered_set<size_t> states_to_cluster;
-            size_t max_rounds = merge_state_map.size(); //prevent endless loops.
-            while(it_merged != merge_state_map.end() && max_rounds > 0){
-                cluster_root_state_index = it_merged->second;
-                it_merged = merge_state_map.find(cluster_root_state_index);
-                states_to_cluster.insert(cluster_root_state_index);
-                max_rounds--;
+        double adjusted_minh = minh;
+        if (args_info.dynamic_minh_given){
+          //Additionally change output file names if several dynamic minh thresholds will be applied.
+          if (change_output_filenames){
+            z.clear();
+            z.insert(tmp_z.begin(), tmp_z.end());
+            minimal_saddle_list.clear();
+            minimal_saddle_list = std::vector<saddle_t>(tmp_minimal_saddle_list);
+            sortedMinimaIDs.clear();
+            sortedMinimaIDs = std::vector<std::pair<size_t, MyState *>>(tmp_sortedMinimaIDs);
+            sorted_min_and_output_ids->clear();
+            sorted_min_and_output_ids->insert(tmp_sorted_min_and_output_ids->begin(), tmp_sorted_min_and_output_ids->end());
+            dot_plot_per_basin.clear();
+            dot_plot_per_basin.insert(tmp_dot_plot_per_basin.begin(), tmp_dot_plot_per_basin.end());
+
+            adjusted_minh = bt.determin_optimal_min_h(minh_max_states, minimal_saddle_list, sortedMinimaIDs);
+            if (verbose){
+              fprintf(stdout, "The dynamic minh for maximal %ld states is: %.2f\n", minh_max_states, adjusted_minh);
             }
-            merged_min_to_representative[state_index] = cluster_root_state_index;
-            representatives_and_clustered_ids[cluster_root_state_index].insert(state_index);
+
+            char minh_string[50];
+            sprintf(minh_string,"%.2f",adjusted_minh);
+            std::string appendix = "_dynamic_minh_max_"+std::to_string(minh_max_states)+"_minh_"+minh_string;
+            if(args_info.dot_plot_given){
+              dotPlotFileName = tmp_dotPlotFileName;
+              dotPlotFileName.append(appendix);
+            }
+            if(args_info.dot_plot_per_basin_arg){
+              dotPlotPerBasinFileName = tmp_dotPlotPerBasinFileName;
+              dotPlotPerBasinFileName.append(appendix);
+            }
+            if(args_info.barrier_tree_file_given){
+              barrierTreeFileName = tmp_barrierTreeFileName;
+              barrierTreeFileName.append(appendix);
+            }
+            if(args_info.transition_prob_given && transOutFile != NULL){
+              rateMatrixFileName = tmp_rateMatrixFileName;
+              rateMatrixFileName.append(appendix);
+              transOutFile->close();
+              transOutFile = new std::ofstream(
+                        rateMatrixFileName.c_str(),
+                        std::ofstream::out);
+                      if (!transOutFile->is_open()) {
+                        std::ostringstream oss;
+                        oss << "cannot open output file '"
+                            << args_info.transition_prob_arg << "'";
+                        throw ArgException(oss.str());
+                      }
+                      transOut = transOutFile;
+            }
+            if(args_info.partition_functions_given){
+              partitionFunctionFileName = tmp_partitionFunctionFileName;
+              partitionFunctionFileName.append(appendix);
+            }
+            if(args_info.saddle_file_given){
+              saddleFileName = tmp_saddleFileName;
+              saddleFileName.append(appendix);
+            }
+            if(args_info.barriers_like_output_given){
+              barriers_prefix = tmp_barriers_prefix;
+              barriers_prefix.append(appendix);
+            }
+            if (args_info.binary_rates_file_given){
+              binary_rates_file = tmp_binary_rates_file;
+              binary_rates_file.append(appendix);
+            }
+            if(args_info.minh_given || args_info.dynamic_minh_given){
+              minh_mapping_file = tmp_minh_mapping_file;
+              minh_mapping_file.append(appendix);
+            }
+
+            /**
+             * TODO: write it not only once for the landscape.
+            if(args_info.energy_file_given){
+              energyFileName.append(appendix);
+            }
+            */
+            /**
+             * Is only written once for the whole landscape.
+             * However, it the gradient basins can be mapped
+             * with an additional basin mapping file for the
+             * minh output.
+            if(args_info.map_structures_given){
+              mapped_structures_filename.append(appendix);
+            }
+            */
           }
         }
 
-        // update start and final state
-        auto start_min_it = sorted_min_and_output_ids->find(*startStateMinimum);
-        if (start_min_it != sorted_min_and_output_ids->end()){
-          auto merged_it = merged_min_to_representative.find(start_min_it->second);
-          if (merged_it != merged_min_to_representative.end()){
-            startStructureMinimum = strcpy(startStructureMinimum, sortedMinimaIDs[merged_it->second].second->toString().c_str());
+        std::unordered_map<size_t, size_t> merge_state_map = bt.filter_minh(minimal_saddle_list, sortedMinimaIDs, adjusted_minh);
+        if (args_info.minh_given || args_info.dynamic_minh_given){
+          // merge partition functions and dotplots and assign new IDs!
+          std::unordered_map<size_t, std::unordered_set<size_t>> representatives_and_clustered_ids;
+          std::unordered_map<size_t, size_t> merged_min_to_representative;
+          for(size_t i =0; i < sortedMinimaIDs.size(); i++){
+            size_t state_index = i;
+            auto it_merged = merge_state_map.find(state_index);
+            if(it_merged != merge_state_map.end()){
+              // merge this state into its deeper neighbors.
+              size_t cluster_root_state_index;
+              std::unordered_set<size_t> states_to_cluster;
+              size_t max_rounds = merge_state_map.size(); //prevent endless loops.
+              while(it_merged != merge_state_map.end() && max_rounds > 0){
+                  cluster_root_state_index = it_merged->second;
+                  it_merged = merge_state_map.find(cluster_root_state_index);
+                  states_to_cluster.insert(cluster_root_state_index);
+                  max_rounds--;
+              }
+              merged_min_to_representative[state_index] = cluster_root_state_index;
+              representatives_and_clustered_ids[cluster_root_state_index].insert(state_index);
+            }
           }
-        }
-        if (finalStructureMinimum != NULL){
-          auto final_min_it = sorted_min_and_output_ids->find(*finalStructureMinimum);
-          if (final_min_it != sorted_min_and_output_ids->end()){
-            auto merged_it = merged_min_to_representative.find(final_min_it->second);
+
+          // update start and final state
+          auto start_min_it = sorted_min_and_output_ids->find(*startStateMinimum);
+          if (start_min_it != sorted_min_and_output_ids->end()){
+            auto merged_it = merged_min_to_representative.find(start_min_it->second);
             if (merged_it != merged_min_to_representative.end()){
-              endStructureMinimum = strcpy(endStructureMinimum, sortedMinimaIDs[merged_it->second].second->toString().c_str());
+              startStructureMinimum = strcpy(startStructureMinimum, sortedMinimaIDs[merged_it->second].second->toString().c_str());
             }
           }
-        }
-
-        // merge partition functions
-        for(size_t i = 0; i < sortedMinimaIDs.size(); i++){
-          size_t id_i = sortedMinimaIDs[i].first;
-          for(size_t j = 0; j < sortedMinimaIDs.size(); j++){
-            size_t id_j = sortedMinimaIDs[j].first;
-            auto trans = z.find(SC_PartitionFunction::PairID(id_i, id_j));
-            if (trans != z.end()){
-              size_t cluster_i = id_i;
-              size_t cluster_j = id_j;
-              double pf_from =  trans->second.getZ();
-              auto i_rep = merged_min_to_representative.find(i);
-              auto j_rep = merged_min_to_representative.find(j);
-              if (i_rep != merged_min_to_representative.end()){
-                cluster_i = sortedMinimaIDs[i_rep->second].first;
-              }
-              if (j_rep != merged_min_to_representative.end()){
-                cluster_j = sortedMinimaIDs[j_rep->second].first;
-              }
-              if ((cluster_i == cluster_j) && (j != i))
-                 continue; // don't add inner cluster transitions
-              auto trans_c = z_minh.find(SC_PartitionFunction::PairID(cluster_i, cluster_j));
-              if (trans_c != z_minh.end()){
-                double pf_to = trans_c->second.getZ();
-                trans_c->second.setZ(pf_to + pf_from);
-              }
-              else{
-                z_minh[SC_PartitionFunction::PairID(cluster_i, cluster_j)] = trans->second;
+          if (finalStructureMinimum != NULL){
+            auto final_min_it = sorted_min_and_output_ids->find(*finalStructureMinimum);
+            if (final_min_it != sorted_min_and_output_ids->end()){
+              auto merged_it = merged_min_to_representative.find(final_min_it->second);
+              if (merged_it != merged_min_to_representative.end()){
+                endStructureMinimum = strcpy(endStructureMinimum, sortedMinimaIDs[merged_it->second].second->toString().c_str());
               }
             }
           }
-        }
-        // replace z with new pf.
-        z.clear();
-        z = z_minh;
 
-        // merge dotplots
-        if(writeDotplotPerBasin){
-          for(auto it = representatives_and_clustered_ids.begin(); it != representatives_and_clustered_ids.end(); it++){
-            size_t representative = it->first;
-            MyState *rep_minimum = sortedMinimaIDs[representative].second;
-            // TODO: sum up all other properties of SC_PartitionFunction (for example the Energies) this is currently not supported for minh-clustering.
-            SC_DotPlot::DotPlot* dp_rep = &dot_plot_per_basin[*rep_minimum];
-            for(auto it_cluster = it->second.begin(); it_cluster != it->second.end(); it_cluster++){
-              if (it->first != *it_cluster){
-                // add all clustered dotplots to the representative.
-                MyState *state = sortedMinimaIDs[*it_cluster].second;
-                //*dp_rep += dot_plot_per_basin[*state];
-                SC_DotPlot::DotPlot* dp_state = &dot_plot_per_basin[*state];
-                for(auto it_dp = dp_state->begin(); it_dp != dp_state->end(); it_dp++){
-                  (*dp_rep)[it_dp->first] += it_dp->second;
+          // merge partition functions
+          for(size_t i = 0; i < sortedMinimaIDs.size(); i++){
+            size_t id_i = sortedMinimaIDs[i].first;
+            for(size_t j = 0; j < sortedMinimaIDs.size(); j++){
+              size_t id_j = sortedMinimaIDs[j].first;
+              auto trans = z.find(SC_PartitionFunction::PairID(id_i, id_j));
+              if (trans != z.end()){
+                size_t cluster_i = id_i;
+                size_t cluster_j = id_j;
+                double pf_from =  trans->second.getZ();
+                auto i_rep = merged_min_to_representative.find(i);
+                auto j_rep = merged_min_to_representative.find(j);
+                if (i_rep != merged_min_to_representative.end()){
+                  cluster_i = sortedMinimaIDs[i_rep->second].first;
+                }
+                if (j_rep != merged_min_to_representative.end()){
+                  cluster_j = sortedMinimaIDs[j_rep->second].first;
+                }
+                if ((cluster_i == cluster_j) && (j != i))
+                   continue; // don't add inner cluster transitions
+                auto trans_c = z_minh.find(SC_PartitionFunction::PairID(cluster_i, cluster_j));
+                if (trans_c != z_minh.end()){
+                  double pf_to = trans_c->second.getZ();
+                  trans_c->second.setZ(pf_to + pf_from);
+                }
+                else{
+                  z_minh[SC_PartitionFunction::PairID(cluster_i, cluster_j)] = trans->second;
+                  //z_minh[SC_PartitionFunction::PairID(cluster_i, cluster_j)].setZ(pf_from);
                 }
               }
             }
           }
-        }
+          // replace z with new pf.
+          z.clear();
+          z = z_minh;
 
-        // merge saddles
-        if (args_info.saddle_file_arg){
-          for(auto it = representatives_and_clustered_ids.begin(); it != representatives_and_clustered_ids.end(); it++){
-            size_t representative = it->first;
-            MyState *rep_minimum = sortedMinimaIDs[representative].second;
-            for(auto it_cluster = it->second.begin(); it_cluster != it->second.end(); it_cluster++){
-              // merge all saddles to the representative.
-              if (args_info.saddle_file_arg){
-                MyState *state = sortedMinimaIDs[*it_cluster].second;
-                auto it_saddles = all_saddles.find(*state);
-                // insert minimal saddle to neighbor which is not in the same cluster
-                for(auto it_saddle = it_saddles->second.begin(); it_saddle != it_saddles->second.end(); it_saddle++){
-                  auto it_output_id = sorted_min_and_output_ids->find(it_saddle->first);
-                  if (it_output_id != sorted_min_and_output_ids->end()){
-                    size_t output_id = it_output_id->second;
-                    if (it->second.find(output_id) == it->second.end() && output_id != representative){
-                      // if not in the same cluster --> add transition
-                      auto rep_neighbor_it = all_saddles[*rep_minimum].find(it_saddle->first);
-                      if (rep_neighbor_it != all_saddles[*rep_minimum].end()){
-                        // replace saddle if smaller
-                        if(it_saddle->second.energy < rep_neighbor_it->second.energy){
+          // merge dotplots
+          if(writeDotplotPerBasin){
+            for(auto it = representatives_and_clustered_ids.begin(); it != representatives_and_clustered_ids.end(); it++){
+              size_t representative = it->first;
+              MyState *rep_minimum = sortedMinimaIDs[representative].second;
+              // TODO: sum up all other properties of SC_PartitionFunction (for example the Energies) this is currently not supported for minh-clustering.
+              SC_DotPlot::DotPlot* dp_rep = &dot_plot_per_basin[*rep_minimum];
+              for(auto it_cluster = it->second.begin(); it_cluster != it->second.end(); it_cluster++){
+                if (it->first != *it_cluster){
+                  // add all clustered dotplots to the representative.
+                  MyState *state = sortedMinimaIDs[*it_cluster].second;
+                  //*dp_rep += dot_plot_per_basin[*state];
+                  SC_DotPlot::DotPlot* dp_state = &dot_plot_per_basin[*state];
+                  for(auto it_dp = dp_state->begin(); it_dp != dp_state->end(); it_dp++){
+                    (*dp_rep)[it_dp->first] += it_dp->second;
+                  }
+                }
+              }
+            }
+          }
+
+          // merge saddles
+          if (args_info.saddle_file_arg){
+            for(auto it = representatives_and_clustered_ids.begin(); it != representatives_and_clustered_ids.end(); it++){
+              size_t representative = it->first;
+              MyState *rep_minimum = sortedMinimaIDs[representative].second;
+              for(auto it_cluster = it->second.begin(); it_cluster != it->second.end(); it_cluster++){
+                // merge all saddles to the representative.
+                if (args_info.saddle_file_arg){
+                  MyState *state = sortedMinimaIDs[*it_cluster].second;
+                  auto it_saddles = all_saddles.find(*state);
+                  // insert minimal saddle to neighbor which is not in the same cluster
+                  for(auto it_saddle = it_saddles->second.begin(); it_saddle != it_saddles->second.end(); it_saddle++){
+                    auto it_output_id = sorted_min_and_output_ids->find(it_saddle->first);
+                    if (it_output_id != sorted_min_and_output_ids->end()){
+                      size_t output_id = it_output_id->second;
+                      if (it->second.find(output_id) == it->second.end() && output_id != representative){
+                        // if not in the same cluster --> add transition
+                        auto rep_neighbor_it = all_saddles[*rep_minimum].find(it_saddle->first);
+                        if (rep_neighbor_it != all_saddles[*rep_minimum].end()){
+                          // replace saddle if smaller
+                          if(it_saddle->second.energy < rep_neighbor_it->second.energy){
+                            all_saddles[*rep_minimum][it_saddle->first] = it_saddle->second;
+                            all_saddles[it_saddle->first][*rep_minimum] = it_saddle->second;
+                          }
+                        }
+                        else{
+                          // add new saddle
                           all_saddles[*rep_minimum][it_saddle->first] = it_saddle->second;
                           all_saddles[it_saddle->first][*rep_minimum] = it_saddle->second;
                         }
                       }
-                      else{
-                        // add new saddle
-                        all_saddles[*rep_minimum][it_saddle->first] = it_saddle->second;
-                        all_saddles[it_saddle->first][*rep_minimum] = it_saddle->second;
-                      }
                     }
                   }
+                  // remove merged saddles
+                  all_saddles.erase(*state);
                 }
-                // remove merged saddles
-                all_saddles.erase(*state);
+              }
+            }
+          }
+
+          if (basin_size){
+            // merge basin sizes.
+            for(auto it = representatives_and_clustered_ids.begin(); it != representatives_and_clustered_ids.end(); it++){
+              size_t basin_rep_global_id = sortedMinimaIDs[it->first].first;
+              for(auto itc = it->second.begin(); itc != it->second.end(); itc++){
+                if (*itc != it->first)
+                  minimum_index_and_basin_size[basin_rep_global_id] += minimum_index_and_basin_size[sortedMinimaIDs[*itc].first];
+              }
+            }
+          }
+
+          //store sorted mapped minima in list
+          MyState *min, *rep;
+          for(size_t i = 0; i < sortedMinimaIDs.size(); i++){
+            auto itrep = representatives_and_clustered_ids.find(i);
+            std::vector<MyState*> basins;
+            if(itrep != representatives_and_clustered_ids.end()){
+              rep = sortedMinimaIDs[itrep->first].second;
+              for(auto it = itrep->second.begin(); it != itrep->second.end(); it++){
+                min = sortedMinimaIDs[*it].second;
+                basins.push_back(min);
+              }
+              std::sort(basins.begin(), basins.end(), [](const MyState *a, const MyState *b) -> bool {return *a < *b;});
+            }
+            else{
+              rep = sortedMinimaIDs[i].second;
+              basins.push_back(rep);
+            }
+            minh_representatives_and_basins.push_back(std::pair<MyState*,std::vector<MyState*>>(rep,basins));
+          }
+
+          // then create new sorted_min list and hash map for output --> simply filter the original list and assign new IDs.
+          for(size_t min_index = sortedMinimaIDs.size(); min_index > 0; min_index--){
+            if(merge_state_map.find(min_index-1) != merge_state_map.end()){
+              sorted_min_and_output_ids->erase(*(sortedMinimaIDs[min_index-1].second));
+              sortedMinimaIDs.erase(sortedMinimaIDs.begin() + min_index-1);
+            }
+          }
+          // assign new ids (still sorted).
+          std::unordered_map<size_t, size_t> map_ids;
+          for(size_t i = 0; i < sortedMinimaIDs.size(); i++){
+            map_ids[(*sorted_min_and_output_ids)[*(sortedMinimaIDs[i].second)]] = i;
+            (*sorted_min_and_output_ids)[*(sortedMinimaIDs[i].second)] = i;
+          }
+          // adjust saddle list to new ids.
+          for(auto it = minimal_saddle_list.begin(); it != minimal_saddle_list.end(); it++){
+            it->minimum_from = map_ids[it->minimum_from];
+            it->minimum_to = map_ids[it->minimum_to];
+          }
+
+          if (basin_size){
+            // filter and adjust ids.
+            std::unordered_map<size_t, size_t> minimum_index_and_basin_size_filtered;
+            for(auto it = sortedMinimaIDs.begin(); it != sortedMinimaIDs.end(); it++){
+              minimum_index_and_basin_size_filtered[it->first] = minimum_index_and_basin_size[it->first];
+            }
+            minimum_index_and_basin_size.clear();
+            minimum_index_and_basin_size.insert(minimum_index_and_basin_size_filtered.begin(), minimum_index_and_basin_size_filtered.end());
+          }
+        }
+      }
+
+      std::cout << std::endl;
+      std::string out               = "Sequence: ";
+      printf("%s", out.c_str());
+      int         offset          = 31;
+      int         padding_length  = offset - out.length(); //structure_length - out.length();
+      std::string pad             = std::string(padding_length, ' ');
+      printf("%s%s\n", pad.c_str(), rnaSequence.c_str());
+
+      out = "MFE structure: ";
+      printf("%s", out.c_str());
+      padding_length  = offset - out.length();
+      pad             = std::string(padding_length, ' ');
+      printf("%s%s\n", pad.c_str(), mfeStructure);
+
+      out = "The start state is: ";
+      printf("%s", out.c_str());
+      padding_length  = offset - out.length();
+      pad             = std::string(padding_length, ' ');
+      printf("%s%s\n", pad.c_str(), rna_start_str.c_str());
+
+      out = "The start state ends in basin: ";
+      printf("%s", out.c_str());
+      padding_length  = offset - out.length();
+      pad             = std::string(padding_length, ' ');
+      printf("%s%s\n", pad.c_str(), startStructureMinimum);
+      out = "The final state is: ";
+      printf("%s", out.c_str());
+      padding_length  = offset - out.length();
+      pad             = std::string(padding_length, ' ');
+      printf("%s%s\n", pad.c_str(), rna_final_str.c_str());
+      out = "The final minimum is: ";
+      printf("%s", out.c_str());
+      if (endStructureMinimum != NULL) {
+        padding_length  = offset - out.length();
+        pad             = std::string(padding_length, ' ');
+        printf("%s%s\n", pad.c_str(), endStructureMinimum);
+      } else {
+        printf("\n");
+      }
+
+      printf("Number of minima: %ld\n", done_List.size());
+
+      std::cout << std::endl;
+
+      // Calculate the final Rate Matrix:
+      *transOut
+      << "              --------------THE FINAL RATE MATRIX----------------------- "
+      << std::endl;
+
+      biu::MatrixSparseC<double>&  final_Rate = calculateRateMatrix(z, sortedMinimaIDs, computeDiagonal);
+
+      // Print the Final rate matrix of the States in Final minima set.
+      // printRateMatrix (*final_Rate, final_minima, *transOut, true);
+      if(writeDotplotPerBasin){
+        size_t min_id = 1;
+        double pf_basin;
+        std::vector<std::string> mea_structures_per_basin;
+        for(auto it = sortedMinimaIDs.begin(); it != sortedMinimaIDs.end(); it++, min_id++){
+          size_t minIndex = it->first;
+          SC_PartitionFunction* sc = &z.at(SC_PartitionFunction::PairID(minIndex, minIndex));
+          pf_basin = z.at(SC_PartitionFunction::PairID(minIndex, minIndex)).getZ();
+          SC_DotPlot::DotPlot dp_tmp = dot_plot_per_basin[*it->second];
+          SC_DotPlot::DotPlot dp = SC_DotPlot::getBasePairProbabilities(dp_tmp, pf_basin);
+
+          char * dp_file_name = (char *)dotPlotPerBasinFileName.c_str();
+          std::string dp_file_pattern = dotPlotPerBasinFileName +  "_%u.ps";
+          int res = asprintf(&dp_file_name, dp_file_pattern.c_str(), min_id);
+          if(res < 0) fprintf(stderr, "Error: failed to concatenate dotplot name!");
+          std::string basin_representative = it->second->toString();
+          char * mea_structure = SC_DotPlot::mea_from_dotplot(sequence, dp, vc->exp_params);
+          std::string mea(mea_structure);
+          mea_structures_per_basin.push_back(mea);
+          free(mea_structure);
+          bool sane = SC_DotPlot::writeDotPlot_PS_with_mfe_and_mea(dp_file_name, rnaSequence, dp, basin_representative, mea);
+          if (!sane){
+            fprintf(stderr,"Error: could not write the dot plot! %s\n", dp_file_name);
+            fprintf(stderr, "%s %s %s %s\n", dp_file_name, rnaSequence.c_str(), basin_representative.c_str(), mea.c_str());
+          }
+          free(dp_file_name);
+        }
+
+        printRateMatrixSortedWithMEA(final_Rate, sortedMinimaIDs, mea_structures_per_basin, *transOut);
+      }
+      else{
+        printRateMatrixSorted(final_Rate, sortedMinimaIDs, *transOut);
+      }
+      std::cout << std::endl;
+      printEquilibriumDensities(z, sortedMinimaIDs, *transOut);
+      std::cout << std::endl;
+
+      //if parameter given: print Z-matrix to file.
+      if ((partitionFunctionFileName.size() > 0) & writePartitionFunctions) {
+        ofstream ptFile;
+        ptFile.open(partitionFunctionFileName);
+        ptFile
+        << "              --------------THE PARTITIONFUNCTION MATRIX----------------------- "
+        << std::endl << std::endl;
+        printZMatrixSorted(z, sortedMinimaIDs, Minima, ptFile);
+        ptFile.close();
+      }
+
+      double partitionFunctionLandscape = 0;
+      //get partition Sum for the energy landscape.
+      for (auto it = sortedMinimaIDs.begin(); it != sortedMinimaIDs.end(); it++) {
+        size_t  minIndex  = it->first;
+        partitionFunctionLandscape +=
+          z.at(SC_PartitionFunction::PairID(minIndex, minIndex)).get_unscaled_Z();
+      }
+      std::cout << "The overall partition function is: "
+                << partitionFunctionLandscape << std::endl;
+
+      if(args_info.minh_given || args_info.dynamic_minh_given){
+        // write mapping file
+        std::ofstream mapping_file_minh(minh_mapping_file);
+        const size_t LEAD = 6;
+        for(size_t i = 0; i < minh_representatives_and_basins.size(); i++){
+          mapping_file_minh << std::setw(LEAD) << std::to_string(i) << " [" << minh_representatives_and_basins[i].first->toString() << "]:" << std::endl;
+          std::vector<MyState*>& basin_vec = minh_representatives_and_basins[i].second;
+          for(size_t j = 0; j < basin_vec.size(); j++){
+            mapping_file_minh << basin_vec[j]->toString() << std::endl;
+          }
+        }
+      }
+      //dotplot
+      if (writeDotplot) {
+        SC_DotPlot::DotPlot normalizedDotplot =
+          SC_DotPlot::getBasePairProbabilities(dotplot,
+                                               partitionFunctionLandscape);
+        std::string mfe(mfeStructure);
+        char * mea_structure = SC_DotPlot::mea_from_dotplot(sequence, normalizedDotplot, vc->exp_params);
+        std::string mea(mea_structure);
+        free(mea_structure);
+        bool                dotplotWritten = SC_DotPlot::writeDotPlot_PS_with_mfe_and_mea(dotPlotFileName,
+                                                                                          rnaSequence,
+                                                                                          normalizedDotplot, mfe, mea);
+        if (!dotplotWritten) {
+          std::cerr
+          << "\nWarning: error during the writing of the dot plot file "
+          << dotPlotFileName << "\n";
+        }
+      }
+
+      print_number_of_rates(final_Rate, sortedMinimaIDs, std::cout);
+
+      if (basin_size){
+        std::cout << std::endl;
+        std::cout << "Basin size:" << std::endl;
+        printf("(");
+        size_t n = sortedMinimaIDs.size()-1;
+        for (size_t i = 0; i <= n; i++){
+          if (i < n)
+            fprintf(stdout, "%ld, ", minimum_index_and_basin_size[sortedMinimaIDs[i].first]);
+          else
+            fprintf(stdout, "%ld", minimum_index_and_basin_size[sortedMinimaIDs[i].first]);
+        }
+        printf(")\n");
+      }
+
+
+      if (!binary_rates_file.empty())
+        write_binary_rates_file(binary_rates_file, final_Rate, sortedMinimaIDs);
+
+      /**
+       * write saddle file
+       * */
+      if(args_info.saddle_file_given){
+        FILE* saddle_file = fopen(saddleFileName.c_str(), "w");
+        if (!saddle_file) {
+            fprintf(stderr, "Error: could not open saddle file.\n");
+            exit(101);
+          }
+        std::string header = std::string("id_from, loc_min_from, loc_min_from_energy, id_to, loc_min_to, ")+
+            std::string("loc_min_to_energy, saddle, saddle_energy\n");
+        fwrite(header.c_str(), sizeof(char), header.length(), saddle_file);
+
+        for (auto it = all_saddles.begin(); it != all_saddles.end(); it++) {
+          //const std::pair<MyState, MyState>&  from_to       = it->first;
+          const MyState *state_from = &it->first;
+          auto id_from_it = sorted_min_and_output_ids->find(*state_from);
+          if (id_from_it != sorted_min_and_output_ids->end()){
+            for (auto it_to = it->second.begin(); it_to != it->second.end(); it_to++) {
+              const MyState *state_to = &it_to->first;
+              auto id_to_it   = sorted_min_and_output_ids->find(*state_to);
+              if ( id_to_it != sorted_min_and_output_ids->end()){
+                const MyState *state_saddle = &it_to->second;
+                double                              saddle_height = state_saddle->energy / 100.0;
+                std::string                         s1            = state_from->toString();
+                std::string                         s2            = state_to->toString();
+                std::string                         saddle        = state_saddle->toString();
+                  int id_from = id_from_it->second;
+                  int id_to = id_to_it->second;
+                  std::fprintf(saddle_file,"%d, %s, %.2f, %d, %s, %.2f, %s, %.2f\n", id_from,
+                                        s1.c_str(), state_from->energy / 100.0,
+                                        id_to, s2.c_str(), state_to->energy / 100.0, saddle.c_str(), saddle_height);
               }
             }
           }
         }
-
-        if (basin_size){
-          // merge basin sizes.
-          for(auto it = representatives_and_clustered_ids.begin(); it != representatives_and_clustered_ids.end(); it++){
-            size_t basin_rep_global_id = sortedMinimaIDs[it->first].first;
-            for(auto itc = it->second.begin(); itc != it->second.end(); itc++){
-              if (*itc != it->first)
-                minimum_index_and_basin_size[basin_rep_global_id] += minimum_index_and_basin_size[sortedMinimaIDs[*itc].first];
-            }
-          }
-        }
-
-        // then create new sorted_min list and hash map for output --> simply filter the original list and assign new IDs.
-        for(size_t min_index = sortedMinimaIDs.size(); min_index > 0; min_index--){
-          if(merge_state_map.find(min_index-1) != merge_state_map.end()){
-            sorted_min_and_output_ids->erase(*(sortedMinimaIDs[min_index-1].second));
-            sortedMinimaIDs.erase(sortedMinimaIDs.begin() + min_index-1);
-          }
-        }
-        // assign new ids (still sorted).
-        std::unordered_map<size_t, size_t> map_ids;
-        for(size_t i = 0; i < sortedMinimaIDs.size(); i++){
-          map_ids[(*sorted_min_and_output_ids)[*(sortedMinimaIDs[i].second)]] = i;
-          (*sorted_min_and_output_ids)[*(sortedMinimaIDs[i].second)] = i;
-        }
-        // adjust saddle list to new ids.
-        for(auto it = minimal_saddle_list.begin(); it != minimal_saddle_list.end(); it++){
-          it->minimum_from = map_ids[it->minimum_from];
-          it->minimum_to = map_ids[it->minimum_to];
-        }
-
-        if (basin_size){
-          // filter and adjust ids.
-          std::unordered_map<size_t, size_t> minimum_index_and_basin_size_filtered;
-          for(auto it = sortedMinimaIDs.begin(); it != sortedMinimaIDs.end(); it++){
-            minimum_index_and_basin_size_filtered[it->first] = minimum_index_and_basin_size[it->first];
-          }
-          minimum_index_and_basin_size.clear();
-          minimum_index_and_basin_size.insert(minimum_index_and_basin_size_filtered.begin(), minimum_index_and_basin_size_filtered.end());
-        }
-      }
-    }
-
-    out = "The start state ends in basin: ";
-    printf("%s", out.c_str());
-    padding_length  = offset - out.length();
-    pad             = std::string(padding_length, ' ');
-    printf("%s%s\n", pad.c_str(), startStructureMinimum);
-    out = "The final state is: ";
-    printf("%s", out.c_str());
-    padding_length  = offset - out.length();
-    pad             = std::string(padding_length, ' ');
-    printf("%s%s\n", pad.c_str(), rna_final_str.c_str());
-    out = "The final minimum is: ";
-    printf("%s", out.c_str());
-    if (endStructureMinimum != NULL) {
-      padding_length  = offset - out.length();
-      pad             = std::string(padding_length, ' ');
-      printf("%s%s\n", pad.c_str(), endStructureMinimum);
-    } else {
-      printf("\n");
-    }
-
-    printf("Number of minima: %ld\n", done_List.size());
-
-    std::cout << std::endl;
-
-    // Calculate the final Rate Matrix:
-    *transOut
-    << "              --------------THE FINAL RATE MATRIX----------------------- "
-    << std::endl;
-
-    biu::MatrixSparseC<double>&  final_Rate = calculateRateMatrix(z, sortedMinimaIDs, computeDiagonal);
-
-    // Print the Final rate matrix of the States in Final minima set.
-    if(!writeDotplotPerBasin){
-      printRateMatrixSorted(final_Rate, sortedMinimaIDs, *transOut);
-    }
-
-    if(writeDotplotPerBasin){
-      size_t min_id = 1;
-      double pf_basin;
-      std::vector<std::string> mea_structures_per_basin;
-      for(auto it = sortedMinimaIDs.begin(); it != sortedMinimaIDs.end(); it++, min_id++){
-        size_t minIndex = it->first;
-        pf_basin = z.at(SC_PartitionFunction::PairID(minIndex, minIndex)).getZ();
-        SC_DotPlot::DotPlot dp_tmp = dot_plot_per_basin[*it->second];
-        SC_DotPlot::DotPlot dp = SC_DotPlot::getBasePairProbabilities(dp_tmp, pf_basin);
-
-        char * dp_file_name = (char *)dotPlotPerBasinFileName.c_str();
-        std::string dp_file_pattern = dotPlotPerBasinFileName +  "_%u.ps";
-        int res = asprintf(&dp_file_name, dp_file_pattern.c_str(), min_id);
-        if(res < 0) fprintf(stderr, "Error: failed to concatenate dotplot name!");
-        std::string basin_representative = it->second->toString();
-        char * mea_structure = SC_DotPlot::mea_from_dotplot(sequence, dp, vc->exp_params);
-        std::string mea(mea_structure);
-        mea_structures_per_basin.push_back(mea);
-        free(mea_structure);
-        bool sane = SC_DotPlot::writeDotPlot_PS_with_mfe_and_mea(dp_file_name, rnaSequence, dp, basin_representative, mea);
-        if (!sane)
-          fprintf(stderr,"Error: could not write the dot plot!\n");
-        free(dp_file_name);
+        fclose(saddle_file);
       }
 
-      printRateMatrixSortedWithMEA(final_Rate, sortedMinimaIDs, mea_structures_per_basin, *transOut);
-    }
-
-    std::cout << std::endl;
-    printEquilibriumDensities(z, sortedMinimaIDs, *transOut);
-    std::cout << std::endl;
-
-    //if parameter given: print Z-matrix to file.
-    if ((partitionFunctionFileName.size() > 0) & writePartitionFunctions) {
-      ofstream ptFile;
-      ptFile.open(partitionFunctionFileName);
-      ptFile
-      << "              --------------THE PARTITIONFUNCTION MATRIX----------------------- "
-      << std::endl << std::endl;
-      printZMatrixSorted(z, sortedMinimaIDs, Minima, ptFile);
-      ptFile.close();
-    }
-
-    double partitionFunctionLandscape = 0;
-    //get partition Sum for the energy landscape.
-    for (auto it = sortedMinimaIDs.begin(); it != sortedMinimaIDs.end(); it++) {
-      size_t  minIndex  = it->first;
-      partitionFunctionLandscape +=
-        z.at(SC_PartitionFunction::PairID(minIndex, minIndex)).get_unscaled_Z();
-    }
-    std::cout << "The overall partition function is: "
-              << partitionFunctionLandscape << std::endl;
-
-    //dotplot
-    if (writeDotplot) {
-      SC_DotPlot::DotPlot normalizedDotplot =
-        SC_DotPlot::getBasePairProbabilities(dotplot,
-                                             partitionFunctionLandscape);
-      std::string mfe(mfeStructure);
-      char * mea_structure = SC_DotPlot::mea_from_dotplot(sequence, normalizedDotplot, vc->exp_params);
-      std::string mea(mea_structure);
-      free(mea_structure);
-      bool                dotplotWritten = SC_DotPlot::writeDotPlot_PS_with_mfe_and_mea(dotPlotFileName,
-                                                                                        rnaSequence,
-                                                                                        normalizedDotplot, mfe, mea);
-      if (!dotplotWritten) {
-        std::cerr
-        << "\nWarning: error during the writing of the dot plot file "
-        << dotPlotFileName << "\n";
-      }
-    }
-
-    print_number_of_rates(final_Rate, sortedMinimaIDs, std::cout);
-
-    if (basin_size){
-      std::cout << std::endl;
-      std::cout << "Minimum_id, Basin_size" << std::endl;
-      size_t i = 0;
-      for (auto it = sortedMinimaIDs.begin(); it != sortedMinimaIDs.end(); it++, i++){
-        fprintf(stdout, "%ld, %ld\n", i, minimum_index_and_basin_size[it->first]);
-      }
-    }
-
-
-    if (!binary_rates_file.empty())
-      write_binary_rates_file(binary_rates_file, final_Rate, sortedMinimaIDs);
-
-    /**
-     * write saddle file
-     * */
-    if(args_info.saddle_file_given){
-      FILE* saddle_file = fopen(args_info.saddle_file_arg, "w");
-      if (!saddle_file) {
-          fprintf(stderr, "Error: could not open saddle file.\n");
-          exit(101);
-        }
-      std::string header = std::string("id_from, loc_min_from, loc_min_from_energy, id_to, loc_min_to, ")+
-          std::string("loc_min_to_energy, saddle, saddle_energy\n");
-      fwrite(header.c_str(), sizeof(char), header.length(), saddle_file);
-
-      for (auto it = all_saddles.begin(); it != all_saddles.end(); it++) {
-        const MyState *state_from = &it->first;
-        auto id_from_it = sorted_min_and_output_ids->find(*state_from);
-        if (id_from_it != sorted_min_and_output_ids->end()){
-          for (auto it_to = it->second.begin(); it_to != it->second.end(); it_to++) {
-            const MyState *state_to = &it_to->first;
-            auto id_to_it   = sorted_min_and_output_ids->find(*state_to);
-            if ( id_to_it != sorted_min_and_output_ids->end()){
-              const MyState *state_saddle = &it_to->second;
-              double                              saddle_height = state_saddle->energy / 100.0;
-              std::string                         s1            = state_from->toString();
-              std::string                         s2            = state_to->toString();
-              std::string                         saddle        = state_saddle->toString();
-                int id_from = id_from_it->second;
-                int id_to = id_to_it->second;
-                std::fprintf(saddle_file,"%d, %s, %.2f, %d, %s, %.2f, %s, %.2f\n", id_from,
-                                      s1.c_str(), state_from->energy / 100.0,
-                                      id_to, s2.c_str(), state_to->energy / 100.0, saddle.c_str(), saddle_height);
-            }
-          }
-        }
-      }
-      fclose(saddle_file);
-    }
-
-    if(args_info.barriers_like_output_given){
-      char * barriers_prefix = args_info.barriers_like_output_arg;
-      write_barriers_like_output(barriers_prefix,
-                                  final_Rate,
-                                  sortedMinimaIDs,
-                                  rnaSequence,
-                                  basin_size,
-                                  minimum_index_and_basin_size);
-    }
-
-    if(args_info.binary_rates_file_sparse_given){
-      std::string sparse_matrix_file(args_info.binary_rates_file_sparse_arg);
-      write_binary_rates_file_sparse(sparse_matrix_file,
+      if(args_info.barriers_like_output_given){
+        write_barriers_like_output(barriers_prefix,
                                     final_Rate,
-                                    sortedMinimaIDs);
-    }
-
-    // write barriers tree
-    if (args_info.barrier_tree_file_given){
-      std::unordered_map<size_t, int> structure_index_to_energy;
-      for(auto it = sorted_min_and_output_ids->begin(); it != sorted_min_and_output_ids->end(); it++){
-        structure_index_to_energy[it->second] = it->first.energy;
+                                    sortedMinimaIDs,
+                                    rnaSequence,
+                                    basin_size,
+                                    minimum_index_and_basin_size);
       }
 
-      size_t output_mfe_id = sortedMinimaIDs[0].first;
-      int output_mfe = sortedMinimaIDs[0].second->energy;
-      structure_index_to_energy[output_mfe_id] = output_mfe;
-
-      std::vector<node_t*> forest = bt.create_barrier_tree(minimal_saddle_list, structure_index_to_energy);
-      //node_t* tree = forest[0]; //TODO: search mfe tree.
-      std::cout << std::endl;
-      //bt.free_tree(tree);
-      for(size_t t = 0; t < forest.size(); t++){
-        std::string newick_tree = bt.newick_string_builder(forest[t]);
-        std::ofstream tree_file(args_info.barrier_tree_file_arg);
-        tree_file << newick_tree << std::endl;
-        tree_file.close();
-        //std::cout << newick_tree << std::endl;
+      if(args_info.binary_rates_file_sparse_given){
+        std::string sparse_matrix_file(args_info.binary_rates_file_sparse_arg);
+        write_binary_rates_file_sparse(sparse_matrix_file,
+                                      final_Rate,
+                                      sortedMinimaIDs);
       }
-      size_t inorder_index = 0;
-      std::string svg_tree = bt.svg_string_builder(forest[0], output_mfe, &inorder_index);
-      std::ofstream tree_file(std::string(args_info.barrier_tree_file_arg) + "_tree.svg");
-      tree_file << svg_tree << std::endl;
-      tree_file.close();
 
-      for(size_t t = 0; t < forest.size(); t++){
-        bt.free_tree(forest[t]);
+      // write barriers tree
+      if (args_info.barrier_tree_file_given){
+        std::unordered_map<size_t, int> structure_index_to_energy;
+        for(auto it = sorted_min_and_output_ids->begin(); it != sorted_min_and_output_ids->end(); it++){
+          structure_index_to_energy[it->second] = it->first.energy;
+        }
+
+        size_t output_mfe_id = sortedMinimaIDs[0].first;
+        int output_mfe = sortedMinimaIDs[0].second->energy;
+        structure_index_to_energy[output_mfe_id] = output_mfe;
+
+        std::vector<node_t*> forest = bt.create_barrier_tree(minimal_saddle_list, structure_index_to_energy);
+        //node_t* tree = forest[0]; //TODO: search mfe tree.
+        std::cout << std::endl;
+        //bt.free_tree(tree);
+        for(size_t t = 0; t < forest.size(); t++){
+          std::string newick_tree = bt.newick_string_builder(forest[t]);
+          std::ofstream tree_file(barrierTreeFileName);
+          tree_file << newick_tree << std::endl;
+          tree_file.close();
+          //std::cout << newick_tree << std::endl;
+        }
+        if(forest.size() > 0){
+          size_t inorder_index = 0;
+          std::string svg_tree = bt.svg_string_builder(forest[0], output_mfe, &inorder_index);
+          std::ofstream tree_file(barrierTreeFileName + "_tree.svg");
+          tree_file << svg_tree << std::endl;
+          tree_file.close();
+        }
+        for(size_t t = 0; t < forest.size(); t++){
+          bt.free_tree(forest[t]);
+        }
       }
-    }
+
+      delete &final_Rate;
+
+    } while(dynamic_minh_max_states.size() > 0);
 
     if(writeDotplotPerBasin){
       size_t min_id = 1;
@@ -2022,8 +2222,8 @@ main(int  argc,
     if (startStateMinimum != NULL)
       delete startStateMinimum;
 
-    //if (&final_Rate != NULL)
-    delete &final_Rate;
+    if (tmp_sorted_min_and_output_ids != NULL)
+      delete tmp_sorted_min_and_output_ids;
 
     pourRNA_cmdline_parser_free(&args_info);
 

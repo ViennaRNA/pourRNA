@@ -55,6 +55,15 @@ SC_DotPlot::add(const MyState& state)
   }
 }
 
+SC_DotPlot&
+SC_DotPlot::operator=(const SC_DotPlot& toCopy){
+  this->initialize(toCopy.getTemperature(), toCopy.getGasConstant(), toCopy.getMFE(), toCopy.getStoreEnergies());
+  const std::vector<int>& energies = toCopy.getEnergies();
+  this->Energies.assign(energies.begin(), energies.end());
+  this->setZ(toCopy.getZ());
+  this->bpWeightSum.insert(toCopy.bpWeightSum.begin(), toCopy.bpWeightSum.end());
+  return *this;
+}
 
 SC_DotPlot::DotPlot
 SC_DotPlot::getBasePairProbabilities() const
