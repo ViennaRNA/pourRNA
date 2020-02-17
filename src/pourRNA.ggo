@@ -225,6 +225,11 @@ option  "map-structures" -
 string
 optional
 
+option  "minh-mapping" -
+"Output file name for the minh basin mapping. All minh=0 basins are mapped to minh basins.\n"
+string
+optional
+
 option  "basin-size" -
 "Count the number of structures in each basin.\n"
 flag

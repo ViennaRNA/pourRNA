@@ -690,6 +690,10 @@ main(int  argc,
   std::string                                         energyFileName = "";
   // binary rates file
   std::string                                         binary_rates_file = "";
+
+  // sparse binary rates file
+  std::string                                         sparse_matrix_file = "";
+
   // this bool tells the flooder if it should store energies. (not recommended for large sequences!)
   bool                                                logEnergies = false;
   /* parameter for writing a postscript-file with a DotPlot
@@ -879,9 +883,14 @@ main(int  argc,
       logEnergies     = true;
     }
 
-    if (args_info.binary_rates_file_given)
+    if (args_info.binary_rates_file_given){
       // set output file name for energies.
-      binary_rates_file = args_info.binary_rates_file_arg;
+      binary_rates_file = std::string(args_info.binary_rates_file_arg);
+    }
+
+    if (args_info.binary_rates_file_sparse_given){
+      sparse_matrix_file = std::string(args_info.binary_rates_file_sparse_arg);
+    }
 
     //partitionFunctions
     if (args_info.partition_functions_given) {
@@ -904,6 +913,9 @@ main(int  argc,
 
     if(args_info.barrier_tree_file_arg)
       barrierTreeFileName = std::string(args_info.barrier_tree_file_arg);
+
+    if(args_info.minh_mapping_arg)
+      minh_mapping_file = std::string(args_info.minh_mapping_arg);
 
     if(args_info.barriers_like_output_given)
       barriers_prefix = std::string(args_info.barriers_like_output_arg);
@@ -1573,7 +1585,8 @@ main(int  argc,
                 tmp_saddleFileName,
                 tmp_barriers_prefix,
                 tmp_binary_rates_file,
-                tmp_minh_mapping_file;
+                tmp_minh_mapping_file,
+                tmp_sparse_matrix_file;
 
     SC_PartitionFunction::Z_Matrix tmp_z;
     std::vector<saddle_t> tmp_minimal_saddle_list;
@@ -1602,6 +1615,8 @@ main(int  argc,
         tmp_binary_rates_file = binary_rates_file;
       if(args_info.minh_given || args_info.dynamic_minh_given)
         tmp_minh_mapping_file = minh_mapping_file;
+      if (args_info.binary_rates_file_sparse_given)
+         tmp_sparse_matrix_file = sparse_matrix_file;
 
       tmp_z.insert(z.begin(), z.end());
       tmp_minimal_saddle_list.assign(minimal_saddle_list.begin(), minimal_saddle_list.end());
@@ -1688,6 +1703,10 @@ main(int  argc,
             if(args_info.minh_given || args_info.dynamic_minh_given){
               minh_mapping_file = tmp_minh_mapping_file;
               minh_mapping_file.append(appendix);
+            }
+            if (args_info.binary_rates_file_sparse_given){
+              sparse_matrix_file = tmp_sparse_matrix_file;
+              sparse_matrix_file.append(appendix);
             }
 
             /**
@@ -2120,7 +2139,6 @@ main(int  argc,
       }
 
       if(args_info.binary_rates_file_sparse_given){
-        std::string sparse_matrix_file(args_info.binary_rates_file_sparse_arg);
         write_binary_rates_file_sparse(sparse_matrix_file,
                                       final_Rate,
                                       sortedMinimaIDs);
