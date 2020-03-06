@@ -416,8 +416,10 @@ double BarriersTree::determin_optimal_min_h(const size_t maximal_number_of_state
   if(maximal_number_of_states > n){
     min_h = (double)barrier_list[n-1] / 100.0;
   }
-  else if (maximal_number_of_states <= 1){
-    min_h = (double)barrier_list[0] / 100.0 + 0.01;
+  else if (maximal_number_of_states <= 2){
+    min_h = (double)barrier_list[0] / 100.0;
+    if (maximal_number_of_states <= 1)
+      min_h += 0.01;
     /* The minimal saddle list contains all states, except the mfe (because there is no deeper basin).
        For the barrier at 0 we would connect with the mfe and would end up with 2 states.
        Thus we choose the barrier a little bit higher. The minimum number of states is 1, because there
