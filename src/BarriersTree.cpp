@@ -413,7 +413,7 @@ double BarriersTree::determin_optimal_min_h(const size_t maximal_number_of_state
   // sort from highest to lowest barrier.
   std::sort(barrier_list, barrier_list + n, std::greater<int>());
 
-  if(maximal_number_of_states >= n){
+  if(maximal_number_of_states > n){
     min_h = (double)barrier_list[n-1] / 100.0;
   }
   else if (maximal_number_of_states <= 1){
@@ -427,7 +427,7 @@ double BarriersTree::determin_optimal_min_h(const size_t maximal_number_of_state
   else{ // if (maximal_number_of_states >= 2 && maximal_number_of_states < n)
     // if the minh is equal to the next state, we have to determine the next higher minh
     // (because we will remove all states < minh, states >= minh will remain).
-    size_t max_index = maximal_number_of_states-1;
+    size_t max_index = maximal_number_of_states-2; // -2 because: 1 for the mfe (because it is not in the minimal saddle list size) and 1 for the zero based index.
     if (barrier_list[max_index] == barrier_list[max_index+1]){
       while(max_index > 0 && barrier_list[max_index] == barrier_list[max_index-1]){
         max_index--;

@@ -1061,7 +1061,7 @@ main(int  argc,
     }
 
     if (args_info.dynamic_minh_given) {
-      for (size_t i = 0; i < args_info.dynamic_minh_given; ++i)
+      for (size_t i = 0; i < args_info.dynamic_minh_given; i++)
         dynamic_minh_max_states.push_back((size_t)args_info.dynamic_minh_arg[i]);
       std::sort(dynamic_minh_max_states.begin(), dynamic_minh_max_states.end(), std::greater<size_t>());
       if (minh < 0)
@@ -1635,9 +1635,15 @@ main(int  argc,
       }
       double adjusted_minh = minh;
       if (args_info.minh_given || args_info.dynamic_minh_given){
-        if (args_info.dynamic_minh_given){
-          //Additionally change output file names if several dynamic minh thresholds will be applied.
-          if (change_output_filenames){
+        if (args_info.dynamic_minh_given) {
+          if (!change_output_filenames){
+            adjusted_minh = bt.determin_optimal_min_h(minh_max_states, minimal_saddle_list, sortedMinimaIDs);
+            if (verbose){
+              fprintf(stdout, "The dynamic minh for maximal %ld states is: %.2f\n", minh_max_states, adjusted_minh);
+            }
+          }
+          else {
+            //Additionally change output file names if several dynamic minh thresholds will be applied.
             z.clear();
             z.insert(tmp_z.begin(), tmp_z.end());
             minimal_saddle_list.clear();
