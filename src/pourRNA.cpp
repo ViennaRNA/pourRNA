@@ -1633,8 +1633,8 @@ main(int  argc,
         minh_max_states  = dynamic_minh_max_states[0];
         dynamic_minh_max_states.erase(dynamic_minh_max_states.begin());
       }
+      double adjusted_minh = minh;
       if (args_info.minh_given || args_info.dynamic_minh_given){
-        double adjusted_minh = minh;
         if (args_info.dynamic_minh_given){
           //Additionally change output file names if several dynamic minh thresholds will be applied.
           if (change_output_filenames){
@@ -1928,49 +1928,57 @@ main(int  argc,
         }
       }
 
-      std::cout << std::endl;
+      *transOut << std::endl;
       std::string out               = "Sequence: ";
-      printf("%s", out.c_str());
+      *transOut << out;
       int         offset          = 31;
       int         padding_length  = offset - out.length(); //structure_length - out.length();
       std::string pad             = std::string(padding_length, ' ');
-      printf("%s%s\n", pad.c_str(), rnaSequence.c_str());
+      *transOut << pad << rnaSequence << std::endl;
 
       out = "MFE structure: ";
-      printf("%s", out.c_str());
+      *transOut << out;
       padding_length  = offset - out.length();
       pad             = std::string(padding_length, ' ');
-      printf("%s%s\n", pad.c_str(), mfeStructure);
+      *transOut << pad << mfeStructure << std::endl;
 
       out = "The start state is: ";
-      printf("%s", out.c_str());
+      *transOut << out;
       padding_length  = offset - out.length();
       pad             = std::string(padding_length, ' ');
-      printf("%s%s\n", pad.c_str(), rna_start_str.c_str());
+      *transOut << pad << rna_start_str << std::endl;
 
       out = "The start state ends in basin: ";
-      printf("%s", out.c_str());
+      *transOut << out;
       padding_length  = offset - out.length();
       pad             = std::string(padding_length, ' ');
-      printf("%s%s\n", pad.c_str(), startStructureMinimum);
+      *transOut << pad << startStructureMinimum << std::endl;
       out = "The final state is: ";
-      printf("%s", out.c_str());
+      *transOut << out;
       padding_length  = offset - out.length();
       pad             = std::string(padding_length, ' ');
-      printf("%s%s\n", pad.c_str(), rna_final_str.c_str());
+      *transOut << pad << rna_final_str << std::endl;
       out = "The final minimum is: ";
-      printf("%s", out.c_str());
+      *transOut << out;
       if (endStructureMinimum != NULL) {
         padding_length  = offset - out.length();
         pad             = std::string(padding_length, ' ');
-        printf("%s%s\n", pad.c_str(), endStructureMinimum);
+        *transOut << pad << endStructureMinimum << std::endl;
       } else {
-        printf("\n");
+        *transOut << std::endl;
+      }
+      if (args_info.minh_given || args_info.dynamic_minh_given){
+        char buffer[50];
+        sprintf(buffer,"minh: %.2f", adjusted_minh);
+      	*transOut << buffer << std::endl;
+        if (args_info.dynamic_minh_given)
+          *transOut << "minh max. states: " << minh_max_states << std::endl;
       }
 
-      printf("Number of minima: %ld\n", done_List.size());
+      *transOut << "Number of minima: " << sortedMinimaIDs.size() << std::endl;
+      *transOut << "Number of flooded minima: " << done_List.size() << std::endl;
 
-      std::cout << std::endl;
+      *transOut << std::endl;
 
       // Calculate the final Rate Matrix:
       *transOut
