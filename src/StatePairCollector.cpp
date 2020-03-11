@@ -70,8 +70,10 @@ StatePairCollector::add(vrna_fold_compound_t  *vc,
 
     //max base pair distance filter:
     if (MaxBPdist >= 0 && SourceStructure != NULL && TargetStructure != NULL) {
-      int dist_from_source  = vrna_bp_distance((const char *)CurrentStructure, SourceStructure);
-      int dist_from_target  = vrna_bp_distance((const char *)CurrentStructure, TargetStructure);
+      std::string new_min_str = newMin->toString();
+      const char *new_min_structure = new_min_str.c_str();
+      int dist_from_source  = vrna_bp_distance(new_min_structure, SourceStructure);
+      int dist_from_target  = vrna_bp_distance(new_min_structure, TargetStructure);
       if (dist_from_source + dist_from_target > MaxBPdist) {
         MininaToIgnore.insert(MyState(*newMin));
         delete newMin;

@@ -1051,6 +1051,7 @@ main(int  argc,
     if (args_info.dynamic_minh_given) {
       for (size_t i = 0; i < args_info.dynamic_minh_given; ++i)
         dynamic_minh_max_states.push_back((size_t)args_info.dynamic_minh_arg[i]);
+      std::sort(dynamic_minh_max_states.begin(), dynamic_minh_max_states.end(), std::greater<size_t>());
       if (minh < 0)
         minh = 0.0;
     }
