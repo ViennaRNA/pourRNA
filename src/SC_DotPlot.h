@@ -38,6 +38,7 @@ public:
 SC_DotPlot (const double  temperature,
             const double  gas_constant,
             double mfe,
+            bool   storeStructures = false,
             const bool    storeEnergies = false);
 
 /*! resets the data structure and calculate the gasconstant (RT)
@@ -50,6 +51,7 @@ void
 initialize(const double temperature,
            const double gas_constant,
            double mfe,
+           bool   storeStructures = false,
            const bool   storeEnergies = false);
 
 
@@ -65,6 +67,10 @@ add(const MyState& state);
 virtual
 SC_DotPlot&
 operator=(const SC_DotPlot& toCopy);
+
+virtual
+SC_DotPlot&
+operator+=(const SC_DotPlot& toAdd);
 
 /*! destruction
  */

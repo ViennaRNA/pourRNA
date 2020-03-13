@@ -29,6 +29,7 @@ public:
 SC_PartitionFunction(double temperature = 37.0,
                      double gas_constant = 0.00198717,
                      double mfe = 0,
+                     bool   storeStructures = false,
                      bool   storeEnergies = false);
 
 /*! sets the partition function sum to 0 and calculate the gasconstant (RT)
@@ -42,6 +43,7 @@ virtual
 void initialize(const double  temperature,
                 const double  gas_constant,
                 double mfe,
+                bool   storeStructures = false,
                 const bool    storeEnergies = false);
 
 
@@ -55,6 +57,10 @@ add(const MyState& state);
 virtual
 SC_PartitionFunction&
 operator=(const SC_PartitionFunction& toCopy);
+
+virtual
+SC_PartitionFunction&
+operator+=(const SC_PartitionFunction& toAdd);
 
 virtual
 ~SC_PartitionFunction ();
@@ -91,6 +97,10 @@ bool getStoreEnergies() const{
   return StoreEnergies;
 }
 
+bool getStoreStructures() const{
+  return StoreStructures;
+}
+
 
 inline
 double
@@ -122,6 +132,12 @@ const std::vector<int>&
 getEnergies() const
 {
   return Energies;
+}
+
+const std::vector<MyState>&
+getStructures() const
+{
+  return Structures;
 }
 
 
@@ -157,6 +173,10 @@ protected:
 bool              StoreEnergies;
 //! stores the energies of the basin if requested.
 std::vector<int>  Energies;
+//! variable decides if energies should be stored.
+bool              StoreStructures;
+//! stores the structures of the basin if requested.
+std::vector<MyState> Structures;
 //! The partition function sum to fill;
 double            Z;
 //! Gas constant unit : kcal / (Kelvin * mol)

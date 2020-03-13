@@ -694,6 +694,11 @@ main(int  argc,
   // sparse binary rates file
   std::string                                         sparse_matrix_file = "";
 
+  // output structures within the basins
+  std::string                                         structures_file = "";
+  // true if structures should be stored during flooding
+  bool                                                storeStructures = false;
+
   // this bool tells the flooder if it should store energies. (not recommended for large sequences!)
   bool                                                logEnergies = false;
   /* parameter for writing a postscript-file with a DotPlot
@@ -922,6 +927,11 @@ main(int  argc,
 
     if(args_info.saddle_file_given)
       saddleFileName = std::string(args_info.saddle_file_arg);
+
+    if(args_info.output_structures_given){
+      structures_file = std::string(args_info.output_structures_arg);
+      storeStructures = true;
+    }
 
     if (args_info.transition_prob_given) {
       // set output stream
@@ -1444,6 +1454,7 @@ main(int  argc,
                       temperatureForBoltzmannWeight,
                       gas_constant,
                       mfeEnergy,
+                      storeStructures,
                       logEnergies);
                   } else {
                     outParameter->ScBasin =
@@ -1451,6 +1462,7 @@ main(int  argc,
                         temperatureForBoltzmannWeight,
                         gas_constant,
                         mfeEnergy,
+                        storeStructures,
                         logEnergies);
                   }
 
@@ -1586,7 +1598,8 @@ main(int  argc,
                 tmp_barriers_prefix,
                 tmp_binary_rates_file,
                 tmp_minh_mapping_file,
-                tmp_sparse_matrix_file;
+                tmp_sparse_matrix_file,
+                tmp_structures_file;
 
     SC_PartitionFunction::Z_Matrix tmp_z;
     std::vector<saddle_t> tmp_minimal_saddle_list;
@@ -1617,6 +1630,8 @@ main(int  argc,
         tmp_minh_mapping_file = minh_mapping_file;
       if (args_info.binary_rates_file_sparse_given)
          tmp_sparse_matrix_file = sparse_matrix_file;
+      if(args_info.output_structures_given)
+         tmp_structures_file = structures_file;
 
       tmp_z.insert(z.begin(), z.end());
       tmp_minimal_saddle_list.assign(minimal_saddle_list.begin(), minimal_saddle_list.end());
@@ -1714,7 +1729,10 @@ main(int  argc,
               sparse_matrix_file = tmp_sparse_matrix_file;
               sparse_matrix_file.append(appendix);
             }
-
+            if(args_info.output_structures_given){
+              structures_file = tmp_structures_file;
+              structures_file.append(appendix);
+            }
             /**
              * TODO: write it not only once for the landscape.
             if(args_info.energy_file_given){
@@ -1775,7 +1793,7 @@ main(int  argc,
             }
           }
 
-          // merge partition functions
+          // merge partition functions (implicitly merges states and energies within SC_PartitionFunction)
           for(size_t i = 0; i < sortedMinimaIDs.size(); i++){
             size_t id_i = sortedMinimaIDs[i].first;
             for(size_t j = 0; j < sortedMinimaIDs.size(); j++){
@@ -1797,8 +1815,10 @@ main(int  argc,
                    continue; // don't add inner cluster transitions
                 auto trans_c = z_minh.find(SC_PartitionFunction::PairID(cluster_i, cluster_j));
                 if (trans_c != z_minh.end()){
-                  double pf_to = trans_c->second.getZ();
-                  trans_c->second.setZ(pf_to + pf_from);
+                  //double pf_to = trans_c->second.getZ();
+                  //trans_c->second.setZ(pf_to + pf_from);
+                  // addition of SC_PartitionFunction.
+                  trans_c->second += trans->second;
                 }
                 else{
                   z_minh[SC_PartitionFunction::PairID(cluster_i, cluster_j)] = trans->second;
@@ -1822,7 +1842,7 @@ main(int  argc,
                 if (it->first != *it_cluster){
                   // add all clustered dotplots to the representative.
                   MyState *state = sortedMinimaIDs[*it_cluster].second;
-                  //*dp_rep += dot_plot_per_basin[*state];
+                  //(*dp_rep) += dot_plot_per_basin[*state];
                   SC_DotPlot::DotPlot* dp_state = &dot_plot_per_basin[*state];
                   for(auto it_dp = dp_state->begin(); it_dp != dp_state->end(); it_dp++){
                     (*dp_rep)[it_dp->first] += it_dp->second;
@@ -2065,6 +2085,40 @@ main(int  argc,
           }
         }
       }
+
+
+      if(args_info.output_structures_given){
+        // write the basin structure mapping file.
+        std::ofstream mapping_file_minh(structures_file);
+        const size_t LEAD = 6;
+        for (size_t i=0; i < sortedMinimaIDs.size(); i++) {
+          size_t  minIndex  = sortedMinimaIDs[i].first;
+          mapping_file_minh << std::setw(LEAD) << std::to_string(i) << " [" << sortedMinimaIDs[i].second->toString() << "]:" << std::endl;
+
+          const std::vector<MyState>& structures = z.at(SC_PartitionFunction::PairID(minIndex, minIndex)).getStructures();
+          for(size_t j = 0; j < structures.size(); j++){
+            char energy_kcal[10];
+            sprintf(energy_kcal,"%.2f", (structures[j].getEnergy()/100.0));
+            mapping_file_minh << structures[j].toString() << " " << energy_kcal << std::endl;
+          }
+        }
+        // write structures in contact surfaces
+        size_t  minIndex_from, minIndex_to;
+        for (size_t i=0; i < sortedMinimaIDs.size(); i++) {
+          minIndex_from  = sortedMinimaIDs[i].first;
+          for (size_t j=i+1; j < sortedMinimaIDs.size(); j++) {
+            minIndex_to  = sortedMinimaIDs[i].first;
+            mapping_file_minh << std::setw(LEAD) << std::to_string(i) << ", " << std::to_string(j) << ":" << std::endl;
+            const std::vector<MyState>& structures = z.at(SC_PartitionFunction::PairID(minIndex_from, minIndex_to)).getStructures();
+            for(size_t k = 0; k < structures.size(); k++){
+              char energy_kcal[10];
+              sprintf(energy_kcal,"%.2f", (structures[k].getEnergy()/100.0));
+              mapping_file_minh << structures[k].toString() << " " << energy_kcal << std::endl;
+            }
+          }
+        }
+      }
+
       //dotplot
       if (writeDotplot) {
         SC_DotPlot::DotPlot normalizedDotplot =

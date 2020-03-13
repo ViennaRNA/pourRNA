@@ -20,8 +20,9 @@ extern "C" {
 SC_DotPlot::SC_DotPlot (const double  temperature,
                         const double  gas_constant,
                         double mfe,
+                        bool   storeStructures,
                         const bool    storeEnergies) :
-  SC_PartitionFunction(temperature, gas_constant, mfe, storeEnergies), bpWeightSum()
+  SC_PartitionFunction(temperature, gas_constant, mfe, storeStructures, storeEnergies), bpWeightSum()
 {
   // initialize data structures
   // initialize(temperature, storeEnergies);
@@ -57,11 +58,18 @@ SC_DotPlot::add(const MyState& state)
 
 SC_DotPlot&
 SC_DotPlot::operator=(const SC_DotPlot& toCopy){
-  this->initialize(toCopy.getTemperature(), toCopy.getGasConstant(), toCopy.getMFE(), toCopy.getStoreEnergies());
-  const std::vector<int>& energies = toCopy.getEnergies();
-  this->Energies.assign(energies.begin(), energies.end());
-  this->setZ(toCopy.getZ());
+  SC_PartitionFunction::operator =(toCopy);
   this->bpWeightSum.insert(toCopy.bpWeightSum.begin(), toCopy.bpWeightSum.end());
+  return *this;
+}
+
+SC_DotPlot&
+SC_DotPlot::operator+=(const SC_DotPlot& toAdd){
+  SC_PartitionFunction::operator +=(toAdd);
+  const SC_DotPlot::DotPlot& dp_state = toAdd.getBasePairWeightSum();
+  for(auto it_dp = dp_state.begin(); it_dp != dp_state.end(); it_dp++){
+    this->bpWeightSum[it_dp->first] += it_dp->second;
+  }
   return *this;
 }
 
@@ -82,10 +90,11 @@ void
 SC_DotPlot::initialize(const double temperature,
                        const double gas_constant,
                        double mfe,
+                       bool   storeStructures,
                        const bool   storeEnergies)
 {
   // super class function
-  SC_PartitionFunction::initialize(temperature, gas_constant, mfe, storeEnergies);
+  SC_PartitionFunction::initialize(temperature, gas_constant, mfe, storeStructures, storeEnergies);
 
   // init local data structures
   bpWeightSum.clear();

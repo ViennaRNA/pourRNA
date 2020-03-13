@@ -235,6 +235,11 @@ option  "basin-size" -
 flag
 off
 
+option  "output-structures" -
+"Store all visited structures within the flooding procedure and write them to the given output file (only for debugging).\n"
+string
+optional
+
 option  "dot-plot" -
 "If provided, the dotPlot will be written to the given file name. \
 The dotPlot contains the base pair probabilities for all structures in the (filtered) energy landscape.\n"
