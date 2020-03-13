@@ -104,9 +104,9 @@ SC_PartitionFunction::operator+=(const SC_PartitionFunction& toAdd){
   if (!allSane)
     std::exit(EXIT_FAILURE);
   const std::vector<int>& energies = toAdd.getEnergies();
-  this->Energies.assign(energies.begin(), energies.end());
+  this->Energies.insert(this->Energies.end(),energies.begin(), energies.end());
   const std::vector<MyState>& structures = toAdd.getStructures();
-  this->Structures.assign(structures.begin(), structures.end());
+  this->Structures.insert(this->Structures.end(),structures.begin(), structures.end());
   double to_Z = this->getZ();
   to_Z += toAdd.getZ();
   this->setZ(to_Z);
