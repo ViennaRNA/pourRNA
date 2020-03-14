@@ -20,13 +20,15 @@ StatePairCollector::StatePairCollector(size_t                           currentM
                                        MapOfMaps*                       all_saddles,
                                        const char                       *sourceStructure,
                                        const char                       *targetStructure,
-                                       int                              maxBPdist) :
+                                       int                              maxBPdist,
+                                       bool                             storeStructures,
+                                       bool                             storeEnergies) :
   CurMinID(currentMinID), Minima(minima), Z(z), GradWalk(
     move_set, maxGradWalkHashed), NumberOfOuterStates(0), DiscoveredMinima(
     discoveredMinima), BoltzmannWeightTemperature(
     boltzmannWeightTemperature), GasConstant(gas_constant), MFE(mfe), All_Saddles(all_saddles),
   SourceStructure(sourceStructure), TargetStructure(targetStructure), MaxBPdist(maxBPdist),
-  MininaToIgnore()
+  MininaToIgnore(), StoreStructures(storeStructures), StoreEnergies(storeEnergies)
 {
   current_min = Minima.begin()->first.clone();
   CurrentStructure = vrna_db_from_ptable(current_min->getStructure());
@@ -117,16 +119,13 @@ StatePairCollector::add(vrna_fold_compound_t  *vc,
     neighborMinID = minEntry->second;
   }
 
-  //now we should free the memory of newMin, because it already exists in the minima list.
-  delete newMin;
-
   SC_PartitionFunction::PairID              pairID = {
     CurMinID, neighborMinID
   };
   SC_PartitionFunction::Z_Matrix::iterator  zIt = Z.find(pairID);
   if (zIt == Z.end())
     // vc->params->temperature is in Celsius.
-    Z[pairID].initialize(BoltzmannWeightTemperature, GasConstant, MFE);
+    Z[pairID].initialize(BoltzmannWeightTemperature, GasConstant, MFE, StoreStructures, StoreEnergies);
 
   if (firstIsSmaller) {
     // update Z matrix with basin state
@@ -137,4 +136,7 @@ StatePairCollector::add(vrna_fold_compound_t  *vc,
     Z[pairID].add(*state1);
     NumberOfOuterStates++;
   }
+
+  //now we should free the memory of newMin, because it already exists in the minima list.
+  delete newMin;
 }

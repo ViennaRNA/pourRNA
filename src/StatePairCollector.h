@@ -61,7 +61,9 @@ StatePairCollector(size_t                           currentMinID,
                    MapOfMaps*                       all_saddles,
                    const char                       *sourceStructure,
                    const char                       *targetStructure,
-                   int                              maxBPdist);
+                   int                              maxBPdist,
+                   bool                             storeStructures = false,
+                   bool                             storeEnergies = false);
 virtual
 ~StatePairCollector();
 /**
@@ -117,6 +119,11 @@ const char                      *SourceStructure;
 const char                      *TargetStructure;
 int                             MaxBPdist;
 HashSet::UnorderedHashSet       MininaToIgnore;
+
+//! variable decides if energies should be stored.
+bool                            StoreEnergies;
+//! variable decides if structures should be stored.
+bool                            StoreStructures;
 
 
 MapOfMaps*                      All_Saddles;

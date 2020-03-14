@@ -252,6 +252,8 @@ struct flooderInputParameter {
   char                      *SourceStructure;
   char                      *TargetStructure;
   double                    MFE; //used for pf scaling
+  bool                      storeEnergies;
+  bool                      storeStructures;
   ~flooderInputParameter()
   {
     if (CurrentMinimum != NULL)
@@ -321,7 +323,9 @@ floodBasin(vrna_fold_compound_t   *vc,
                          inParameter->All_Saddles,
                          inParameter->SourceStructure,
                          inParameter->TargetStructure,
-                         inParameter->MaxBPdist
+                         inParameter->MaxBPdist,
+                         inParameter->storeStructures,
+                         inParameter->storeEnergies
                          );
 
   // set the maximal energy as upper floodlevel.
@@ -1420,6 +1424,8 @@ main(int  argc,
                   inParameter->MaxEnergy        = maxEnergy;
                   inParameter->DeltaE           = deltaE;
                   inParameter->MFE              = mfeEnergy;
+                  inParameter->storeEnergies    = logEnergies;
+                  inParameter->storeStructures  = storeStructures;
 
                   // check if we can report the minima on-the-fly, or if we have to buffer them for macro-state filtering
                   if (inParameter->Filter == NULL) {
@@ -2107,13 +2113,16 @@ main(int  argc,
         for (size_t i=0; i < sortedMinimaIDs.size(); i++) {
           minIndex_from  = sortedMinimaIDs[i].first;
           for (size_t j=i+1; j < sortedMinimaIDs.size(); j++) {
-            minIndex_to  = sortedMinimaIDs[i].first;
-            mapping_file_minh << std::setw(LEAD) << std::to_string(i) << ", " << std::to_string(j) << ":" << std::endl;
-            const std::vector<MyState>& structures = z.at(SC_PartitionFunction::PairID(minIndex_from, minIndex_to)).getStructures();
-            for(size_t k = 0; k < structures.size(); k++){
-              char energy_kcal[10];
-              sprintf(energy_kcal,"%.2f", (structures[k].getEnergy()/100.0));
-              mapping_file_minh << structures[k].toString() << " " << energy_kcal << std::endl;
+            minIndex_to  = sortedMinimaIDs[j].first;
+            auto pf_it = z.find(SC_PartitionFunction::PairID(minIndex_from, minIndex_to));
+            if (pf_it != z.end()){
+              mapping_file_minh << std::setw(LEAD) << std::to_string(i) << ", " << std::to_string(j) << ":" << std::endl;
+              const std::vector<MyState>& structures = pf_it->second.getStructures();
+              for(size_t k = 0; k < structures.size(); k++){
+                char energy_kcal[10];
+                sprintf(energy_kcal,"%.2f", (structures[k].getEnergy()/100.0));
+                mapping_file_minh << structures[k].toString() << " " << energy_kcal << std::endl;
+              }
             }
           }
         }
