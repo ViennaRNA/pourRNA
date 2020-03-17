@@ -37,7 +37,7 @@ SC_PartitionFunction::add(const MyState& state)
   if (StoreEnergies)
     Energies.push_back(state.energy);
   if (StoreStructures)
-    Structures.push_back(*state.clone());
+    Structures.push_back(state);
 }
 
 
