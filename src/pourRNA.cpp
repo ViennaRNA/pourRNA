@@ -416,6 +416,8 @@ merge_results(std::vector<std::pair<flooderInputParameter *,
               std::unordered_map<size_t, std::vector<size_t> > &dynamicBestKFilterNeighborList,
               std::list<size_t> &toDo_List,
               std::unordered_set<size_t> &done_List,
+              std::unordered_map<MyState,  SC_DotPlot::DotPlot, PairHashTable::PairTableHash, PairHashTable::PairTableEqual> &dot_plot_per_basin,
+              bool writeDotplotPerBasin,
               bool verbose)
 {
   for (int k = 0; k < threadParameter->size(); ++k) {
@@ -468,6 +470,13 @@ merge_results(std::vector<std::pair<flooderInputParameter *,
         else
           dotplot[it->first] = it->second;
       }
+
+
+    }
+
+    if (writeDotplotPerBasin){
+      SC_DotPlot::DotPlot tmpDotPlot = ((SC_DotPlot *)outParameter->ScBasin)->getBasePairWeightSum();
+      dot_plot_per_basin[*inParameter->CurrentMinimum] = tmpDotPlot;
     }
 
     PairHashTable::HashTable&           localThreadMinima =
@@ -1122,6 +1131,8 @@ main(int  argc,
     SC_DotPlot::DotPlot dotplot;
     ////////
 
+    std::unordered_map<MyState,  SC_DotPlot::DotPlot, PairHashTable::PairTableHash, PairHashTable::PairTableEqual> dot_plot_per_basin;
+
     ///////////   ITERATE EXPLORATIVE LOCAL FLOODING  /////////////
 
     // initializing the DO list as queue, which contain all states that should be processed
@@ -1295,7 +1306,9 @@ main(int  argc,
                               minimum_index_and_basin_size,
                               z, dynamicBestK,
                               dynamicBestKFilterNeighborList,
-                              toDo_List, done_List, verbose);
+                              toDo_List, done_List, dot_plot_per_basin,
+                              writeDotplotPerBasin,
+                              verbose);
 
                 threadParameter->clear();
               }
@@ -1378,7 +1391,7 @@ main(int  argc,
                     new flooderOutputParameter();
 
                   // check what state collector to instantiate
-                  if (writeDotplot) {
+                  if (writeDotplot || writeDotplotPerBasin) {
                     outParameter->ScBasin = new SC_DotPlot(
                       temperatureForBoltzmannWeight,
                       gas_constant,
@@ -1719,6 +1732,31 @@ main(int  argc,
 
       for(size_t t = 0; t < forest.size(); t++){
         bt.free_tree(forest[t]);
+      }
+    }
+
+    if(writeDotplotPerBasin){
+      size_t min_id = 1;
+      double pf_basin;
+      for(auto it = sortedMinimaIDs.begin(); it != sortedMinimaIDs.end(); it++, min_id++){
+        size_t minIndex = it->first;
+        pf_basin = z.at(SC_PartitionFunction::PairID(minIndex, minIndex)).getZ();
+        SC_DotPlot::DotPlot dp = dot_plot_per_basin[*it->second];
+        for (SC_DotPlot::DotPlot::iterator bp2weight = dp.begin(); bp2weight != dp.end(); bp2weight++)
+            bp2weight->second /= pf_basin;
+
+        char * dp_file_name = (char *)dotPlotPerBasinFileName.c_str();
+        std::string dp_file_pattern = dotPlotPerBasinFileName +  "_%u.ps";
+        int res = asprintf(&dp_file_name, dp_file_pattern.c_str(), min_id);
+        if(res < 0) fprintf(stderr, "Error: failed to concatenate dotplot name!");
+
+        std::string mfe(mfeStructure);
+        char * mea_structure = SC_DotPlot::mea_from_dotplot(sequence, dp, vc->exp_params);
+        std::string mea(mea_structure);
+        free(mea_structure);
+        SC_DotPlot::writeDotPlot_PS_with_mfe_and_mea(dp_file_name, rnaSequence, dp, mfe, mea);
+
+        free(dp_file_name);
       }
     }
 
