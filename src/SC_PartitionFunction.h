@@ -124,7 +124,7 @@ getBoltzmannWeight(const MyState & state) const
 }
 
 double get_unscaled_Z() const{
-  return Z * getBoltzmannWeight(MFE*100.0);
+  return Z * std::exp(-MFE / kT);
 }
 
 
