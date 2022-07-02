@@ -69,7 +69,7 @@ printRateMatrix(const biu::MatrixSparseC<double>& R,
 }
 
 
-PairHashTable::HashTable *
+void
 printRateMatrixSorted(const biu::MatrixSparseC<double>& R,
                       const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs,
                       std::ostream& out)
@@ -77,7 +77,6 @@ printRateMatrixSorted(const biu::MatrixSparseC<double>& R,
   assertbiu(R.numColumns() == R.numRows(), "R is no square matrix");
   const size_t              LEAD = 6;
 
-  PairHashTable::HashTable  *states_and_output_ids = new PairHashTable::HashTable();
   out << std::scientific << "\n from : to\n";
   size_t                    nextMinID;
   // print only non-empty rates
@@ -86,8 +85,7 @@ printRateMatrixSorted(const biu::MatrixSparseC<double>& R,
     nextMinID = sortedMinimaIDs[c].first;
     out << "\n" << std::setw(LEAD) << c << " ["
         << /*minimaMap.at(nextMinID).toString()*/ sortedMinimaIDs[c].second->toString() << "] :";
-    states_and_output_ids->insert({ MyState(
-                                      /*minimaMap.at(nextMinID)*/ *sortedMinimaIDs[c].second), c });
+
     //std::vector<double> columnVector  = R.rowVec(nextMinID);
     bool                bPrinted      = false;
     size_t              rowMinID;
@@ -109,8 +107,6 @@ printRateMatrixSorted(const biu::MatrixSparseC<double>& R,
     }
   }
   out << std::endl;
-
-  return states_and_output_ids;
 }
 
 
@@ -374,7 +370,7 @@ printEquilibriumDensities(SC_PartitionFunction::Z_Matrix& z,
     if(pf_it != z.end())
       sumZb     += pf_it->second.getZ(); //z[SC_PartitionFunction::PairID(nextMinID, nextMinID)].getZ();
   }
-  double            equilibriumDensity;
+  double equilibriumDensity = 0;
   out << "(";
   std::stringstream sstmp;
   sstmp << std::scientific;
@@ -383,6 +379,8 @@ printEquilibriumDensities(SC_PartitionFunction::Z_Matrix& z,
     SC_PartitionFunction::Z_Matrix::const_iterator pf_it = z.find(SC_PartitionFunction::PairID(nextMinID, nextMinID));
     if(pf_it != z.end())
       equilibriumDensity  = pf_it->second.getZ() / sumZb; //z[SC_PartitionFunction::PairID(nextMinID, nextMinID)].getZ() / sumZb;
+    else
+      fprintf(stderr, "Error: output partition function for minimum ID %ld not found!\n", nextMinID);
     // print probability and state
     sstmp << equilibriumDensity;
     // print spacer if needed

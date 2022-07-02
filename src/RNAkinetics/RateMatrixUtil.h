@@ -45,7 +45,7 @@ printRateMatrix(const biu::MatrixSparseC<double>& R,
  * @param minima the indices and structures of the minima.
  * @param out the outputstream, default is std::cout.
  */
-PairHashTable::HashTable *
+void
 printRateMatrixSorted(const biu::MatrixSparseC<double>& R,
                       const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs,
                       std::ostream & out = std::cout);

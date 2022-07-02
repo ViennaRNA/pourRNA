@@ -16,7 +16,7 @@ StatePairCollector::StatePairCollector(size_t                           currentM
                                        double                           boltzmannWeightTemperature,
                                        double                           gas_constant,
                                        unsigned int                     move_set,
-                                       PairHashMap::HashMap*            all_saddles,
+                                       MapOfMaps*                       all_saddles,
                                        const char                       *sourceStructure,
                                        const char                       *targetStructure,
                                        int                              maxBPdist) :
@@ -93,16 +93,14 @@ StatePairCollector::add(vrna_fold_compound_t  *vc,
       std::pair<MyState, MyState>   state_pair  = std::pair<MyState, MyState>({ *a, *b });
 
       std::unique_lock<std::mutex>  mlock(mutex_);
-      auto                          pair_it = All_Saddles->find(state_pair);
-      if (pair_it == All_Saddles->end()) {
-        std::pair<MyState, MyState> state_pair2 = std::pair<MyState, MyState>({ *b, *a });
-        auto                        pair_it2    = All_Saddles->find(state_pair2);
-        if (pair_it2 == All_Saddles->end()) {
-          // add higher state as saddle
-          if (firstIsSmaller)
-            (*All_Saddles)[state_pair] = MyState(*state2);
-          else
-            (*All_Saddles)[state_pair] = MyState(*state1);
+      auto saddles_from_a = (*All_Saddles)[*a];
+      auto saddle_a_b = saddles_from_a.find(*b);
+      if (saddle_a_b == saddles_from_a.end()){
+        if (firstIsSmaller){
+           (*All_Saddles)[*a][*b] = MyState(*state2);
+        }
+        else{
+           (*All_Saddles)[*a][*b] = MyState(*state1);
         }
       }
       mlock.unlock();

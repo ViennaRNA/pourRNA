@@ -1364,7 +1364,7 @@ main(int  argc,
                   }
                   inParameter->TemperatureForBoltzmannWeight =
                     temperatureForBoltzmannWeight;
-		              inParameter->GasConstant = gas_constant;
+                  inParameter->GasConstant = gas_constant;
                   inParameter->Move_set         = move_set;
                   if(args_info.saddle_file_given || args_info.barrier_tree_file_given)
                     inParameter->All_Saddles      = &all_saddles;
@@ -1567,12 +1567,18 @@ main(int  argc,
 
     std::sort(sortedMinimaIDs.begin(), sortedMinimaIDs.end(), less_second());
 
+    PairHashTable::HashTable *sorted_min_and_output_ids = new PairHashTable::HashTable();
+    for (size_t c = 0; c < sortedMinimaIDs.size(); c++) {
+      (*sorted_min_and_output_ids)[*(sortedMinimaIDs[c].second)] = c;
+    }
+
+    BarriersTree bt;
+    std::vector<saddle_t> minimal_saddle_list;
+    if (args_info.barrier_tree_file_given)
+      minimal_saddle_list = bt.create_minimal_saddle_list(sortedMinimaIDs, *sorted_min_and_output_ids, all_saddles);
 
     // Print the Final rate matrix of the States in Final minima set.
-    // printRateMatrix (*final_Rate, final_minima, *transOut, true);
-    PairHashTable::HashTable *sorted_min_and_output_ids = printRateMatrixSorted(final_Rate,
-                                                                                     sortedMinimaIDs,
-                                                                                     *transOut);
+    printRateMatrixSorted(final_Rate, sortedMinimaIDs, *transOut);
     std::cout << std::endl;
     printEquilibriumDensities(z, sortedMinimaIDs, *transOut);
     std::cout << std::endl;
@@ -1642,24 +1648,25 @@ main(int  argc,
       fwrite(header.c_str(), sizeof(char), header.length(), saddle_file);
 
       for (auto it = all_saddles.begin(); it != all_saddles.end(); it++) {
-        const std::pair<MyState, MyState>&  from_to       = it->first;
-        double                              saddle_height = it->second.energy / 100.0;
-        std::string                         s1            = from_to.first.toString();
-        std::string                         s2            = from_to.second.toString();
-        std::string                         saddle        = it->second.toString();
-        int                                 id_from       = -1;
-        int                                 id_to         = -1;
-        try{
-          id_from = sorted_min_and_output_ids->at(from_to.first);
-          id_to   = sorted_min_and_output_ids->at(from_to.second);
-        }catch (std::exception & ex) {
-          // transition cannot exist e.g. if the final structure was reached, before the discovered minima have been flooded.
-          //std::cerr << "\n\n ERORR : " << ex.what() << "\n" << std::endl;
-        }
-        if (id_from != -1 && id_to != -1){
-            std::fprintf(saddle_file,"%d, %s, %.2f, %d, %s, %.2f, %s, %.2f\n", id_from,
-                                  s1.c_str(), from_to.first.energy / 100.0,
-                                  id_to, s2.c_str(), from_to.second.energy / 100.0, saddle.c_str(), saddle_height);
+        const MyState *state_from = &it->first;
+        for (auto it_to = it->second.begin(); it_to != it->second.end(); it_to++) {
+          const MyState *state_to = &it_to->first;
+          const MyState *state_saddle = &it_to->second;
+          double                              saddle_height = state_saddle->energy / 100.0;
+          std::string                         s1            = state_from->toString();
+          std::string                         s2            = state_to->toString();
+          std::string                         saddle        = state_saddle->toString();
+          int                                 id_from       = -1;
+          int                                 id_to         = -1;
+          auto id_from_it = sorted_min_and_output_ids->find(*state_from);
+          auto id_to_it   = sorted_min_and_output_ids->find(*state_to);
+          if (id_from_it != sorted_min_and_output_ids->end() && id_to_it != sorted_min_and_output_ids->end()){
+              id_from = id_from_it->second;
+              id_to = id_to_it->second;
+              std::fprintf(saddle_file,"%d, %s, %.2f, %d, %s, %.2f, %s, %.2f\n", id_from,
+                                    s1.c_str(), state_from->energy / 100.0,
+                                    id_to, s2.c_str(), state_to->energy / 100.0, saddle.c_str(), saddle_height);
+          }
         }
       }
       fclose(saddle_file);

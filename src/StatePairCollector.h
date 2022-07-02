@@ -13,7 +13,7 @@ extern "C" {
 #include <ViennaRNA/fold_vars.h>
 }
 #include "PairHashTable.h"
-#include "unordered_map"
+#include <unordered_map>
 #include <vector>
 #include "SC_PartitionFunction.h"
 #include <algorithm>
@@ -24,6 +24,8 @@ extern "C" {
 #include "Concurrent_Queue.h"
 
 #include "PairHashMap.h"
+#include "MyState.h"
+#include "SpookyHash/SpookyHashMap.h"
 #include <thread>
 #include <mutex>
 #include <condition_variable>
@@ -34,6 +36,9 @@ extern "C" {
  */
 class StatePairCollector {
 public:
+typedef std::unordered_map<MyState, std::unordered_map<MyState, MyState, SpookyHashMap::SpookyHashMapHash, SpookyHashMap::SpookyHashMapEqual>, SpookyHashMap::SpookyHashMapHash, SpookyHashMap::SpookyHashMapEqual> MapOfMaps;
+
+
 /**
  * ! Collects all pairs of neighbors between the currentMinID and other states.
  * Calculates the partition function.
@@ -52,7 +57,7 @@ StatePairCollector(size_t                           currentMinID,
                    double                           boltzmannWeightTemperature,
                    double                           gas_constant,
                    unsigned int                     move_set,
-                   PairHashMap::HashMap*            all_saddles,
+                   MapOfMaps*                       all_saddles,
                    const char                       *sourceStructure,
                    const char                       *targetStructure,
                    int                              maxBPdist);
@@ -85,7 +90,6 @@ getNumberOfOuterStates() const
   return NumberOfOuterStates;
 }
 
-
 private:
 // ! identifier of the current minimum.
 const size_t                    CurMinID;
@@ -112,7 +116,7 @@ int                             MaxBPdist;
 HashSet::UnorderedHashSet       MininaToIgnore;
 
 
-PairHashMap::HashMap*           All_Saddles;
+MapOfMaps*                      All_Saddles;
 MyState                         *current_min;
 
 std::mutex                      mutex_;
