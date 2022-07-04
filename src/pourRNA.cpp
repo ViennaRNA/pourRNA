@@ -754,7 +754,7 @@ main(int  argc,
   bool                    dynamicMaxToHash = false;
 
   double minh = -1;
-  std::vector<size_t> dynamic_minh_max_states;
+  std::vector<size_t> max_basins_max_states;
 
 
   //---------------------------- Parsing the Parameters---------------------------------
@@ -1074,10 +1074,10 @@ main(int  argc,
       minh = args_info.minh_arg;
     }
 
-    if (args_info.dynamic_minh_given) {
-      for (size_t i = 0; i < args_info.dynamic_minh_given; i++)
-        dynamic_minh_max_states.push_back((size_t)args_info.dynamic_minh_arg[i]);
-      std::sort(dynamic_minh_max_states.begin(), dynamic_minh_max_states.end(), std::greater<size_t>());
+    if (args_info.max_basins_given) {
+      for (size_t i = 0; i < args_info.max_basins_given; i++)
+        max_basins_max_states.push_back((size_t)args_info.max_basins_arg[i]);
+      std::sort(max_basins_max_states.begin(), max_basins_max_states.end(), std::greater<size_t>());
       if (minh < 0)
         minh = 0.0;
     }
@@ -1443,7 +1443,7 @@ main(int  argc,
                   inParameter->GasConstant = gas_constant;
                   inParameter->Move_set         = move_set;
 
-                  if(args_info.saddle_file_given || args_info.barrier_tree_file_given || args_info.minh_given || args_info.dynamic_minh_given)
+                  if(args_info.saddle_file_given || args_info.barrier_tree_file_given || args_info.minh_given || args_info.max_basins_given)
                     inParameter->All_Saddles      = &all_saddles;
                   else
                     inParameter->All_Saddles      = NULL;
@@ -1589,7 +1589,7 @@ main(int  argc,
     // filter minh -- requires saddles.
     BarriersTree bt;
     std::vector<saddle_t> minimal_saddle_list;
-    if (args_info.barrier_tree_file_given || args_info.minh_given || args_info.dynamic_minh_given)
+    if (args_info.barrier_tree_file_given || args_info.minh_given || args_info.max_basins_given)
       minimal_saddle_list = bt.create_minimal_saddle_list(sortedMinimaIDs, *sorted_min_and_output_ids, all_saddles);
 
     SC_PartitionFunction::Z_Matrix z_minh;
@@ -1614,7 +1614,7 @@ main(int  argc,
     std::unordered_map<MyState, SC_DotPlot::DotPlot, PairHashTable::PairTableHash, PairHashTable::PairTableEqual> tmp_dot_plot_per_basin;
 
 
-    if (dynamic_minh_max_states.size() > 1){
+    if (max_basins_max_states.size() > 1){
       change_output_filenames = true;
       if(args_info.dot_plot_given)
         tmp_dotPlotFileName = dotPlotFileName;
@@ -1632,7 +1632,7 @@ main(int  argc,
         tmp_barriers_prefix = barriers_prefix;
       if (args_info.binary_rates_file_given)
         tmp_binary_rates_file = binary_rates_file;
-      if(args_info.minh_given || args_info.dynamic_minh_given)
+      if(args_info.minh_given || args_info.max_basins_given)
         tmp_minh_mapping_file = minh_mapping_file;
       if (args_info.binary_rates_file_sparse_given)
          tmp_sparse_matrix_file = sparse_matrix_file;
@@ -1650,13 +1650,13 @@ main(int  argc,
     std::vector<std::pair<MyState*, std::vector<MyState*>>> minh_representatives_and_basins;
     do{
       size_t minh_max_states;
-      if (dynamic_minh_max_states.size() > 0){
-        minh_max_states  = dynamic_minh_max_states[0];
-        dynamic_minh_max_states.erase(dynamic_minh_max_states.begin());
+      if (max_basins_max_states.size() > 0){
+        minh_max_states  = max_basins_max_states[0];
+        max_basins_max_states.erase(max_basins_max_states.begin());
       }
       double adjusted_minh = minh;
-      if (args_info.minh_given || args_info.dynamic_minh_given){
-        if (args_info.dynamic_minh_given) {
+      if (args_info.minh_given || args_info.max_basins_given){
+        if (args_info.max_basins_given) {
           if (!change_output_filenames){
             adjusted_minh = bt.determin_optimal_min_h(minh_max_states, minimal_saddle_list, sortedMinimaIDs);
             if (verbose){
@@ -1683,7 +1683,7 @@ main(int  argc,
 
             char minh_string[50];
             sprintf(minh_string,"%.2f",adjusted_minh);
-            std::string appendix = "_dynamic_minh_max_"+std::to_string(minh_max_states)+"_minh_"+minh_string;
+            std::string appendix = "_max_basins_max_"+std::to_string(minh_max_states)+"_minh_"+minh_string;
             if(args_info.dot_plot_given){
               dotPlotFileName = tmp_dotPlotFileName;
               dotPlotFileName.append(appendix);
@@ -1727,7 +1727,7 @@ main(int  argc,
               binary_rates_file = tmp_binary_rates_file;
               binary_rates_file.append(appendix);
             }
-            if(args_info.minh_given || args_info.dynamic_minh_given){
+            if(args_info.minh_given || args_info.max_basins_given){
               minh_mapping_file = tmp_minh_mapping_file;
               minh_mapping_file.append(appendix);
             }
@@ -1758,7 +1758,7 @@ main(int  argc,
         }
 
         std::unordered_map<size_t, size_t> merge_state_map = bt.filter_minh(minimal_saddle_list, sortedMinimaIDs, adjusted_minh);
-        if (args_info.minh_given || args_info.dynamic_minh_given){
+        if (args_info.minh_given || args_info.max_basins_given){
           // merge partition functions and dotplots and assign new IDs!
           std::unordered_map<size_t, std::unordered_set<size_t>> representatives_and_clustered_ids;
           std::unordered_map<size_t, size_t> merged_min_to_representative;
@@ -1999,11 +1999,11 @@ main(int  argc,
       } else {
         *transOut << std::endl;
       }
-      if (args_info.minh_given || args_info.dynamic_minh_given){
+      if (args_info.minh_given || args_info.max_basins_given){
         char buffer[50];
         sprintf(buffer,"minh: %.2f", adjusted_minh);
       	*transOut << buffer << std::endl;
-        if (args_info.dynamic_minh_given)
+        if (args_info.max_basins_given)
           *transOut << "minh max. states: " << minh_max_states << std::endl;
       }
 
@@ -2079,7 +2079,7 @@ main(int  argc,
       std::cout << "The overall partition function is: "
                 << partitionFunctionLandscape << std::endl;
 
-      if(args_info.minh_given || args_info.dynamic_minh_given){
+      if(args_info.minh_given || args_info.max_basins_given){
         // write mapping file
         std::ofstream mapping_file_minh(minh_mapping_file);
         const size_t LEAD = 6;
@@ -2257,7 +2257,7 @@ main(int  argc,
 
       delete &final_Rate;
 
-    } while(dynamic_minh_max_states.size() > 0);
+    } while(max_basins_max_states.size() > 0);
 
     if(writeDotplotPerBasin){
       size_t min_id = 1;
