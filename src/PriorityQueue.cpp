@@ -202,6 +202,7 @@ PriorityQueue<QV, QK, CompareKey>::insert(MyState& s)
   // auto var = typename InternalPQtype::value_type (k, QV ());
   std::pair<QK, QV>                               keyValue  = std::pair<QK, QV> (k, QV());
   PriorityQueue<QV, QK, CompareKey>::InsertResult ir        = pq.insert(keyValue);
+
   return ir;
 }
 

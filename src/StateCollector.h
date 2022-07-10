@@ -18,9 +18,9 @@ class StateCollector
 {
 protected:
 //! the number of added States
-size_t  StateCount;
+size_t StateCount;
 //! the energy of the state with maximum energy in the basin.
-int     MaxEnergy;
+int MaxEnergy;
 
 public:
 StateCollector ();
@@ -49,10 +49,12 @@ getMaxEnergy()
   return (double)MaxEnergy / 100.0;
 }
 
-size_t get_state_count(){
+
+size_t
+get_state_count()
+{
   return StateCount;
 }
-
 };
 
 #endif /* STATECOLLECTOR_H_ */

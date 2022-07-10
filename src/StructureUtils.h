@@ -62,14 +62,16 @@ IsEqual(const short *a,
  * ! check if the sequence is a valid RNA sequence (only a|A|c|C|g|G|u|U is allowed)
  * @param sequence the RNA sequence.
  */
-static bool IsValidSequence(std::string sequence);
+static bool
+IsValidSequence(std::string sequence);
 
 
 /**
  * ! check if the structure is in valid dot-bracket notation (only .|(|) is allowed)
  * @param structure the dot-bracket structure.
  */
-static bool IsValidStructure(std::string structure);
+static bool
+IsValidStructure(std::string structure);
 };
 
 #endif /* STRUCTUREUTILS_H_ */

@@ -21,6 +21,7 @@ at(T& k)
 {
   std::unique_lock<std::mutex>  mlock(mutex_);
   U&                            res = hashmap.at(k);
+
   mlock.unlock();
   cond_.notify_one();
   return res;
@@ -31,7 +32,8 @@ typename
 std::unordered_map<T, U, V, W>::iterator
 find(T& k)
 {
-  std::unique_lock<std::mutex> mlock(mutex_);
+  std::unique_lock<std::mutex>                      mlock(mutex_);
+
   typename std::unordered_map<T, U, V, W>::iterator res = hashmap.find(k);
   mlock.unlock();
   cond_.notify_one();
@@ -43,7 +45,8 @@ typename
 std::unordered_map<T, U, V, W>::iterator
 begin() noexcept
 {
-  std::unique_lock<std::mutex> mlock(mutex_);
+  std::unique_lock<std::mutex>                      mlock(mutex_);
+
   typename std::unordered_map<T, U, V, W>::iterator res = hashmap.begin();
   mlock.unlock();
   cond_.notify_one();
@@ -55,7 +58,8 @@ typename
 std::unordered_map<T, U, V, W>::iterator
 end() noexcept
 {
-  std::unique_lock<std::mutex> mlock(mutex_);
+  std::unique_lock<std::mutex>                      mlock(mutex_);
+
   typename std::unordered_map<T, U, V, W>::iterator res = hashmap.end();
   mlock.unlock();
   cond_.notify_one();
@@ -66,6 +70,7 @@ void
 clear() noexcept
 {
   std::unique_lock<std::mutex> mlock(mutex_);
+
   hashmap.clear();
   mlock.unlock();
   cond_.notify_one();
@@ -77,6 +82,7 @@ operator[](T& k)
 {
   std::unique_lock<std::mutex>  mlock(mutex_);
   U&                            res = hashmap[k];
+
   mlock.unlock();
   cond_.notify_one();
   return res;
@@ -92,9 +98,9 @@ operator=(const std::unordered_map<T, U, V, W>& ump)
 
 
 private:
-std::unordered_map<T, U, V, W>  hashmap;
-std::mutex                      mutex_;
-std::condition_variable         cond_;
+std::unordered_map<T, U, V, W> hashmap;
+std::mutex mutex_;
+std::condition_variable cond_;
 };
 
 

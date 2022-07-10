@@ -91,8 +91,8 @@ WalkGradientHashed::walkGradient(vrna_fold_compound_t       *vc,
     for (vrna_move_t *m = tmp_neighbors; m->pos_5 != 0; m++)
       size_neighbors++;
 
-    size_t move_index = 0;
-    int move_energy;
+    size_t  move_index = 0;
+    int     move_energy;
     for (vrna_move_t *m = tmp_neighbors; m->pos_5 != 0; m++, move_index++) {
       move_energy             = vrna_eval_move_shift_pt(vc, m, currentStructure.structure); //vrna_eval_move_pt(vc, currentStructure.structure, m->pos_5, m->pos_3);
       currentNeighbor.energy  = currentStructure.energy + move_energy;

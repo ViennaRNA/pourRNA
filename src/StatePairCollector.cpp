@@ -17,7 +17,7 @@ StatePairCollector::StatePairCollector(size_t                           currentM
                                        double                           gas_constant,
                                        double                           mfe,
                                        unsigned int                     move_set,
-                                       MapOfMaps*                       all_saddles,
+                                       MapOfMaps                        *all_saddles,
                                        const char                       *sourceStructure,
                                        const char                       *targetStructure,
                                        int                              maxBPdist,
@@ -30,8 +30,8 @@ StatePairCollector::StatePairCollector(size_t                           currentM
   SourceStructure(sourceStructure), TargetStructure(targetStructure), MaxBPdist(maxBPdist),
   MininaToIgnore(), StoreStructures(storeStructures), StoreEnergies(storeEnergies)
 {
-  current_min = Minima.begin()->first.clone();
-  CurrentStructure = vrna_db_from_ptable(current_min->getStructure());
+  current_min       = Minima.begin()->first.clone();
+  CurrentStructure  = vrna_db_from_ptable(current_min->getStructure());
 }
 
 
@@ -72,10 +72,10 @@ StatePairCollector::add(vrna_fold_compound_t  *vc,
 
     //max base pair distance filter:
     if (MaxBPdist >= 0 && SourceStructure != NULL && TargetStructure != NULL) {
-      std::string new_min_str = newMin->toString();
-      const char *new_min_structure = new_min_str.c_str();
-      int dist_from_source  = vrna_bp_distance(new_min_structure, SourceStructure);
-      int dist_from_target  = vrna_bp_distance(new_min_structure, TargetStructure);
+      std::string new_min_str         = newMin->toString();
+      const char  *new_min_structure  = new_min_str.c_str();
+      int         dist_from_source    = vrna_bp_distance(new_min_structure, SourceStructure);
+      int         dist_from_target    = vrna_bp_distance(new_min_structure, TargetStructure);
       if (dist_from_source + dist_from_target > MaxBPdist) {
         MininaToIgnore.insert(MyState(*newMin));
         delete newMin;
@@ -92,23 +92,22 @@ StatePairCollector::add(vrna_fold_compound_t  *vc,
       DiscoveredMinima->push((*newMin));
 
     //add the first saddle for this new minimum
-    if(All_Saddles != NULL){
+    if (All_Saddles != NULL) {
       MyState                       *a          = current_min->clone();
       MyState                       *b          = newMin->clone();
       std::pair<MyState, MyState>   state_pair  = std::pair<MyState, MyState>({ *a, *b });
 
       std::unique_lock<std::mutex>  mlock(mutex_);
 
-      auto saddles_from_a = (*All_Saddles)[*a];
-      auto saddle_a_b = saddles_from_a.find(*b);
-      if (saddle_a_b == saddles_from_a.end()){
-        if (firstIsSmaller){
-           (*All_Saddles)[*a][*b] = MyState(*state2);
-        }
-        else{
-           (*All_Saddles)[*a][*b] = MyState(*state1);
-        }
+      auto                          saddles_from_a  = (*All_Saddles)[*a];
+      auto                          saddle_a_b      = saddles_from_a.find(*b);
+      if (saddle_a_b == saddles_from_a.end()) {
+        if (firstIsSmaller)
+          (*All_Saddles)[*a][*b] = MyState(*state2);
+        else
+          (*All_Saddles)[*a][*b] = MyState(*state1);
       }
+
       mlock.unlock();
       cond_.notify_one();
       delete a;
@@ -125,7 +124,11 @@ StatePairCollector::add(vrna_fold_compound_t  *vc,
   SC_PartitionFunction::Z_Matrix::iterator  zIt = Z.find(pairID);
   if (zIt == Z.end())
     // vc->params->temperature is in Celsius.
-    Z[pairID].initialize(BoltzmannWeightTemperature, GasConstant, MFE, StoreStructures, StoreEnergies);
+    Z[pairID].initialize(BoltzmannWeightTemperature,
+                         GasConstant,
+                         MFE,
+                         StoreStructures,
+                         StoreEnergies);
 
   if (firstIsSmaller) {
     // update Z matrix with basin state

@@ -32,7 +32,7 @@ class QueueValue
 public:
 
 MyState QueueState;
-size_t  StateID;
+size_t StateID;
 
 QueueValue ();
 ~QueueValue ();
@@ -44,8 +44,8 @@ QueueValue ();
 //! The top() element corresponds to the state with the smallest energy
 //! in the queue.
 template<class QV                           // QueueValue of PriorityQueue_ as template parameter
-         , class QK             = QueueKey  // QueueKey with default
-         , typename CompareKey  = std::less<QK> >
+         , class QK = QueueKey              // QueueKey with default
+         , typename CompareKey = std::less<QK> >
 // comparison operator
 class PriorityQueue
 {

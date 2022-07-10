@@ -53,10 +53,11 @@ public:
 //
 // SpookyHash: hash a single message in one call, produce 128-bit output
 //
-static void Hash128(const void  *message, // message to hash
-                    size_t      length,   // length of message in bytes
-                    uint64      *hash1,   // in/out: in seed 1, out hash value 1
-                    uint64      *hash2);  // in/out: in seed 2, out hash value 2
+static void
+Hash128(const void  *message,             // message to hash
+        size_t      length,               // length of message in bytes
+        uint64      *hash1,               // in/out: in seed 1, out hash value 1
+        uint64      *hash2);              // in/out: in seed 2, out hash value 2
 
 
 //
@@ -92,15 +93,17 @@ Hash32(const void *message,   // message to hash
 //
 // Init: initialize the context of a SpookyHash
 //
-void Init(uint64  seed1,    // any 64-bit value will do, including 0
-          uint64  seed2);   // different seeds produce independent hashes
+void
+Init(uint64 seed1,          // any 64-bit value will do, including 0
+     uint64 seed2);         // different seeds produce independent hashes
 
 
 //
 // Update: add a piece of a message to a SpookyHash state
 //
-void Update(const void  *message, // message fragment
-            size_t      length);  // length of message fragment in bytes
+void
+Update(const void *message,       // message fragment
+       size_t     length);        // length of message fragment in bytes
 
 
 //
@@ -111,8 +114,9 @@ void Update(const void  *message, // message fragment
 // The result is the same as if SpookyHash() had been called with
 // all the pieces concatenated into one message.
 //
-void Final(uint64 *hash1,   // out only: first 64 bits of hash value.
-           uint64 *hash2);  // out only: second 64 bits of hash value.
+void
+Final(uint64  *hash1,       // out only: first 64 bits of hash value.
+      uint64  *hash2);      // out only: second 64 bits of hash value.
 
 
 //
@@ -441,10 +445,11 @@ private:
 // keys, the cost crossover is at about 192 bytes.  The two modes were
 // held to the same quality bar.
 //
-static void Short(const void  *message, // message (array of bytes, not necessarily aligned)
-                  size_t      length,   // length of message (in bytes)
-                  uint64      *hash1,   // in/out: in the seed, out the hash value
-                  uint64      *hash2);  // in/out: in the seed, out the hash value
+static void
+Short(const void  *message,             // message (array of bytes, not necessarily aligned)
+      size_t      length,               // length of message (in bytes)
+      uint64      *hash1,               // in/out: in the seed, out the hash value
+      uint64      *hash2);              // in/out: in the seed, out the hash value
 
 
 // number of uint64's in internal state
@@ -465,10 +470,10 @@ static const size_t sc_bufSize = 2 * sc_blockSize;
 //
 static const uint64 sc_const = 0xdeadbeefdeadbeefLL;
 
-uint64              m_data[2 * sc_numVars]; // unhashed data, for partial messages
-uint64              m_state[sc_numVars];    // internal state of the hash
-size_t              m_length;               // total length of the input so far
-uint8               m_remainder;            // length of unhashed data stashed in m_data
+uint64 m_data[2 * sc_numVars];              // unhashed data, for partial messages
+uint64 m_state[sc_numVars];                 // internal state of the hash
+size_t m_length;                            // total length of the input so far
+uint8 m_remainder;                          // length of unhashed data stashed in m_data
 };
 
 #endif /* SPOOKYHASH_H_ */

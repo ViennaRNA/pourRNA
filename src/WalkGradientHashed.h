@@ -74,11 +74,11 @@ walk(vrna_fold_compound_t *vc,
 
 private:
 // ! to store the minimum for each visited state.
-SpookyHashMap::HashTable  State2min;
+SpookyHashMap::HashTable State2min;
 // ! the new foldcompound object==> replaces Energy parameters TODO
-vrna_fold_compound_t      *VC;
+vrna_fold_compound_t *VC;
 //! the move set for neighbor generation
-unsigned int              Move_set;
+unsigned int Move_set;
 };
 
 #endif /* WALKGRADIENTHASHED_H_ */

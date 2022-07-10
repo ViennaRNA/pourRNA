@@ -35,8 +35,8 @@ extern "C" {
 void
 printRateMatrix(const biu::MatrixSparseC<double>& R,
                 const std::unordered_map<size_t, MyState> & minima,
-                std::ostream & out = std::cout,
-                const bool noZeros = true);
+                std::ostream & out  = std::cout,
+                const bool noZeros  = true);
 
 
 /**
@@ -51,11 +51,12 @@ printRateMatrixSorted(const biu::MatrixSparseC<double>& R,
                       const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs,
                       std::ostream & out = std::cout);
 
+
 void
 printRateMatrixSortedWithMEA(const biu::MatrixSparseC<double>& R,
-                      const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs,
-                      const std::vector<std::string>& mea,
-                      std::ostream & out = std::cout);
+                             const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs,
+                             const std::vector<std::string>& mea,
+                             std::ostream & out = std::cout);
 
 
 /**
@@ -65,9 +66,11 @@ printRateMatrixSortedWithMEA(const biu::MatrixSparseC<double>& R,
  * @param R the rateMatrix.
  * @param minima the indices and structures of the minima.
  */
-void write_binary_rates_file(std::string rates_file,
-                             const biu::MatrixSparseC<double>& R,
-                             const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs);
+void
+write_binary_rates_file(std::string rates_file,
+                        const biu::MatrixSparseC<double>& R,
+                        const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs);
+
 
 /**
  *  ! write sparse binary rates file.
@@ -77,20 +80,23 @@ void write_binary_rates_file(std::string rates_file,
  * @param R the rateMatrix.
  * @param minima the indices and structures of the minima.
  */
-void write_binary_rates_file_sparse(std::string rates_file,
-                             const biu::MatrixSparseC<double>& R,
-                             const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs);
+void
+write_binary_rates_file_sparse(std::string rates_file,
+                               const biu::MatrixSparseC<double>& R,
+                               const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs);
+
 
 /**
  *  ! write a text file that contains the rate matrix and a text file that contains the structures.
  */
 void
 write_barriers_like_output(std::string file_prefix,
-                        const biu::MatrixSparseC<double>& R,
-                        const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs,
-                        std::string sequence,
-                        bool basin_size,
-                        std::unordered_map<size_t, size_t> minimum_index_and_basin_size);
+                           const biu::MatrixSparseC<double>& R,
+                           const std::vector<std::pair<size_t, MyState *> >& sortedMinimaIDs,
+                           std::string sequence,
+                           bool basin_size,
+                           std::unordered_map<size_t, size_t> minimum_index_and_basin_size);
+
 
 /**
  * ! print the number of non-zero rates.

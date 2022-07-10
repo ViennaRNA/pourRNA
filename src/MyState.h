@@ -83,7 +83,7 @@ setStructure(Structure structure)
 
 public:
 // ! energy in 10kcal/mol
-int       energy;
+int energy;
 // ! structure in pairTable format
 Structure structure;
 };

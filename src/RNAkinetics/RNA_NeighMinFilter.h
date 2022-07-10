@@ -99,10 +99,10 @@ class NeighMinCombinator : public NeighMinFilter
 protected:
 
 //! represents first filtering technique to be applied
-NeighMinFilter &  firstFilter;
+NeighMinFilter & firstFilter;
 
 //! represents second filtering technique to be applied
-NeighMinFilter &  secondFilter;
+NeighMinFilter & secondFilter;
 
 public:
 
@@ -162,9 +162,9 @@ class GreaterByZMatrix
 {
 private:
 //! the Z matrix to use for order decisions
-const SC_PartitionFunction::Z_Matrix &  Z;
+const SC_PartitionFunction::Z_Matrix & Z;
 //! index of current row in Z to access
-const size_t                            curRow;
+const size_t curRow;
 
 public:
 

@@ -26,11 +26,11 @@ public:
  * @param storeEnergies whether or not to store a list of all energies added
  * to the container
  */
-SC_PartitionFunction(double temperature = 37.0,
-                     double gas_constant = 0.00198717,
+SC_PartitionFunction(double temperature   = 37.0,
+                     double gas_constant  = 0.00198717,
                      double mfe = 0,
                      bool   storeStructures = false,
-                     bool   storeEnergies = false);
+                     bool   storeEnergies   = false);
 
 /*! sets the partition function sum to 0 and calculate the gasconstant (RT)
  * with the given temperature in degrees Celsius.
@@ -40,11 +40,12 @@ SC_PartitionFunction(double temperature = 37.0,
  * @param storeEnergies decides if the energies of all states will be stored in a vector.
  */
 virtual
-void initialize(const double  temperature,
-                const double  gas_constant,
-                double mfe,
-                bool   storeStructures = false,
-                const bool    storeEnergies = false);
+void
+initialize(const double temperature,
+           const double gas_constant,
+           double       mfe,
+           bool         storeStructures = false,
+           const bool   storeEnergies   = false);
 
 
 /*!
@@ -54,13 +55,16 @@ void initialize(const double  temperature,
 virtual void
 add(const MyState& state);
 
+
 virtual
 SC_PartitionFunction&
 operator=(const SC_PartitionFunction& toCopy);
 
+
 virtual
 SC_PartitionFunction&
 operator+=(const SC_PartitionFunction& toAdd);
+
 
 virtual
 ~SC_PartitionFunction ();
@@ -81,23 +85,38 @@ setZ(double z = 0)
   Z = z;
 }
 
-double getGasConstant() const{
+
+double
+getGasConstant() const
+{
   return GAS_CONSTANT_KCAL;
 }
 
-double getTemperature() const{
+
+double
+getTemperature() const
+{
   return Temperature;
 }
 
-double getMFE() const{
+
+double
+getMFE() const
+{
   return MFE;
 }
 
-bool getStoreEnergies() const{
+
+bool
+getStoreEnergies() const
+{
   return StoreEnergies;
 }
 
-bool getStoreStructures() const{
+
+bool
+getStoreStructures() const
+{
   return StoreStructures;
 }
 
@@ -107,8 +126,10 @@ double
 getBoltzmannWeight(double energy_dcal) const
 {
   // NOTE: need to divide energy from vienna package by 100 to get kcal/mol
-  return std::exp((MFE -energy_dcal / 100.0) / kT);
+  return std::exp((MFE - energy_dcal / 100.0) / kT);
 }
+
+
 /*!
  * Computes the Boltzmann weight of the given state based on its energy and
  * the currently used temperature. It is scaled by the minimum free energy!
@@ -123,7 +144,10 @@ getBoltzmannWeight(const MyState & state) const
   return getBoltzmannWeight((double)(state.energy));
 }
 
-double get_unscaled_Z() const{
+
+double
+get_unscaled_Z() const
+{
   return Z * std::exp(-MFE / kT);
 }
 
@@ -133,6 +157,7 @@ getEnergies() const
 {
   return Energies;
 }
+
 
 const std::vector<MyState>&
 getStructures() const
@@ -149,16 +174,16 @@ typedef std::pair<size_t, size_t> PairID;
 
 class UInt_Pair_Hash {
 public:
-  std::uint64_t
-  operator()(const std::pair<std::uint32_t, std::uint32_t>& k) const
-  {
-    std::uint64_t first = k.first;
-    std::uint64_t second = k.second;
+std::uint64_t
+operator()(const std::pair<std::uint32_t, std::uint32_t>& k) const
+{
+  std::uint64_t first   = k.first;
+  std::uint64_t second  = k.second;
 
-    first = first << 32;
-    first += second;
-    return first;
-  }
+  first = first << 32;
+  first += second;
+  return first;
+}
 };
 /*!
  * container for all partition functions to generate
@@ -170,23 +195,23 @@ typedef std::unordered_map<PairID, SC_PartitionFunction, UInt_Pair_Hash> Z_Matri
 
 protected:
 //! variable decides if energies should be stored.
-bool              StoreEnergies;
+bool StoreEnergies;
 //! stores the energies of the basin if requested.
-std::vector<int>  Energies;
+std::vector<int> Energies;
 //! variable decides if energies should be stored.
-bool              StoreStructures;
+bool StoreStructures;
 //! stores the structures of the basin if requested.
 std::vector<MyState> Structures;
 //! The partition function sum to fill;
-double            Z;
+double Z;
 //! Gas constant unit : kcal / (Kelvin * mol)
-const double      GAS_CONSTANT_KCAL;
+const double GAS_CONSTANT_KCAL;
 //! The temperature scaled "Boltzmann" constant used to compute Boltzmann weights.
-double            kT;
+double kT;
 //! The global minimum free energy -> used for scaling in kcal/mol
-double            MFE;
+double MFE;
 //! the temperature in Celsius.
-double            Temperature;
+double Temperature;
 };
 
 

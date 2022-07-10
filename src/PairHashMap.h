@@ -32,32 +32,32 @@ class PairHashMap
 public:
 
 class PairMapHash {
-  public:
-  std::uint64_t
-  operator()(const std::pair<MyState, MyState>& k) const
-  {
-    // std::string keyStructure = k.toString();
-    // return std::hash<std::string> () (keyStructure);
-    std::uint64_t first =
-      SpookyHash::Hash32(k.first.structure, sizeof(short) * (k.first.structure[0] + 1), 0);
-    std::uint64_t second =
-      SpookyHash::Hash32(k.second.structure, sizeof(short) * (k.second.structure[0] + 1), 0);
+public:
+std::uint64_t
+operator()(const std::pair<MyState, MyState>& k) const
+{
+  // std::string keyStructure = k.toString();
+  // return std::hash<std::string> () (keyStructure);
+  std::uint64_t first =
+    SpookyHash::Hash32(k.first.structure, sizeof(short) * (k.first.structure[0] + 1), 0);
+  std::uint64_t second =
+    SpookyHash::Hash32(k.second.structure, sizeof(short) * (k.second.structure[0] + 1), 0);
 
-    first = first << 32;
-    first += second;
-    return first;
-  }
+  first = first << 32;
+  first += second;
+  return first;
+}
 };
 
 class PairMapEqual {
 public:
-  bool
-  operator()(const std::pair<MyState, MyState>& lhs,
-             const std::pair<MyState, MyState>& rhs) const
-  {
-    return StructureUtils::IsEqual(lhs.first.structure, rhs.first.structure) &&
-           StructureUtils::IsEqual(lhs.second.structure, rhs.second.structure);
-  }
+bool
+operator()(const std::pair<MyState, MyState>& lhs,
+           const std::pair<MyState, MyState>& rhs) const
+{
+  return StructureUtils::IsEqual(lhs.first.structure, rhs.first.structure) &&
+         StructureUtils::IsEqual(lhs.second.structure, rhs.second.structure);
+}
 };
 typedef Concurrent_Pair_Hash_Map<std::pair<MyState,
                                            MyState>, MyState, PairMapHash, PairMapEqual> HashMap;

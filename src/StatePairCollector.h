@@ -36,7 +36,11 @@ extern "C" {
  */
 class StatePairCollector {
 public:
-typedef std::unordered_map<MyState, std::unordered_map<MyState, MyState, SpookyHashMap::SpookyHashMapHash, SpookyHashMap::SpookyHashMapEqual>, SpookyHashMap::SpookyHashMapHash, SpookyHashMap::SpookyHashMapEqual> MapOfMaps;
+typedef std::unordered_map<MyState, std::unordered_map<MyState, MyState,
+                                                       SpookyHashMap::SpookyHashMapHash,
+                                                       SpookyHashMap::SpookyHashMapEqual>,
+                           SpookyHashMap::SpookyHashMapHash,
+                           SpookyHashMap::SpookyHashMapEqual> MapOfMaps;
 
 
 /**
@@ -58,12 +62,12 @@ StatePairCollector(size_t                           currentMinID,
                    double                           gas_constant,
                    double                           mfe,
                    unsigned int                     move_set,
-                   MapOfMaps*                       all_saddles,
+                   MapOfMaps                        *all_saddles,
                    const char                       *sourceStructure,
                    const char                       *targetStructure,
                    int                              maxBPdist,
                    bool                             storeStructures = false,
-                   bool                             storeEnergies = false);
+                   bool                             storeEnergies   = false);
 virtual
 ~StatePairCollector();
 /**
@@ -93,44 +97,45 @@ getNumberOfOuterStates() const
   return NumberOfOuterStates;
 }
 
+
 private:
 // ! identifier of the current minimum.
-const size_t                    CurMinID;
+const size_t CurMinID;
 // ! Temperature for the Boltzmann weight (not the structure energies)
-double                          BoltzmannWeightTemperature; /* in Celsius */
-double                          GasConstant; /* in kcal/(K*mol) */
+double BoltzmannWeightTemperature;            /* in Celsius */
+double GasConstant;                           /* in kcal/(K*mol) */
 // ! global minimum free energy - used for pf scaling
-double                          MFE;
+double MFE;
 // ! minima map: structure, index.
-PairHashTable::HashTable&       Minima;
+PairHashTable::HashTable& Minima;
 // ! the partition funcion matrix.
 SC_PartitionFunction::Z_Matrix& Z;
 // ! minimum identification for this state pair
-WalkGradientHashed              GradWalk;
+WalkGradientHashed GradWalk;
 // ! handle minima id for outer states to save gradient walks.
-PairHashTable::HashTable        HandledOuterStates;
+PairHashTable::HashTable HandledOuterStates;
 // ! number of states which are not in basin, but in the contactsurface.
-size_t                          NumberOfOuterStates;
+size_t NumberOfOuterStates;
 // ! unique minima queue (ready to flood)
-Concurrent_Queue<MyState>       *DiscoveredMinima;
+Concurrent_Queue<MyState> *DiscoveredMinima;
 
-char                            *CurrentStructure;
-const char                      *SourceStructure;
-const char                      *TargetStructure;
-int                             MaxBPdist;
-HashSet::UnorderedHashSet       MininaToIgnore;
+char *CurrentStructure;
+const char *SourceStructure;
+const char *TargetStructure;
+int MaxBPdist;
+HashSet::UnorderedHashSet MininaToIgnore;
 
 //! variable decides if energies should be stored.
-bool                            StoreEnergies;
+bool StoreEnergies;
 //! variable decides if structures should be stored.
-bool                            StoreStructures;
+bool StoreStructures;
 
 
-MapOfMaps*                      All_Saddles;
-MyState                         *current_min;
+MapOfMaps *All_Saddles;
+MyState *current_min;
 
-std::mutex                      mutex_;
-std::condition_variable         cond_;
+std::mutex mutex_;
+std::condition_variable cond_;
 };
 
 #endif /* STATEPAIRCOLLECTOR_H_ */

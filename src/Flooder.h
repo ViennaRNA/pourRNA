@@ -58,13 +58,13 @@ virtual
 
 private:
 //! the maximal energy all states should be below in 10cal/mol
-int           MaxEnergy;
+int MaxEnergy;
 //! the maximal number of elements the underlying queue is allowed to contain
-size_t        MaxStatesToQueue;
+size_t MaxStatesToQueue;
 //! states that where considered during the flooding.
-size_t        ProcessedStates;
+size_t ProcessedStates;
 //! the move set for neighbor generation
-unsigned int  Move_set;
+unsigned int Move_set;
 public:
 /**
  * ! returns the final energy threshold that has been changed if

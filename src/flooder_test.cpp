@@ -135,7 +135,7 @@ main(int  argc,
 
     //print stopwatch:
     std::cout << "finished computation at " << std::ctime(&end_time) << "elapsed time: " <<
-    elapsed_seconds.count()
+      elapsed_seconds.count()
               << "s\n";
   }
   catch (std::exception & e)

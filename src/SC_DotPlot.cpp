@@ -19,10 +19,11 @@ extern "C" {
 
 SC_DotPlot::SC_DotPlot (const double  temperature,
                         const double  gas_constant,
-                        double mfe,
-                        bool   storeStructures,
+                        double        mfe,
+                        bool          storeStructures,
                         const bool    storeEnergies) :
-  SC_PartitionFunction(temperature, gas_constant, mfe, storeStructures, storeEnergies), bpWeightSum()
+  SC_PartitionFunction(temperature, gas_constant, mfe, storeStructures, storeEnergies),
+  bpWeightSum()
 {
   // initialize data structures
   // initialize(temperature, storeEnergies);
@@ -56,22 +57,26 @@ SC_DotPlot::add(const MyState& state)
   }
 }
 
+
 SC_DotPlot&
-SC_DotPlot::operator=(const SC_DotPlot& toCopy){
+SC_DotPlot::operator=(const SC_DotPlot& toCopy)
+{
   SC_PartitionFunction::operator =(toCopy);
   this->bpWeightSum.insert(toCopy.bpWeightSum.begin(), toCopy.bpWeightSum.end());
   return *this;
 }
 
+
 SC_DotPlot&
-SC_DotPlot::operator+=(const SC_DotPlot& toAdd){
+SC_DotPlot::operator+=(const SC_DotPlot& toAdd)
+{
   SC_PartitionFunction::operator +=(toAdd);
   const SC_DotPlot::DotPlot& dp_state = toAdd.getBasePairWeightSum();
-  for(auto it_dp = dp_state.begin(); it_dp != dp_state.end(); it_dp++){
+  for (auto it_dp = dp_state.begin(); it_dp != dp_state.end(); it_dp++)
     this->bpWeightSum[it_dp->first] += it_dp->second;
-  }
   return *this;
 }
+
 
 SC_DotPlot::DotPlot
 SC_DotPlot::getBasePairProbabilities() const
@@ -89,8 +94,8 @@ SC_DotPlot::~SC_DotPlot ()
 void
 SC_DotPlot::initialize(const double temperature,
                        const double gas_constant,
-                       double mfe,
-                       bool   storeStructures,
+                       double       mfe,
+                       bool         storeStructures,
                        const bool   storeEnergies)
 {
   // super class function
@@ -178,12 +183,13 @@ SC_DotPlot::writeDotPlot_PS(const std::string & absoluteFileName,
   return allSane;
 }
 
+
 bool
-SC_DotPlot::writeDotPlot_PS_with_mfe_and_mea(const std::string & absoluteFileName,
-                            const std::string & sequence,
-                            const DotPlot &     dotPlot,
-                            const std::string & mfe_structure,
-                            const std::string & mea_structure)
+SC_DotPlot::writeDotPlot_PS_with_mfe_and_mea(const std::string &  absoluteFileName,
+                                             const std::string &  sequence,
+                                             const DotPlot &      dotPlot,
+                                             const std::string &  mfe_structure,
+                                             const std::string &  mea_structure)
 {
   // check if filename given
   if (absoluteFileName.empty())
@@ -194,8 +200,8 @@ SC_DotPlot::writeDotPlot_PS_with_mfe_and_mea(const std::string & absoluteFileNam
     return false;
 
   // allocate data structure for vienna package
-  vrna_plist_t *bpProbVienna = (vrna_plist_t *)space((dotPlot.size() + 1) * sizeof(plist));
-  vrna_plist_t mfeViennaDummy;
+  vrna_plist_t  *bpProbVienna = (vrna_plist_t *)space((dotPlot.size() + 1) * sizeof(plist));
+  vrna_plist_t  mfeViennaDummy;
 
   // fill dummy content = end of list marking entry
   mfeViennaDummy.i    = 0;
@@ -233,27 +239,27 @@ SC_DotPlot::writeDotPlot_PS_with_mfe_and_mea(const std::string & absoluteFileNam
 
     // write dot plot postscript file and check for success
     allSane = (1 == PS_dot_plot_list(seqChar, fileChar, bpProbVienna, &mfeViennaDummy, emptyChar));
-    if (allSane){
-      std::string line;
-      std::ifstream infile_s(fileChar);
+    if (allSane) {
+      std::string       line;
+      std::ifstream     infile_s(fileChar);
       std::stringstream infile;
       infile << infile_s.rdbuf();
       infile_s.close();
 
-      std::fstream outfile (fileChar, std::fstream::binary | std::fstream::in | std::fstream::out);
-      long position = 0;
-      while (std::getline(infile, line))
-      {
+      std::fstream      outfile(fileChar,
+                                std::fstream::binary | std::fstream::in | std::fstream::out);
+      long              position = 0;
+      while (std::getline(infile, line)) {
         // find box definition and skip 4 lines
         if (line.rfind("/box {", 0) == 0) {
-          for(int i = 0; i < 4; i++){
+          for (int i = 0; i < 4; i++)
             std::getline(infile, line);
-          }
           position = infile.tellg();
           outfile.seekp(position, std::fstream::beg);
 
           std::string rect_definitions;
-          rect_definitions.append("          /rect_flat { %size x y box - draws box centered on x,y\n");
+          rect_definitions.append(
+            "          /rect_flat { %size x y box - draws box centered on x,y\n");
           rect_definitions.append("             2 index 0.5 mul sub            % x -= 0.5\n");
           rect_definitions.append("             exch 2 index 0.5 mul sub exch  % y -= 0.5\n");
           rect_definitions.append("             3 -1 roll dup 0.5 mul rectfill\n");
@@ -264,7 +270,7 @@ SC_DotPlot::writeDotPlot_PS_with_mfe_and_mea(const std::string & absoluteFileNam
           rect_definitions.append("             3 1 roll\n");
           rect_definitions.append("             len exch sub 1 add rect_flat\n");
           rect_definitions.append("             0 0 0 setrgbcolor\n");
-          rect_definitions.append( "          } bind def\n");
+          rect_definitions.append("          } bind def\n");
 
           rect_definitions.append("          /lboxu {\n");
           rect_definitions.append("             1 0 0 setrgbcolor\n");
@@ -275,29 +281,27 @@ SC_DotPlot::writeDotPlot_PS_with_mfe_and_mea(const std::string & absoluteFileNam
 
           outfile << rect_definitions;
 
-          short *mfe_pt = vrna_ptable(mfe_structure.c_str());
-          short *mea_pt = vrna_ptable(mea_structure.c_str());
-          std::string one_sf = "1.0000000";
+          short             *mfe_pt = vrna_ptable(mfe_structure.c_str());
+          short             *mea_pt = vrna_ptable(mea_structure.c_str());
+          std::string       one_sf  = "1.0000000";
           std::stringstream out_lines;
 
-          while (std::getline(infile, line)){
-            if (line.rfind("showpage",0) == 0) {
+          while (std::getline(infile, line)) {
+            if (line.rfind("showpage", 0) == 0) {
               position = infile.tellg();
-              outfile.seekp(position + rect_definitions.length() -9, std::fstream::beg);
-              for (int i = 1; i <= mfe_pt[0]; i++) {
-                if (mfe_pt[i] > i) {
-                  out_lines  << i << " " << mfe_pt[i] << " " << one_sf << " " << "lboxu\n";
-                }
-              }
+              outfile.seekp(position + rect_definitions.length() - 9, std::fstream::beg);
+              for (int i = 1; i <= mfe_pt[0]; i++)
+                if (mfe_pt[i] > i)
+                  out_lines << i << " " << mfe_pt[i] << " " << one_sf << " " << "lboxu\n";
 
-              for (int i = 1; i <= mea_pt[0]; i++) {
-                if (mea_pt[i] > i) {
+              for (int i = 1; i <= mea_pt[0]; i++)
+                if (mea_pt[i] > i)
                   out_lines << i << " " << mea_pt[i] << " " << one_sf << " " << "lboxl\n";
-                }
-              }
+
               std::string oline = out_lines.str();
               outfile << oline;
             }
+
             outfile << line + "\n"; // append overwritten lines.
           }
           free(mfe_pt);
@@ -308,6 +312,7 @@ SC_DotPlot::writeDotPlot_PS_with_mfe_and_mea(const std::string & absoluteFileNam
       outfile.close();
     }
   }
+
   // free memory
   free(bpProbVienna);
 
@@ -315,24 +320,30 @@ SC_DotPlot::writeDotPlot_PS_with_mfe_and_mea(const std::string & absoluteFileNam
   return allSane;
 }
 
-char * SC_DotPlot::mea_from_dotplot(const std::string & sequence, const DotPlot &     dotPlot, vrna_exp_param_t  *params){
-  double weight;
-  size_t nbp, n;
+
+char *
+SC_DotPlot::mea_from_dotplot(const std::string &  sequence,
+                             const DotPlot &      dotPlot,
+                             vrna_exp_param_t     *params)
+{
+  double    weight;
+  size_t    nbp, n;
+
   nbp = dotPlot.size();
-  vrna_ep_t *plist = (vrna_ep_t*)calloc(nbp+1, sizeof(vrna_ep_t));
+  vrna_ep_t *plist = (vrna_ep_t *)calloc(nbp + 1, sizeof(vrna_ep_t));
   n = 0;
-  for (auto bp2weight = dotPlot.begin(); bp2weight != dotPlot.end(); bp2weight++){
-      plist[n].i = bp2weight->first.first +1;
-      plist[n].j = bp2weight->first.second +1;
-      plist[n].p = bp2weight->second;
-      plist[n].type = VRNA_PLIST_TYPE_BASEPAIR;
-      n++;
+  for (auto bp2weight = dotPlot.begin(); bp2weight != dotPlot.end(); bp2weight++) {
+    plist[n].i    = bp2weight->first.first + 1;
+    plist[n].j    = bp2weight->first.second + 1;
+    plist[n].p    = bp2weight->second;
+    plist[n].type = VRNA_PLIST_TYPE_BASEPAIR;
+    n++;
   }
   // list terminator
-  plist[n].i = 0;
-  plist[n].j = 0;
-  plist[n].p = 0;
-  char *mea_structure = (char *)calloc(sequence.length()+1, sizeof(char));
+  plist[n].i  = 0;
+  plist[n].j  = 0;
+  plist[n].p  = 0;
+  char  *mea_structure = (char *)calloc(sequence.length() + 1, sizeof(char));
   //vrna_exp_param_t  *params = vrna_exp_params(NULL);
   memset(mea_structure, '.', sequence.length() * sizeof(char));
   mea_structure[sequence.length()] = '\0';

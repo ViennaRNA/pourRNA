@@ -12,7 +12,7 @@
 #include <map>
 
 extern "C" {
-  #include <ViennaRNA/params.h>
+#include <ViennaRNA/params.h>
 }
 
 /**
@@ -37,9 +37,9 @@ public:
  */
 SC_DotPlot (const double  temperature,
             const double  gas_constant,
-            double mfe,
-            bool   storeStructures = false,
-            const bool    storeEnergies = false);
+            double        mfe,
+            bool          storeStructures = false,
+            const bool    storeEnergies   = false);
 
 /*! resets the data structure and calculate the gasconstant (RT)
  * with the given temperature in degrees Celsius.
@@ -50,9 +50,9 @@ virtual
 void
 initialize(const double temperature,
            const double gas_constant,
-           double mfe,
-           bool   storeStructures = false,
-           const bool   storeEnergies = false);
+           double       mfe,
+           bool         storeStructures = false,
+           const bool   storeEnergies   = false);
 
 
 /*!
@@ -64,13 +64,16 @@ virtual
 void
 add(const MyState& state);
 
+
 virtual
 SC_DotPlot&
 operator=(const SC_DotPlot& toCopy);
 
+
 virtual
 SC_DotPlot&
 operator+=(const SC_DotPlot& toAdd);
+
 
 /*! destruction
  */
@@ -128,6 +131,7 @@ writeDotPlot_PS(const std::string & absoluteFileName,
                 const std::string & sequence,
                 const DotPlot &     dotPlot);
 
+
 /*! Writes the dot plot in vienna postscript format to file. The mfe and mea
  * structure are printed in the lower triangle (red and blue respectively).
  * The base pair probabilities are plotted in the upper triangle.
@@ -141,14 +145,18 @@ writeDotPlot_PS(const std::string & absoluteFileName,
  */
 static
 bool
-writeDotPlot_PS_with_mfe_and_mea(const std::string & absoluteFileName,
-                            const std::string & sequence,
-                            const DotPlot &     dotPlot,
-                            const std::string & mfe_structure,
-                            const std::string & mea_structure);
+writeDotPlot_PS_with_mfe_and_mea(const std::string &  absoluteFileName,
+                                 const std::string &  sequence,
+                                 const DotPlot &      dotPlot,
+                                 const std::string &  mfe_structure,
+                                 const std::string &  mea_structure);
+
 
 static
-char * mea_from_dotplot(const std::string & sequence, const DotPlot &     dotPlot, vrna_exp_param_t  *params);
+char *
+mea_from_dotplot(const std::string &  sequence,
+                 const DotPlot &      dotPlot,
+                 vrna_exp_param_t     *params);
 
 
 /*! Reads the dot plot information from a postscript file produced by the

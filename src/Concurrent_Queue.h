@@ -21,6 +21,7 @@ T
 pop()
 {
   std::unique_lock<std::mutex>  mlock(mutex_);
+
   while (queue_.empty())
     cond_.wait(mlock);
   auto                          val = queue_.front();
@@ -33,6 +34,7 @@ void
 pop(T& item)
 {
   std::unique_lock<std::mutex> mlock(mutex_);
+
   while (queue_.empty())
     cond_.wait(mlock);
   item = queue_.front();
@@ -44,6 +46,7 @@ void
 push(const T& item)
 {
   std::unique_lock<std::mutex> mlock(mutex_);
+
   queue_.push(item);
   mlock.unlock();
   cond_.notify_one();
@@ -55,6 +58,7 @@ empty()
 {
   std::unique_lock<std::mutex>  mlock(mutex_);
   bool                          status = queue_.empty();
+
   mlock.unlock();
   cond_.notify_one();
   return status;
@@ -65,6 +69,7 @@ void
 clear()
 {
   std::unique_lock<std::mutex> mlock(mutex_);
+
   while (!queue_.empty())
     queue_.pop();
   mlock.unlock();
@@ -72,14 +77,15 @@ clear()
 }
 
 
-Concurrent_Queue()                                          = default;
-Concurrent_Queue(const Concurrent_Queue&)                   = delete; // disable copying
-Concurrent_Queue&       operator=(const Concurrent_Queue&)  = delete; // disable assignment
+Concurrent_Queue()                        = default;
+Concurrent_Queue(const Concurrent_Queue&) = delete;                   // disable copying
+Concurrent_Queue&
+operator=(const Concurrent_Queue&) = delete;                          // disable assignment
 
 
 private:
-std::queue<T>           queue_;
-std::mutex              mutex_;
+std::queue<T> queue_;
+std::mutex mutex_;
 std::condition_variable cond_;
 };
 
