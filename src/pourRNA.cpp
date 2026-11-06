@@ -8,6 +8,7 @@
  *
  */
 
+#include <cstring>
 #include <fstream>
 #include <sstream>
 #include <unordered_set>

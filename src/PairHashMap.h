@@ -9,6 +9,7 @@
 #define PAIRHASHMAP_H_
 
 #include <ViennaRNA/move_set.h>
+#include <cstdint>
 #include <unordered_map>
 #include <unordered_set>
 

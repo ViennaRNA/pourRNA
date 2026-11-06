@@ -7,6 +7,7 @@
 
 #include "SC_DotPlot.h"
 
+#include <cstring>
 #include <sstream>
 #include <fstream>
 extern "C" {

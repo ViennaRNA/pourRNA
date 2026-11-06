@@ -9,6 +9,7 @@
 #define SC_PARTITIONFUNCTION_H_
 
 #include <cmath>
+#include <cstdint>
 #include <unordered_map>
 #include <vector>
 #include "StateCollector.h"
@@ -175,7 +176,7 @@ typedef std::pair<size_t, size_t> PairID;
 class UInt_Pair_Hash {
 public:
 std::uint64_t
-operator()(const std::pair<std::uint32_t, std::uint32_t>& k) const
+operator()(const PairID& k) const
 {
   std::uint64_t first   = k.first;
   std::uint64_t second  = k.second;

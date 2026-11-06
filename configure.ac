@@ -3,7 +3,7 @@ m4_define([pourRNA_version_major], [1])
 m4_define([pourRNA_version_minor], [2])
 m4_define([pourRNA_version_patch], [0])
 
-AC_PREREQ([2.59])
+AC_PREREQ([2.64])
 # 5 argument version only available with aclocal >= 2.64
 AC_INIT( [pourRNA], pourRNA_version_major.pourRNA_version_minor.pourRNA_version_patch, [], [pourRNA], [http://www.bioinf.uni-freiburg.de] )
 
@@ -36,7 +36,6 @@ OLD_CFLAGS=$CFLAGS
 AC_PROG_CXX
 AC_PROG_CC
 
-AC_CHECK_PROG([HAVE_PKG_CONFIG], [pkg-config], [yes],[no])
 
 # reset compiler flags to initial flags
 CXXFLAGS=$OLD_CXXFLAGS
@@ -48,12 +47,19 @@ AM_INIT_AUTOMAKE([1.9])
 # use the C++ compiler for the following checks
 AC_LANG([C++])
 
-# include openMP for multithreading.
-dnl Check for OpenMP and prepare flags
-#AX_OPENMP([],[]) # not used
+# pkg-config is used to obtain the flags the ViennaRNA library was built with
+PKG_PROG_PKG_CONFIG
 
-#AC_SUBST(OPENMP_CXXFLAGS)
-AC_SUBST(AM_CXXFLAGS,"$OPENMP_CXXFLAGS")
+# OpenMP flags of the C++ compiler; only needed as fallback when linking a
+# libRNA that was built with OpenMP but no RNAlib2.pc is available
+AC_OPENMP
+
+# gengetopt is only needed when the command line parser is not yet generated
+# (e.g. git checkout); release tarballs ship pourRNA_cmdl.c/.h
+AC_CHECK_PROG([GENGETOPT], [gengetopt], [gengetopt], [no])
+if test "x$GENGETOPT" = "xno" && test ! -f "$srcdir/src/pourRNA_cmdl.c"; then
+	AC_MSG_ERROR([gengetopt is required to build from a source checkout (src/pourRNA_cmdl.c is missing). Please install gengetopt.])
+fi
 
 ###############################################################################
 ###############################################################################
@@ -92,17 +98,15 @@ fi
 # Vienna RNA package library path support, if not installed in usual directories
 ###############################################################################
 AC_ARG_WITH([RNA],
-	[AC_HELP_STRING(
-	    [--with-RNA=PREFIX],
-	    [alternative prefix path to Vienna RNA library]
-	  )],
-	  [RNAPATHSET=1],
-	  [RNAPATHSET=0]
+	[AS_HELP_STRING([--with-RNA=PREFIX],
+	    [alternative prefix path to Vienna RNA library])],
+	[RNAPATHSET=1],
+	[RNAPATHSET=0]
 )
-if test  $RNAPATHSET = 1 ; then
-	# set compiler and linker flags if needed
-	AM_CXXFLAGS="-I$with_RNA/include $AM_CXXFLAGS"
-	AM_LDFLAGS="-L$with_RNA/lib $AM_LDFLAGS"
+if test "$RNAPATHSET" = "1" ; then
+	# let pkg-config find RNAlib2.pc of the given installation first
+	PKG_CONFIG_PATH="$with_RNA/lib/pkgconfig:$with_RNA/lib64/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+	export PKG_CONFIG_PATH
 fi
 
 ###############################################################################
@@ -114,48 +118,82 @@ fi
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_SIZE_T
 
-# Checks for header files.
-AC_HEADER_STDC
-
 
 ###############################################################################
 # BEGIN VIENNA CHECK
 ###############################################################################
-# check for Vienna RNA headers
-AC_MSG_CHECKING([for the Vienna RNA package >=2.4.11 headers])
+# 1) preferred: ask pkg-config for the exact flags libRNA was built with
+#    (covers OpenMP, pthreads, GSL, MPFR, ... depending on its configuration)
+# 2) fallback: plain -I/-L/-lRNA plus OpenMP and math library
+RNANOTFOUND=1
+RNA_FROM_PKGCONFIG=no
+
+# libRNA is usually a static library -> request flags for static linking
+RNA_SAVED_PKG_CONFIG=$PKG_CONFIG
+if test -n "$PKG_CONFIG"; then
+	PKG_CONFIG="$PKG_CONFIG --static"
+fi
+PKG_CHECK_MODULES([RNA], [RNAlib2 >= 2.4.11],
+	[RNA_FROM_PKGCONFIG=yes],
+	[RNA_FROM_PKGCONFIG=no])
+PKG_CONFIG=$RNA_SAVED_PKG_CONFIG
+
+if test "$RNA_FROM_PKGCONFIG" = "no"; then
+	AC_MSG_NOTICE([RNAlib2.pc not found, falling back to manual ViennaRNA detection])
+	RNA_CFLAGS=""
+	RNA_LIBS="-lRNA $OPENMP_CXXFLAGS -lm"
+	if test "$RNAPATHSET" = "1" ; then
+		RNA_CFLAGS="-I$with_RNA/include"
+		RNA_LIBS="-L$with_RNA/lib $RNA_LIBS"
+	fi
+fi
+
+# verify that a program using ViennaRNA really compiles and links.
+# vrna_fold_compound() + vrna_neighbors() pull in most of the library
+# (incl. the parts that depend on OpenMP/SVM), unlike a bare symbol check.
+AC_MSG_CHECKING([whether ViennaRNA >= 2.4.11 can be used])
 OLD_CXXFLAGS=$CXXFLAGS
-OLD_LDFLAGS=$LDFLAGS
-CXXFLAGS="$CXXFLAGS $AM_CXXFLAGS"
-LDFLAGS="$LDFLAGS $AM_LDFLAGS"
-AC_COMPILE_IFELSE(
-     [AC_LANG_SOURCE([[#include <ViennaRNA/neighbor.h>]])],
-     [ 
-		AC_MSG_RESULT([yes])
-		AC_CHECK_LIB([RNA], [vrna_neighbors], [RNANOTFOUND=0], [ RNANOTFOUND=1])
-     ],
-     [
-       AC_MSG_RESULT([no])
-       RNANOTFOUND=1;
-     ]
-)
+OLD_LIBS=$LIBS
+CXXFLAGS="$CXXFLAGS $RNA_CFLAGS"
+LIBS="$RNA_LIBS $LIBS"
+AC_LINK_IFELSE(
+	[AC_LANG_PROGRAM([[
+extern "C" {
+#include <ViennaRNA/fold_compound.h>
+#include <ViennaRNA/neighbor.h>
+#include <ViennaRNA/mfe.h>
+}
+]], [[
+  vrna_fold_compound_t *fc = vrna_fold_compound("GGGAAACCC", NULL, VRNA_OPTION_DEFAULT);
+  float mfe = vrna_mfe(fc, NULL);
+  vrna_move_t *n = vrna_neighbors(fc, NULL, VRNA_MOVESET_DEFAULT);
+  free(n);
+  vrna_fold_compound_free(fc);
+  return (int)mfe;
+]])],
+	[RNANOTFOUND=0; AC_MSG_RESULT([yes (flags from pkg-config: $RNA_FROM_PKGCONFIG)])],
+	[RNANOTFOUND=1; AC_MSG_RESULT([no])])
 CXXFLAGS=$OLD_CXXFLAGS
-LDFLAGS=$OLD_LDFLAGS
+LIBS=$OLD_LIBS
 
 # error output if ViennaRNA not found
 if test "$RNANOTFOUND" = "1"; then
 	AC_MSG_NOTICE()
 	AC_MSG_NOTICE([The Vienna RNA C library >= 2.4.11 is required.])
-	AC_MSG_NOTICE([ -> It can be obtained from http://www.tbi.univie.ac.at/.])
+	AC_MSG_NOTICE([ -> It can be obtained from https://www.tbi.univie.ac.at/RNA/])
 	AC_MSG_NOTICE()
- 	if test "$RNAPATHSET" = "1"; then
-		AC_MSG_NOTICE([ -> Can't find the Vienna RNA library in given path '$with_RNA'.])
- 	else
-		AC_MSG_NOTICE([ -> If installed in a non-standard path, please use '--with-RNA=PREFIX'.])
- 	fi
- 	DEPENDENCYNOTFOUND=1;
+	if test "$RNAPATHSET" = "1"; then
+		AC_MSG_NOTICE([ -> Can't use the Vienna RNA library in given path '$with_RNA'.])
+	else
+		AC_MSG_NOTICE([ -> If installed in a non-standard path, please use '--with-RNA=PREFIX'])
+		AC_MSG_NOTICE([    or set PKG_CONFIG_PATH to the directory containing RNAlib2.pc.])
+	fi
+	AC_MSG_NOTICE([ -> See config.log for the exact compiler/linker error.])
+	DEPENDENCYNOTFOUND=1;
 else
-	# register Vienna RNA lib for linking
-	LIBS="$LIBS -lRNA"
+	# register Vienna RNA lib for compiling and linking
+	AM_CXXFLAGS="$RNA_CFLAGS $AM_CXXFLAGS"
+	LIBS="$RNA_LIBS $LIBS"
 fi
 
 
@@ -191,7 +229,8 @@ AC_CONFIG_FILES([Makefile])
 AC_CONFIG_FILES([src/Makefile])
 AC_CONFIG_FILES([misc/Makefile])
 AC_CONFIG_FILES([doc/Makefile])
+AC_CONFIG_FILES([packaging/pourRNA.spec packaging/PKGBUILD])
 
 # generate the final Makefile etc.
-AC_OUTPUT([packaging/pourRNA.spec packaging/PKGBUILD])
+AC_OUTPUT
 
