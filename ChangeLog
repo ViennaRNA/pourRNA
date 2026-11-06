@@ -1,3 +1,65 @@
+261016	BUGFIXES (rates and landscape):
+		*src/SC_PartitionFunction.*, src/StatePairCollector.cpp: --gas-constant is now used for the
+		 transition partition functions as well; rates mixed two kT values before, and --minh
+		 aborted with "Different gas constant!".
+		*src/Flooder.cpp, src/WalkGradientHashed.cpp, src/StructureUtils.*: no-lonely-pair move set
+		 (--move-set=2): energies of moves that insert or delete two stacked pairs at once are
+		 evaluated completely (only the first pair was counted, so the landscape was not explored);
+		 the reference MFE is computed without lonely pairs; start/final structures with lonely
+		 pairs are rejected for this move set.
+		*src/Flooder.cpp, src/pourRNA.cpp, src/RNAkinetics/RNA_NeighMinFilter.cpp: energy limits
+		 (--max-energy, --delta-e, --max-neigh-e) are converted to 10 cal/mol by rounding instead of
+		 truncation (--max-energy=2.3 used to exclude structures at exactly 2.30) and compared
+		 exactly; limits stay inclusive (<=).
+		*src/pourRNA.cpp: several --max-basins thresholds: all data changed by the minh merge is
+		 restored before the next threshold (rates, saddles, basin sizes, mapping and start/final
+		 minima of every threshold after the first were wrong).
+	BUGFIXES (crashes and robustness):
+		*src/StatePairCollector.*, src/pourRNA.cpp: data race on the saddle map shared by all threads
+		 (corrupted saddles and crashes with --saddle-file/--barrier-tree-file/--minh and several
+		 threads).
+		*src/pourRNA.cpp: --minh with --saddle-file and --delta-e crashed for minima without own
+		 saddles; saddles to earlier merged clusters were lost.
+		*src/pourRNA.cpp, src/Flooder.cpp: exceptions in worker threads (e.g. out of memory) are
+		 reported instead of producing incomplete output; NULL input to the flooder throws.
+		*src/pourRNA.cpp, src/StructureUtils.*: input validation: sequences (also from stdin) and all
+		 structures are checked for alphabet, length, balanced brackets, canonical pairs and minimal
+		 hairpin size; --start-structure-file reports file:line for invalid lines, accepts Windows
+		 line endings and skips empty lines; invalid --energy-model values and missing parameter
+		 files are errors.
+	BUGFIXES (barrier tree, saddles, minh):
+		*src/pourRNA.cpp: the start state's basin is reported (and used for --max-bp-dist-add) as
+		 its local minimum, not the input structure.
+		*src/pourRNA.cpp: the MFE energy was stored under a wrong index when building the barrier
+		 tree, which gave one minimum a wrong branch length (varying between runs with threads).
+		*src/BarriersTree.*, src/pourRNA.cpp: all trees of a barrier forest are written (one Newick
+		 tree per line, the tree with the lowest minimum first; only the last one was kept), and
+		 the SVG shows the tree with the lowest minimum.
+		*src/BarriersTree.cpp: equal-energy minima count as deeper by structure order (as for
+		 gradient basins) when computing the lowest saddles; such minima got too high barriers.
+		*src/pourRNA.cpp: the minh mapping file lists each minimum once, under its representative.
+		*src/RNAkinetics/RNA_NeighMinFilter.cpp: --max-neigh-e 0 keeps only more stable neighbors
+		 (equal energy was kept before); kBest ties are broken by the minimum's order.
+		*src/pourRNA.cpp: saddle and energy files are written in a deterministic order.
+	PERFORMANCE:
+		*src/pourRNA.cpp: the rate matrix diagonal no longer makes the sparse matrix dense (633 MB ->
+		 16 MB for 3,910 basins), and the rate matrix is built from the stored transitions instead of
+		 all basin pairs.
+		*src/BarriersTree.cpp: lowest saddles via Kruskal/union-find instead of Floyd-Warshall
+		 (O(n^2) memory and O(n^3) time before); Newick/SVG output and tree deletion are iterative
+		 (deep trees overflowed the stack).
+		*src/pourRNA.cpp: constant-time lookup in the queue of basins to flood; the main thread
+		 waits for workers instead of busy-waiting.
+		*src/WalkGradientHashed.cpp: all states of a gradient walk are cached (faster, needs more
+		 memory; limit it with --max-to-hash).
+		*src/MyState.*, src/pourRNA.cpp: memory leaks fixed (MyState assignment, rate file streams).
+	OTHER:
+		*src/pourRNA.cpp: the output names the structures given with --start-structure-file.
+		*src/SC_PartitionFunction.h, src/SC_DotPlot.cpp: missing includes for current compilers.
+		*src/pourRNA.ggo: --max-bp-dist-add documented precisely: d(m,s) + d(m,t) <= d(s,t) + value,
+		 with s, t the local minima of start and final structure; a deviation of D base pairs from
+		 the direct path needs a value of 2*D (behaviour unchanged).
+
 150605	*src/GlobalParameter.h,
 		*src/MyState.h,
 		*src/PairHashTable.h,
