@@ -9,6 +9,8 @@
 #include <unordered_set>
 #include <sstream>
 #include <algorithm>
+#include <cstdint>
+#include <climits>
 #include <iostream>
 
 BarriersTree::BarriersTree()
@@ -56,8 +58,20 @@ print_sets(std::vector<std::unordered_set<size_t> *>& clusters_id_sets)
 /**
  * ! create a minimal saddle list for each state. For each state it outputs the lowest saddle to a deeper minimum.
  *   The input is a hash table that contains all saddles to direct neighbors.
- *   Since direct neighbors do not contain all saddles, this procedure computes the transitive hull,
- *   in order to get the lowest saddle for all paths between minima.
+ *   Since direct neighbors do not contain all saddles, the lowest saddle over all paths
+ *   between two minima has to be computed (the minimax or "bottleneck" path).
+ *
+ *   The bottleneck between two minima is the largest saddle on their path in a minimum
+ *   spanning tree of the saddle graph, so Kruskal's algorithm finds it: saddles are added in
+ *   ascending order and joined with a union-find structure. A minimum i gets its answer at
+ *   the first saddle height w at which its component contains a minimum with lower energy;
+ *   the saddle is w and the target is the lowest minimum of the component (its smallest
+ *   output index), which is the deeper minimum with the smallest index among all deeper
+ *   minima reachable over saddles <= w.
+ *   This gives the same list (same entries, same order) as the former all-pairs
+ *   Floyd-Warshall computation, but needs O(n + m) memory and O(m log m + n log n) time
+ *   for n minima and m saddles instead of O(n^2) memory and O(n^3) time.
+ *
  *   @param sortedMinimaIDs - a vector with ids and states as for all minima in the output.
  *   @param sorted_min_and_output_ids - a hash map, which maps the minima to ids.
  *   @param all_saddles - a hash map, that contains all saddle states.
@@ -69,90 +83,132 @@ BarriersTree::create_minimal_saddle_list(const std::vector<std::pair<size_t,
                                          const PairHashTable::HashTable &           sorted_min_and_output_ids,
                                          const StatePairCollector::MapOfMaps &      all_saddles)
 {
-  // init a saddle matrix. Indices from 0 to n according to output IDs.
-  int **all_to_all_saddles = new int *[sorted_min_and_output_ids.size()];
+  const size_t                n = sorted_min_and_output_ids.size();
 
-  for (auto it = sorted_min_and_output_ids.begin(); it != sorted_min_and_output_ids.end(); it++) {
-    all_to_all_saddles[it->second] = new int[sorted_min_and_output_ids.size()];
-    // init with inf distance
-    std::fill_n(all_to_all_saddles[it->second], sorted_min_and_output_ids.size(), INT32_MAX);
-  }
+  // collect all saddles between output minima as (saddle energy, from, to)
+  struct edge_t {
+    int     saddle;
+    size_t  a;
+    size_t  b;
+    bool
+    operator<(const edge_t& o) const
+    {
+      if (saddle != o.saddle)
+        return saddle < o.saddle;
 
-  // insert all saddles
+      if (a != o.a)
+        return a < o.a;
+
+      return b < o.b;
+    }
+  };
+  std::vector<edge_t>         edges;
   for (auto it = all_saddles.begin(); it != all_saddles.end(); it++) {
     auto it_from = sorted_min_and_output_ids.find(it->first);
-    if (it_from != sorted_min_and_output_ids.end()) {
-      size_t state_from = it_from->second;
-      for (auto it_to = it->second.begin(); it_to != it->second.end(); it_to++) {
-        auto it_to_min = sorted_min_and_output_ids.find(it_to->first);
-        if (it_to_min != sorted_min_and_output_ids.end()) {
-          int     saddle_energy = it_to->second.energy;
-          size_t  state_to      = it_to_min->second;
-          all_to_all_saddles[state_from][state_to]  = saddle_energy;
-          all_to_all_saddles[state_to][state_from]  = saddle_energy;
-        }
-      }
+    if (it_from == sorted_min_and_output_ids.end())
+      continue;
+
+    for (auto it_to = it->second.begin(); it_to != it->second.end(); it_to++) {
+      auto it_to_min = sorted_min_and_output_ids.find(it_to->first);
+      if (it_to_min == sorted_min_and_output_ids.end())
+        continue;
+
+      if (it_from->second != it_to_min->second)
+        edges.push_back({ it_to->second.energy, it_from->second, it_to_min->second });
     }
   }
+  // sorted order (with a total tie-break) keeps the result independent of hash map order.
+  // If both directions of a pair are stored, the lower saddle comes first and wins.
+  std::sort(edges.begin(), edges.end());
 
-  /* now insert all saddles (inclusive indirect connections).
-   * warshall algorithm to compute the transitive hull (O(n^3) time):
-   * for k = 1 to n
-   *   for i = 1 to n
-   *     if d[i,k] == 1
-   *       for j = 1 to n
-   *         if d[k,j] == 1
-   *           d[i,j] = 1
-   *
-   * however we adjust d[i,j] = min(d[i,j], max(d[i,k], d[k,j]))
-   * i.e. the minimal maximal saddle on the path.
-   * and if d[i,k] < INF
-   */
-  size_t n = sorted_min_and_output_ids.size();
-  for (size_t k = 0; k < n; k++) {
-    for (size_t i = 0; i < n; i++) {
-      if (all_to_all_saddles[i][k] < INT32_MAX) {
-        for (size_t j = 0; j < n; j++) {
-          if (all_to_all_saddles[k][j] < INT32_MAX) {
-            //if (all_to_all_saddles[i][j] == INT32_MAX){
-            all_to_all_saddles[i][j] =
-              std::min(all_to_all_saddles[i][j],
-                       std::max(all_to_all_saddles[i][k], all_to_all_saddles[k][j]));
-            all_to_all_saddles[j][i] =
-              std::min(all_to_all_saddles[i][j],
-                       std::max(all_to_all_saddles[i][k], all_to_all_saddles[k][j]));
-            // }
-          }
+  // union-find over output indices
+  std::vector<size_t>                 parent(n), comp_size(n, 1), lowest(n);
+  std::vector<std::vector<size_t> >   unanswered(n); // members still without a deeper minimum
+  for (size_t i = 0; i < n; i++) {
+    parent[i] = i;
+    lowest[i] = i;    // smallest output index = lowest minimum of the component
+    unanswered[i].push_back(i);
+  }
+  auto find_root = [&parent](size_t x) {
+                     while (parent[x] != x) {
+                       parent[x] = parent[parent[x]];
+                       x         = parent[x];
+                     }
+                     return x;
+                   };
+  auto energy_of = [&sortedMinimaIDs](size_t i) {
+                     return sortedMinimaIDs[i].second->energy;
+                   };
+
+  std::vector<size_t>                 target(n, SIZE_MAX);
+  std::vector<int>                    saddle_of(n, INT32_MAX);
+  std::vector<size_t>                 touched;
+  std::vector<char>                   is_touched(n, 0);
+
+  for (size_t g = 0; g < edges.size(); ) {
+    // process all saddles of the same height together
+    const int saddle = edges[g].saddle;
+    size_t    g_end  = g;
+    for (; g_end < edges.size() && edges[g_end].saddle == saddle; g_end++) {
+      size_t  ra  = find_root(edges[g_end].a);
+      size_t  rb  = find_root(edges[g_end].b);
+      if (ra == rb)
+        continue;
+
+      if (comp_size[ra] < comp_size[rb])
+        std::swap(ra, rb);
+
+      // merge rb into ra (smaller list into larger)
+      parent[rb]      = ra;
+      comp_size[ra]  += comp_size[rb];
+      lowest[ra]      = std::min(lowest[ra], lowest[rb]);
+      if (unanswered[ra].size() < unanswered[rb].size())
+        unanswered[ra].swap(unanswered[rb]);
+
+      unanswered[ra].insert(unanswered[ra].end(), unanswered[rb].begin(), unanswered[rb].end());
+      std::vector<size_t>().swap(unanswered[rb]);
+      touched.push_back(ra);
+    }
+
+    // members that now reach a deeper minimum get this saddle height as their answer
+    for (size_t t = 0; t < touched.size(); t++) {
+      size_t r = find_root(touched[t]);
+      if (is_touched[r])
+        continue;
+
+      is_touched[r] = 1;
+      const int           lowest_energy = energy_of(lowest[r]);
+      std::vector<size_t> keep;
+      for (size_t v : unanswered[r]) {
+        if (lowest_energy < energy_of(v)) {
+          target[v]     = lowest[r];
+          saddle_of[v]  = saddle;
+        } else {
+          keep.push_back(v);  // nothing strictly deeper in this component yet
         }
       }
+      unanswered[r].swap(keep);
     }
-  }
+    for (size_t t = 0; t < touched.size(); t++)
+      is_touched[find_root(touched[t])] = 0;
 
+    touched.clear();
+    g = g_end;
+  }
 
   std::vector<saddle_t> minimal_saddle_list;
-  // for each min insert the minimal saddle to a deeper min (they are already sorted by energy --> only from higher to lower.
+  // same order as before: from the highest output index down to 0
   for (size_t t = n; t > 0; t--) {
-    size_t    i = t - 1;
-    saddle_t  min_saddle;
-    min_saddle.saddle = INT32_MAX;
-    for (size_t j = 0; j < i; j++) {
-      if (all_to_all_saddles[i][j] < INT32_MAX) {
-        if (sortedMinimaIDs[j].second->energy < sortedMinimaIDs[i].second->energy) {
-          if (all_to_all_saddles[i][j] < min_saddle.saddle) {
-            min_saddle.minimum_from = i;
-            min_saddle.minimum_to   = j;
-            min_saddle.saddle       = all_to_all_saddles[i][j];
-          }
-        }
-      }
-    }
-    if (min_saddle.saddle < INT32_MAX)
+    size_t i = t - 1;
+    if (target[i] != SIZE_MAX) {
+      saddle_t min_saddle;
+      min_saddle.minimum_from = i;
+      min_saddle.minimum_to   = target[i];
+      min_saddle.saddle       = saddle_of[i];
       minimal_saddle_list.push_back(min_saddle);
+    }
   }
 
-  for (size_t i = 0; i < n; i++)
-    delete[] all_to_all_saddles[i];
-  delete[] all_to_all_saddles;
   return minimal_saddle_list;
 }
 
@@ -523,36 +579,60 @@ BarriersTree::filter_minh(std::vector<saddle_t> &minimal_saddle_list,
 std::string
 BarriersTree::newick_string_builder(node_t *tree)
 {
-  std::string sub_tree_string = "(";
+  // Iterative version: the former recursion built and copied a new string at every level,
+  // which costs O(depth^2) for the deep, chain-like trees of RNA landscapes and can overflow
+  // the stack. The output is unchanged.
+  std::string                               out;
+  std::vector<std::pair<node_t *, int> >    stack;  // node and step: 0 enter, 1 after left, 2 after right
 
-  if (tree->left_child != NULL || tree->right_child != NULL) {
-    sub_tree_string += "(";
-    if (tree->left_child != NULL) {
-      sub_tree_string += this->newick_string_builder(tree->left_child);
-      sub_tree_string += ",";
+  stack.push_back(std::make_pair(tree, 0));
+  while (!stack.empty()) {
+    node_t  *node = stack.back().first;
+    int     step  = stack.back().second;
+    stack.pop_back();
+
+    bool    is_leaf = (node->left_child == NULL && node->right_child == NULL);
+    if (step == 0) {
+      out += "(";
+      if (!is_leaf) {
+        out += "(";
+        if (node->left_child != NULL) {
+          stack.push_back(std::make_pair(node, 1));
+          stack.push_back(std::make_pair(node->left_child, 0));
+          continue;
+        }
+
+        step = 1;
+      } else {
+        // it is a leaf node --> add index
+        out += std::to_string(node->minimum_id);
+        step = 3;
+      }
     }
 
-    if (tree->right_child != NULL) {
-      sub_tree_string += this->newick_string_builder(tree->right_child);
-      sub_tree_string += ",";
+    if (step == 1) {
+      if (node->right_child != NULL) {
+        if (node->left_child != NULL)
+          out += ",";
+
+        stack.push_back(std::make_pair(node, 2));
+        stack.push_back(std::make_pair(node->right_child, 0));
+        continue;
+      }
+
+      step = 2;
     }
 
-    if (sub_tree_string[sub_tree_string.length() - 1] == ',')
-      sub_tree_string = sub_tree_string.substr(0, sub_tree_string.length() - 1);
+    if (step == 2)
+      out += ")";
 
-    sub_tree_string += ")";
-  } else {
-    // it is a leaf node --> add index
-    sub_tree_string += std::to_string(tree->minimum_id);
+    // close this node with its branch length
+    if (node->parent == NULL)
+      out.append(":").append(std::to_string(0)).append(")");
+    else
+      out.append(":").append(std::to_string(node->branch_length)).append(")");
   }
-
-  if (tree->parent == NULL)
-    sub_tree_string.append(":").append(std::to_string(0)).append(")");
-  else
-    sub_tree_string.append(":").append(std::to_string(tree->branch_length)).append(
-      ")");
-
-  return sub_tree_string;
+  return out;
 }
 
 
@@ -569,135 +649,159 @@ BarriersTree::svg_string_builder(node_t *tree,
                                  int    mfe,
                                  size_t *inorder_index)
 {
-  // traverse tree from lowest left to right.
-  float       node_scale      = 20;
-  float       legend_margin   = 50;
-  std::string sub_tree_string = ""; //"(";
+  // Iterative in-order traversal writing into one string (see newick_string_builder);
+  // the element text and its order are unchanged.
+  float                                     node_scale    = 20;
+  float                                     legend_margin = 50;
+  std::string                               body;
+  std::vector<std::pair<node_t *, int> >    stack;  // node and step: 0 enter, 1 after left, 2 after right
 
-  if (tree->left_child != NULL || tree->right_child != NULL) {
-    size_t left_idx, current_idx, right_idx;
-    //sub_tree_string += "(";
-    if (tree->left_child != NULL) {
-      sub_tree_string += this->svg_string_builder(tree->left_child, mfe, inorder_index);
-      sub_tree_string += "";
+  stack.push_back(std::make_pair(tree, 0));
+  while (!stack.empty()) {
+    node_t  *node = stack.back().first;
+    int     step  = stack.back().second;
+    stack.pop_back();
+
+    if (node->left_child == NULL && node->right_child == NULL) {
+      // it is a leaf node --> add index
+      *inorder_index    += 1;
+      node->node_index  = *inorder_index;
+      body              += "<text class=\"leaf_label\" x=\"" + std::to_string(
+        legend_margin + (float)*inorder_index * node_scale - 5) + "\" y=\"" + std::to_string(
+        -node->minimum_energy + 20) +
+                           "\" fill=\"black\">" + std::to_string(node->minimum_id) + "</text>\n";
+
+      // line from node to saddle
+      body += "<path class=\"barrier\" d=\"M " + std::to_string(
+        legend_margin + *inorder_index * node_scale) + " " + std::to_string(-node->minimum_energy) +
+              " l " + std::to_string(0) + " " + std::to_string(-node->branch_length) +
+              "\" stroke-width=\"3\" fill=\"none\"/>\n";
+      // branch label
+      char  branch_label[50];
+      sprintf(branch_label, "%.2f", node->branch_length / 100.0);
+      float x = legend_margin + (float)node->node_index * node_scale;
+      float y = (-node->minimum_energy - node->branch_length / 2.0);
+      body += "<text class=\"barrier_label\" x=\"" + std::to_string(x - 15) + "\" y=\"" +
+              std::to_string(y - 5) +
+              "\" transform=\"rotate(-90 " + std::to_string(x) + "," + std::to_string(y) +
+              ")\">" + branch_label + "</text>\n";
+      continue;
     }
 
-    left_idx          = tree->left_child->node_index;
-    *inorder_index    += 1;
-    current_idx       = *inorder_index;
-    tree->node_index  = current_idx;
-    // draw root
-    if (tree->right_child != NULL) {
-      sub_tree_string += this->svg_string_builder(tree->right_child, mfe, inorder_index);
-      sub_tree_string += "";
+    if (step == 0) {
+      // first the left subtree
+      stack.push_back(std::make_pair(node, 1));
+      if (node->left_child != NULL)
+        stack.push_back(std::make_pair(node->left_child, 0));
+
+      continue;
     }
 
-    right_idx = tree->right_child->node_index;
+    if (step == 1) {
+      // this node gets the next in-order index, then the right subtree
+      *inorder_index    += 1;
+      node->node_index  = *inorder_index;
+      stack.push_back(std::make_pair(node, 2));
+      if (node->right_child != NULL)
+        stack.push_back(std::make_pair(node->right_child, 0));
 
+      continue;
+    }
+
+    // step 2: both subtrees are done, draw this node
     // line from current to parent
-    sub_tree_string += "<path class=\"barrier\" d=\"M " + std::to_string(
-      legend_margin + (float)tree->node_index * node_scale) + " " + std::to_string(-tree->saddle);
-    sub_tree_string += " l " + std::to_string(0) + " " + std::to_string(-tree->branch_length) +
-                       "\" stroke-width=\"3\" fill=\"none\"/>\n";
+    body += "<path class=\"barrier\" d=\"M " + std::to_string(
+      legend_margin + (float)node->node_index * node_scale) + " " + std::to_string(-node->saddle);
+    body += " l " + std::to_string(0) + " " + std::to_string(-node->branch_length) +
+            "\" stroke-width=\"3\" fill=\"none\"/>\n";
 
     // line from left to right.
-    sub_tree_string += "<path class=\"saddle\" d=\"M " + std::to_string(
-      legend_margin + (float)tree->left_child->node_index * node_scale) + " " + std::to_string(
-      -tree->saddle);
-    sub_tree_string += " l " +
-                       std::to_string(
-      ((float)tree->right_child->node_index - (float)tree->left_child->node_index) * node_scale) +
-                       " " + std::to_string(0) + " \" stroke-width=\"3\" fill=\"none\"/>\n";
+    body += "<path class=\"saddle\" d=\"M " + std::to_string(
+      legend_margin + (float)node->left_child->node_index * node_scale) + " " + std::to_string(
+      -node->saddle);
+    body += " l " +
+            std::to_string(
+      ((float)node->right_child->node_index - (float)node->left_child->node_index) * node_scale) +
+            " " + std::to_string(0) + " \" stroke-width=\"3\" fill=\"none\"/>\n";
 
     // branch label
     char  branch_label[50];
-    sprintf(branch_label, "%.2f", tree->branch_length / 100.0);
-    float x = legend_margin + (float)tree->node_index * node_scale;
-    float y = (-tree->saddle - tree->branch_length / 2.0);
-    sub_tree_string += "<text x=\"" + std::to_string(x - 15) + "\" y=\"" + std::to_string(y - 5) +
-                       "\" transform=\"rotate(-90 " + std::to_string(x) + "," + std::to_string(y) +
-                       ")\">" + branch_label + "</text>\n";
-  } else {
-    // it is a leaf node --> add index
-    *inorder_index    += 1;
-    tree->node_index  = *inorder_index;
-    sub_tree_string   += "<text class=\"leaf_label\" x=\"" + std::to_string(
-      legend_margin + (float)*inorder_index * node_scale - 5) + "\" y=\"" + std::to_string(
-      -tree->minimum_energy + 20) +
-                         "\" fill=\"black\">" + std::to_string(tree->minimum_id) + "</text>\n";
-
-    // line from node to saddle
-    sub_tree_string += "<path class=\"barrier\" d=\"M " + std::to_string(
-      legend_margin + *inorder_index * node_scale) + " " + std::to_string(-tree->minimum_energy) +
-                       " l " + std::to_string(0) + " " + std::to_string(-tree->branch_length) +
-                       "\" stroke-width=\"3\" fill=\"none\"/>\n";
-    // branch label
-    char  branch_label[50];
-    sprintf(branch_label, "%.2f", tree->branch_length / 100.0);
-    float x = legend_margin + (float)tree->node_index * node_scale;
-    float y = (-tree->minimum_energy - tree->branch_length / 2.0);
-    sub_tree_string += "<text class=\"barrier_label\" x=\"" + std::to_string(x - 15) + "\" y=\"" +
-                       std::to_string(y - 5) +
-                       "\" transform=\"rotate(-90 " + std::to_string(x) + "," + std::to_string(y) +
-                       ")\">" + branch_label + "</text>\n";
+    sprintf(branch_label, "%.2f", node->branch_length / 100.0);
+    float x = legend_margin + (float)node->node_index * node_scale;
+    float y = (-node->saddle - node->branch_length / 2.0);
+    body += "<text x=\"" + std::to_string(x - 15) + "\" y=\"" + std::to_string(y - 5) +
+            "\" transform=\"rotate(-90 " + std::to_string(x) + "," + std::to_string(y) +
+            ")\">" + branch_label + "</text>\n";
   }
 
-  if (tree->parent == NULL) {
-    // create a viewbox, that allows negative indices.
-    int     upper_tree_bound  = std::ceil((tree->saddle) / 100.0) * 100.0;
-    int     lower_tree_bound  = std::floor((mfe) / 100.0) * 100.0;
-    int     tree_height       = upper_tree_bound - lower_tree_bound;
-    double  double_border     = 100.0;
-    sub_tree_string = "<svg height=\"" + std::to_string(tree_height + double_border) +
-                      "\" width=\"" + std::to_string(
-      legend_margin + (float)*inorder_index * node_scale + double_border) + "\"" +
-                      "  viewBox=\"" + std::to_string(-double_border / 2) + " " + std::to_string(
-      -upper_tree_bound - double_border / 2) + " " + std::to_string(
-      legend_margin + (float)*inorder_index * node_scale + double_border) + " " + std::to_string(
-      tree_height + double_border) + "\">\n"
-                      + "<g class=\"tree\" stroke=\"black\">\n" + sub_tree_string + "</g>\n";
-    //add ruler.
-    double ruler_offset = -upper_tree_bound;
-    sub_tree_string += "<g class=\"ruler\">\n";
-    sub_tree_string += "<text x=\"" + std::to_string(0) + "\" y=\"" + std::to_string(
-      ruler_offset - 20) +
-                       "\" fill=\"black\">Energy [kcal/mol]</text>\n";
-    sub_tree_string += "<line x1=\"" + std::to_string(0) + "\" y1=\"" +
-                       std::to_string(ruler_offset) +
-                       "\" x2=\"" + std::to_string(0) + "\" y2=\"" + std::to_string(
-      -lower_tree_bound) + "\" style=\"stroke:rgb(0,0,0);stroke-width:2\"/>\n";
-    // add ticks
-    for (int i = -upper_tree_bound; i <= -lower_tree_bound; i += 100) {
-      sub_tree_string += "<line x1=\"" + std::to_string(0) + "\" y1=\"" + std::to_string(i) +
-                         "\" x2=\"" + std::to_string(1 * (legend_margin / 10)) + "\" y2=\"" +
-                         std::to_string(i) + "\" style=\"stroke:rgb(0,0,0);stroke-width:2\"/>\n";
-      // add tick label
-      char tick_label[50];
-      sprintf(tick_label, "%.2f", -i / 100.0);
-      sub_tree_string += "<text x=\"" + std::to_string(1 * (legend_margin / 10) + 10) + "\" y=\"" +
-                         std::to_string(i + 3) +
-                         "\" fill=\"black\">" + tick_label + "</text>\n";
-    }
-    sub_tree_string += "</g>\n";
-    sub_tree_string += " </svg>\n";
-  }
+  if (tree->parent != NULL)
+    return body;
 
-  return sub_tree_string;
+  // create a viewbox, that allows negative indices.
+  int         upper_tree_bound  = std::ceil((tree->saddle) / 100.0) * 100.0;
+  int         lower_tree_bound  = std::floor((mfe) / 100.0) * 100.0;
+  int         tree_height       = upper_tree_bound - lower_tree_bound;
+  double      double_border     = 100.0;
+  std::string out               = "<svg height=\"" + std::to_string(tree_height + double_border) +
+                                  "\" width=\"" + std::to_string(
+    legend_margin + (float)*inorder_index * node_scale + double_border) + "\"" +
+                                  "  viewBox=\"" + std::to_string(-double_border / 2) + " " +
+                                  std::to_string(
+    -upper_tree_bound - double_border / 2) + " " + std::to_string(
+    legend_margin + (float)*inorder_index * node_scale + double_border) + " " + std::to_string(
+    tree_height + double_border) + "\">\n"
+                                  + "<g class=\"tree\" stroke=\"black\">\n";
+  out.reserve(out.size() + body.size() + 4096);
+  out += body;
+  out += "</g>\n";
+  //add ruler.
+  double      ruler_offset = -upper_tree_bound;
+  out += "<g class=\"ruler\">\n";
+  out += "<text x=\"" + std::to_string(0) + "\" y=\"" + std::to_string(
+    ruler_offset - 20) +
+         "\" fill=\"black\">Energy [kcal/mol]</text>\n";
+  out += "<line x1=\"" + std::to_string(0) + "\" y1=\"" +
+         std::to_string(ruler_offset) +
+         "\" x2=\"" + std::to_string(0) + "\" y2=\"" + std::to_string(
+    -lower_tree_bound) + "\" style=\"stroke:rgb(0,0,0);stroke-width:2\"/>\n";
+  // add ticks
+  for (int i = -upper_tree_bound; i <= -lower_tree_bound; i += 100) {
+    out += "<line x1=\"" + std::to_string(0) + "\" y1=\"" + std::to_string(i) +
+           "\" x2=\"" + std::to_string(1 * (legend_margin / 10)) + "\" y2=\"" +
+           std::to_string(i) + "\" style=\"stroke:rgb(0,0,0);stroke-width:2\"/>\n";
+    // add tick label
+    char tick_label[50];
+    sprintf(tick_label, "%.2f", -i / 100.0);
+    out += "<text x=\"" + std::to_string(1 * (legend_margin / 10) + 10) + "\" y=\"" +
+           std::to_string(i + 3) +
+           "\" fill=\"black\">" + tick_label + "</text>\n";
+  }
+  out += "</g>\n";
+  out += " </svg>\n";
+  return out;
 }
 
 
 void
 BarriersTree::free_tree(node_t *tree)
 {
-  if (tree->left_child != NULL || tree->right_child != NULL) {
-    if (tree->left_child != NULL)
-      this->free_tree(tree->left_child);
+  // iterative, so that deep trees cannot overflow the stack
+  std::vector<node_t *> stack;
 
-    if (tree->right_child != NULL)
-      this->free_tree(tree->right_child);
+  if (tree != NULL)
+    stack.push_back(tree);
+
+  while (!stack.empty()) {
+    node_t *node = stack.back();
+    stack.pop_back();
+    if (node->left_child != NULL)
+      stack.push_back(node->left_child);
+
+    if (node->right_child != NULL)
+      stack.push_back(node->right_child);
+
+    delete node;
   }
-
-  delete tree;
 }
 
 
