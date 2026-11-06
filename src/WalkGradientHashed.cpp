@@ -6,6 +6,7 @@
  */
 
 #include "WalkGradientHashed.h"
+#include <vector>
 
 WalkGradientHashed::WalkGradientHashed(unsigned int move_set,
                                        const size_t maxHashSize) :
@@ -65,6 +66,9 @@ WalkGradientHashed::walkGradient(vrna_fold_compound_t       *vc,
     minimalNeighbor->structure);
   struct_en                           currentNeighbor;
   currentNeighbor.structure = prev_pt;
+  // all states visited on this walk; each gets the minimum stored in the hash, so later walks
+  // that reach any of them stop there (the hash used to store only the start state)
+  std::vector<MyState>                path;
   do {
     foundBetterNeighbor = false;
 
@@ -73,13 +77,17 @@ WalkGradientHashed::walkGradient(vrna_fold_compound_t       *vc,
     hashed = state2min_.find(*minimalNeighbor);
 
     if (hashed != state2min_.end()) {
+      MyState *knownMinimum = hashed->second.clone();
+      for (size_t p = 0; p < path.size(); p++)
+        state2min_.insert(std::pair<MyState, MyState>(path[p], *knownMinimum));
       delete minimalNeighbor;
       free(prev_pt);
       vrna_move_list_free(tmp_neighbors);
       free(currentStructure.structure);
-      minimalNeighbor = hashed->second.clone();
-      return minimalNeighbor;
+      return knownMinimum;
     }
+
+    path.push_back(*minimalNeighbor);
 
     currentStructure.energy = minimalNeighbor->energy;
     copy_arr(currentStructure.structure, minimalNeighbor->structure);
@@ -115,9 +123,9 @@ WalkGradientHashed::walkGradient(vrna_fold_compound_t       *vc,
     copy_arr(currentNeighbor.structure, currentStructure.structure);
   } while (foundBetterNeighbor);
 
-  // store mapping of start to local minimum in hash
-  state2min_.insert(
-    std::pair<MyState, MyState>(startState, *minimalNeighbor));
+  // store mapping of all visited states (start state included) to the local minimum
+  for (size_t p = 0; p < path.size(); p++)
+    state2min_.insert(std::pair<MyState, MyState>(path[p], *minimalNeighbor));
   free(prev_pt);
   vrna_move_list_free(tmp_neighbors);
   free(currentStructure.structure);
