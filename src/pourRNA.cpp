@@ -2166,6 +2166,11 @@ main(int  argc,
           //store sorted mapped minima in list
           MyState *min, *rep;
           for (size_t i = 0; i < sortedMinimaIDs.size(); i++) {
+            // a merged minimum is listed under its representative only; it used to get an
+            // entry of its own as well, so the file listed every minimum before merging
+            if (merge_state_map.find(i) != merge_state_map.end())
+              continue;
+
             auto                    itrep = representatives_and_clustered_ids.find(i);
             std::vector<MyState *>  basins;
             if (itrep != representatives_and_clustered_ids.end()) {
