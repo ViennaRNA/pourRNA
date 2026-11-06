@@ -131,11 +131,9 @@ bool StoreEnergies;
 bool StoreStructures;
 
 
+//! saddles of the basin flooded by this collector; must not be shared between threads.
 MapOfMaps *All_Saddles;
 MyState *current_min;
-
-std::mutex mutex_;
-std::condition_variable cond_;
 };
 
 #endif /* STATEPAIRCOLLECTOR_H_ */

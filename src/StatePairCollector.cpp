@@ -91,27 +91,15 @@ StatePairCollector::add(vrna_fold_compound_t  *vc,
     if (DiscoveredMinima != NULL)
       DiscoveredMinima->push((*newMin));
 
-    //add the first saddle for this new minimum
+    //add the first saddle for this new minimum.
+    //All_Saddles belongs to the basin that is flooded right now (see floodBasin()),
+    //so no other thread accesses it and no locking is needed. The main thread
+    //merges it into the global saddle map in merge_results().
     if (All_Saddles != NULL) {
-      MyState                       *a          = current_min->clone();
-      MyState                       *b          = newMin->clone();
-      std::pair<MyState, MyState>   state_pair  = std::pair<MyState, MyState>({ *a, *b });
-
-      std::unique_lock<std::mutex>  mlock(mutex_);
-
-      auto                          saddles_from_a  = (*All_Saddles)[*a];
-      auto                          saddle_a_b      = saddles_from_a.find(*b);
-      if (saddle_a_b == saddles_from_a.end()) {
-        if (firstIsSmaller)
-          (*All_Saddles)[*a][*b] = MyState(*state2);
-        else
-          (*All_Saddles)[*a][*b] = MyState(*state1);
-      }
-
-      mlock.unlock();
-      cond_.notify_one();
-      delete a;
-      delete b;
+      auto& saddles_from_current = (*All_Saddles)[*current_min];
+      if (saddles_from_current.find(*newMin) == saddles_from_current.end())
+        saddles_from_current.emplace(*newMin,
+                                     MyState(firstIsSmaller ? *state2 : *state1));
     }
   } else {
     // get index of newMin in Minima

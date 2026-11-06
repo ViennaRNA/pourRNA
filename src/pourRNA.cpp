@@ -309,6 +309,10 @@ struct flooderOutputParameter {
   SC_PartitionFunction::Z_Matrix  PartitionFunctions;
   SC_PartitionFunction            *ScBasin;
   flooderOutputAnylse             Analysis;
+  // ! Saddles found while flooding this basin (only filled if inParameter->All_Saddles
+  //   is set). Kept per basin so that worker threads never write to a shared map;
+  //   merge_results() copies them into *inParameter->All_Saddles in the main thread.
+  StatePairCollector::MapOfMaps   Saddles;
   ~flooderOutputParameter()
   {
     if (ScBasin != NULL)
@@ -351,7 +355,8 @@ floodBasin(vrna_fold_compound_t   *vc,
                          inParameter->GasConstant,
                          inParameter->MFE,
                          inParameter->Move_set,
-                         inParameter->All_Saddles,
+                         // collect into this basin's own map, never the shared one
+                         inParameter->All_Saddles != NULL ? &outParameter->Saddles : NULL,
                          inParameter->SourceStructure,
                          inParameter->TargetStructure,
                          inParameter->MaxBPdist,
@@ -466,6 +471,19 @@ merge_results(std::vector<std::pair<flooderInputParameter *,
       bothParameter->first;
     flooderOutputParameter                                        *outParameter =
       bothParameter->second;
+
+    // merge the saddles of this basin into the global saddle map (main thread only).
+    // Keep an existing entry, as the per-basin collector does: the first saddle
+    // found for a pair of minima is the lowest one.
+    if (inParameter->All_Saddles != NULL) {
+      for (auto from_it = outParameter->Saddles.begin();
+           from_it != outParameter->Saddles.end(); from_it++) {
+        auto& global_from = (*inParameter->All_Saddles)[from_it->first];
+        for (auto to_it = from_it->second.begin(); to_it != from_it->second.end(); to_it++)
+          global_from.emplace(to_it->first, to_it->second);  // no-op if already present
+      }
+      outParameter->Saddles.clear();
+    }
 
     if (verbose) {
       std::cout << "States out of basin: "
