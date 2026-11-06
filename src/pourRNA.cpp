@@ -2005,47 +2005,65 @@ main(int  argc,
             }
           }
 
-          // merge saddles
-          if (args_info.saddle_file_arg) {
-            for (auto it = representatives_and_clustered_ids.begin();
-                 it != representatives_and_clustered_ids.end(); it++) {
-              size_t  representative  = it->first;
-              MyState *rep_minimum    = sortedMinimaIDs[representative].second;
-              for (auto it_cluster = it->second.begin(); it_cluster != it->second.end();
-                   it_cluster++) {
-                // merge all saddles to the representative.
-                if (args_info.saddle_file_arg) {
-                  MyState *state      = sortedMinimaIDs[*it_cluster].second;
-                  auto    it_saddles  = all_saddles.find(*state);
-                  // insert minimal saddle to neighbor which is not in the same cluster
-                  for (auto it_saddle = it_saddles->second.begin();
-                       it_saddle != it_saddles->second.end(); it_saddle++) {
-                    auto it_output_id = sorted_min_and_output_ids->find(it_saddle->first);
-                    if (it_output_id != sorted_min_and_output_ids->end()) {
-                      size_t output_id = it_output_id->second;
-                      if (it->second.find(output_id) == it->second.end() &&
-                          output_id != representative) {
-                        // if not in the same cluster --> add transition
-                        auto rep_neighbor_it = all_saddles[*rep_minimum].find(it_saddle->first);
-                        if (rep_neighbor_it != all_saddles[*rep_minimum].end()) {
-                          // replace saddle if smaller
-                          if (it_saddle->second.energy < rep_neighbor_it->second.energy) {
-                            all_saddles[*rep_minimum][it_saddle->first] = it_saddle->second;
-                            all_saddles[it_saddle->first][*rep_minimum] = it_saddle->second;
-                          }
-                        } else {
-                          // add new saddle
-                          all_saddles[*rep_minimum][it_saddle->first] = it_saddle->second;
-                          all_saddles[it_saddle->first][*rep_minimum] = it_saddle->second;
-                        }
-                      }
-                    }
+          // merge saddles: every saddle between two minima becomes a saddle between their
+          // cluster representatives (a minimum that was not merged represents itself);
+          // saddles inside a cluster are dropped and of several saddles between the same two
+          // representatives the lowest is kept.
+          // The map is rebuilt instead of edited in place. The former in-place version
+          //  - dereferenced all_saddles.find() without checking for end(), which crashed for
+          //    minima without own saddles (e.g. when the deltaE limit hid their transitions
+          //    and they were only found from the neighbor's side),
+          //  - inserted into all_saddles while iterating one of its entries, and
+          //  - lost saddles to minima of clusters merged earlier, depending on the order in
+          //    which the clusters were processed.
+          // The result does not depend on the iteration order of the hash maps.
+          if (args_info.saddle_file_given) {
+            auto representative_of = [&merged_min_to_representative](size_t output_id) {
+                                       auto it_rep = merged_min_to_representative.find(output_id);
+                                       return it_rep == merged_min_to_representative.end() ?
+                                              output_id : it_rep->second;
+                                     };
+            StatePairCollector::MapOfMaps merged_saddles;
+            for (auto it_from = all_saddles.begin(); it_from != all_saddles.end(); it_from++) {
+              auto from_id_it = sorted_min_and_output_ids->find(it_from->first);
+              for (auto it_to = it_from->second.begin(); it_to != it_from->second.end(); it_to++) {
+                auto to_id_it = sorted_min_and_output_ids->find(it_to->first);
+                if (from_id_it == sorted_min_and_output_ids->end()
+                    || to_id_it == sorted_min_and_output_ids->end()) {
+                  // not between two output minima: keep unchanged
+                  merged_saddles[it_from->first].emplace(it_to->first, it_to->second);
+                  continue;
+                }
+
+                size_t rep_from = representative_of(from_id_it->second);
+                size_t rep_to   = representative_of(to_id_it->second);
+                if (rep_from == rep_to)
+                  continue;  // inner-cluster saddle
+
+                const MyState &min_from  = *sortedMinimaIDs[rep_from].second;
+                const MyState &min_to    = *sortedMinimaIDs[rep_to].second;
+                // store both directions, keeping the lowest saddle
+                // (erase + emplace instead of assignment, because MyState::operator= leaks)
+                for (int direction = 0; direction < 2; direction++) {
+                  const MyState &a          = direction == 0 ? min_from : min_to;
+                  const MyState &b          = direction == 0 ? min_to : min_from;
+                  auto          &saddles_a  = merged_saddles[a];
+                  auto          existing    = saddles_a.find(b);
+                  if (existing == saddles_a.end()) {
+                    saddles_a.emplace(b, it_to->second);
+                  } else if (it_to->second.energy < existing->second.energy
+                             || (it_to->second.energy == existing->second.energy
+                                 && StructureUtils::IsSmaller(it_to->second.structure,
+                                                              existing->second.structure))) {
+                    // lower saddle, or same height and lexicographically smaller (so the
+                    // result does not depend on hash map order)
+                    saddles_a.erase(existing);
+                    saddles_a.emplace(b, it_to->second);
                   }
-                  // remove merged saddles
-                  all_saddles.erase(*state);
                 }
               }
             }
+            all_saddles.swap(merged_saddles);
           }
 
           if (basin_size) {
