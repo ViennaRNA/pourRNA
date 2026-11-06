@@ -222,6 +222,25 @@ Thus, we first have to prune all "up-hill" transitions before reducing the remai
 
 The kBest filter can be dynamically adjusted with `--dynamic-best-k`, which increases the number of transitions iteratively until the MFE structure is discovered.
 
+### Macroscopic direct paths: max-bp-detour
+With a start and a final structure, `--max-bp-detour=D` explores only basins whose local minimum m lies on or near
+a direct path between the local minima s and t of the start and the final structure (Section 3.3.4 of the paper):
+m may contain at most D base pairs that are in neither s nor t, or that s and t share but m lacks
+(|m - (s u t)| + |(s n t) - m| <= D). D is the paper's &Delta;<sub>bp</sub>; `--max-bp-detour=0` allows only minima on a direct path.
+
+`--max-bp-dist-add=X` bounds the same deviation in moves instead of base pairs (d(m,s) + d(m,t) <= d(s,t) + X).
+Every deviating base pair costs two moves, so `--max-bp-detour=D` is the same as `--max-bp-dist-add=2*D`.
+The &Delta;<sub>bp</sub> values in the paper (Table 1, Supplementary Table 2) were passed to `--max-bp-dist-add`, so
+they allowed only &lfloor;&Delta;<sub>bp</sub>/2&rfloor; deviating base pairs: `--max-bp-dist-add=Delta_bp` reproduces all
+published sv11 energy barriers, while `--max-bp-detour=6` finds a lower barrier (-57.5 instead of -56.6 kcal/mol,
+turner-04, deltaE=5) than the published run with &Delta;<sub>bp</sub>=6. To reproduce a published run, use
+`--max-bp-dist-add=Delta_bp`; for new work, use `--max-bp-detour`. `scripts/reproduce_sv11_paper.py` runs the
+sv11 refolding experiments of Table 1 and Supplementary Table 2 with both options and compares energy barriers,
+numbers of flooded basins and runtimes to the published values:
+```
+scripts/reproduce_sv11_paper.py --pourrna pourRNA --runs quick --out sv11-repro
+```
+
 ## Use cases
 
 - compute the partition functions for all local minima and their probability in the thermodynamic ensemble
