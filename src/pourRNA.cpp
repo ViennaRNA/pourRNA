@@ -1778,6 +1778,12 @@ main(int  argc,
                                                       *tmp_sorted_min_and_output_ids = NULL;
     std::unordered_map<MyState, SC_DotPlot::DotPlot, PairHashTable::PairTableHash,
                        PairHashTable::PairTableEqual> tmp_dot_plot_per_basin;
+    // further state that the minh merging of one threshold changes and that has to be
+    // restored for the next threshold
+    StatePairCollector::MapOfMaps                     tmp_all_saddles;
+    std::unordered_map<size_t, size_t>                tmp_basin_sizes;
+    std::string                                       tmp_start_structure_minimum;
+    std::string                                       tmp_end_structure_minimum;
 
 
     if (max_basins_max_states.size() > 1) {
@@ -1822,10 +1828,17 @@ main(int  argc,
       tmp_sorted_min_and_output_ids->insert(sorted_min_and_output_ids->begin(),
                                             sorted_min_and_output_ids->end());
       tmp_dot_plot_per_basin.insert(dot_plot_per_basin.begin(), dot_plot_per_basin.end());
+      tmp_all_saddles.insert(all_saddles.begin(), all_saddles.end());
+      tmp_basin_sizes.insert(minimum_index_and_basin_size.begin(),
+                             minimum_index_and_basin_size.end());
+      tmp_start_structure_minimum = startStructureMinimum;
+      if (endStructureMinimum != NULL)
+        tmp_end_structure_minimum = endStructureMinimum;
     }
 
-    std::vector<std::pair<MyState *, std::vector<MyState *> > > minh_representatives_and_basins;
     do {
+      // the minh mapping of this threshold only (it used to accumulate over all thresholds)
+      std::vector<std::pair<MyState *, std::vector<MyState *> > > minh_representatives_and_basins;
       size_t minh_max_states;
       if (max_basins_max_states.size() > 0) {
         minh_max_states = max_basins_max_states[0];
@@ -1857,6 +1870,16 @@ main(int  argc,
                                               tmp_sorted_min_and_output_ids->end());
             dot_plot_per_basin.clear();
             dot_plot_per_basin.insert(tmp_dot_plot_per_basin.begin(), tmp_dot_plot_per_basin.end());
+            // The saddles, basin sizes and start/final minima were merged for the previous
+            // threshold as well, but were not restored, so every threshold after the first
+            // merged already merged data.
+            all_saddles.clear();
+            all_saddles.insert(tmp_all_saddles.begin(), tmp_all_saddles.end());
+            minimum_index_and_basin_size.clear();
+            minimum_index_and_basin_size.insert(tmp_basin_sizes.begin(), tmp_basin_sizes.end());
+            strcpy(startStructureMinimum, tmp_start_structure_minimum.c_str());
+            if (endStructureMinimum != NULL)
+              strcpy(endStructureMinimum, tmp_end_structure_minimum.c_str());
 
             adjusted_minh = bt.determin_optimal_min_h(minh_max_states,
                                                       minimal_saddle_list,
@@ -1923,7 +1946,9 @@ main(int  argc,
               binary_rates_file.append(appendix);
             }
 
-            if (args_info.minh_given || args_info.max_basins_given) {
+            if (args_info.minh_mapping_given) {
+              // only if a mapping file was requested (an empty name used to create a file
+              // named only by the appendix, e.g. "_max_basins_max_20_minh_3.20")
               minh_mapping_file = tmp_minh_mapping_file;
               minh_mapping_file.append(appendix);
             }
@@ -2003,6 +2028,9 @@ main(int  argc,
           }
 
           // merge partition functions (implicitly merges states and energies within SC_PartitionFunction)
+          // z_minh must start empty for every threshold; it used to keep the merged partition
+          // functions of the previous threshold, which were then added again.
+          z_minh.clear();
           for (size_t i = 0; i < sortedMinimaIDs.size(); i++) {
             size_t id_i = sortedMinimaIDs[i].first;
             for (size_t j = 0; j < sortedMinimaIDs.size(); j++) {
