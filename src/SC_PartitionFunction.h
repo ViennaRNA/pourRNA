@@ -206,7 +206,7 @@ std::vector<MyState> Structures;
 //! The partition function sum to fill;
 double Z;
 //! Gas constant unit : kcal / (Kelvin * mol)
-const double GAS_CONSTANT_KCAL;
+double GAS_CONSTANT_KCAL;
 //! The temperature scaled "Boltzmann" constant used to compute Boltzmann weights.
 double kT;
 //! The global minimum free energy -> used for scaling in kcal/mol

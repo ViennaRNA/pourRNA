@@ -54,10 +54,20 @@ SC_PartitionFunction::initialize(const double temperature,
                                  bool         storeStructures,
                                  const bool   storeEnergies)
 {
+  // the gas constant is fixed at construction and cannot be changed here
+  if (gas_constant != GAS_CONSTANT_KCAL) {
+    fprintf(stderr,
+            "Error: SC_PartitionFunction::initialize: gas constant %g differs from the "
+            "constructed value %g; construct the object with the right gas constant.\n",
+            gas_constant, GAS_CONSTANT_KCAL);
+    std::exit(EXIT_FAILURE);
+  }
+
   // update constant parameters
   StoreEnergies   = storeEnergies;
   StoreStructures = storeStructures;
   double tempInKelvin = temperature + 273.15;
+  GAS_CONSTANT_KCAL = gas_constant;
   kT = GAS_CONSTANT_KCAL * tempInKelvin;
 
   // init data structures

@@ -123,12 +123,13 @@ StatePairCollector::add(vrna_fold_compound_t  *vc,
   };
   SC_PartitionFunction::Z_Matrix::iterator  zIt = Z.find(pairID);
   if (zIt == Z.end())
+    // construct with the final parameters; the gas constant is fixed at construction.
     // vc->params->temperature is in Celsius.
-    Z[pairID].initialize(BoltzmannWeightTemperature,
-                         GasConstant,
-                         MFE,
-                         StoreStructures,
-                         StoreEnergies);
+    Z.emplace(pairID, SC_PartitionFunction(BoltzmannWeightTemperature,
+                                           GasConstant,
+                                           MFE,
+                                           StoreStructures,
+                                           StoreEnergies));
 
   if (firstIsSmaller) {
     // update Z matrix with basin state

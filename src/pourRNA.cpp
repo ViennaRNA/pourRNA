@@ -1888,7 +1888,7 @@ main(int  argc,
                   // addition of SC_PartitionFunction.
                   trans_c->second += trans->second;
                 } else {
-                  z_minh[SC_PartitionFunction::PairID(cluster_i, cluster_j)] = trans->second;
+                  z_minh.emplace(SC_PartitionFunction::PairID(cluster_i, cluster_j), trans->second);
                   //z_minh[SC_PartitionFunction::PairID(cluster_i, cluster_j)].setZ(pf_from);
                 }
               }
