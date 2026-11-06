@@ -942,14 +942,36 @@ main(int  argc,
       }
     }
 
-    int maxBP_add = 0;
+    // restriction of explored minima to the surroundings of direct paths between the
+    // start and the final minimum: d(m,s) + d(m,t) <= d(s,t) + maxBP_add
+    int   maxBP_add       = 0;
+    bool  maxBPdistFilter = false;
+    if (args_info.max_bp_dist_add_given && args_info.max_bp_detour_given)
+      throw ArgException(
+              "Error: --max-bp-dist-add and --max-bp-detour cannot be combined (--max-bp-detour=D equals --max-bp-dist-add=2*D)!");
+
     if (args_info.max_bp_dist_add_given) {
-      maxBP_add = args_info.max_bp_dist_add_arg;
+      maxBP_add       = args_info.max_bp_dist_add_arg;
+      maxBPdistFilter = true;
       //if (maxBPdist < 0)
       //  throw ArgException("The base pair distance has to be positive!");
       if (!args_info.final_structure_given || !args_info.start_structure_given)
         throw ArgException(
                 "Error: max-bp-dist-add expects that you also set a start structure and a final structure!");
+    }
+
+    if (args_info.max_bp_detour_given) {
+      if (args_info.max_bp_detour_arg < 0)
+        throw ArgException("Error: max-bp-detour has to be a non-negative number of base pairs!");
+
+      if (!args_info.final_structure_given || !args_info.start_structure_given)
+        throw ArgException(
+                "Error: max-bp-detour expects that you also set a start structure and a final structure!");
+
+      // each base pair of detour adds two moves to the path s -> m -> t;
+      // values beyond the sequence length allow everything anyway (avoid overflow)
+      maxBP_add       = 2 * std::min(args_info.max_bp_detour_arg, 1 << 20);
+      maxBPdistFilter = true;
     }
 
     std::list<std::string> start_structure_list;
@@ -1399,7 +1421,7 @@ main(int  argc,
     // basins added as start points by --start-structure-file (reported in the output header)
     size_t startFileBasins = 0;
 
-    if (args_info.max_bp_dist_add_given) {
+    if (maxBPdistFilter) {
       maxBPdist = vrna_bp_distance(startStructureMinimum, endStructureMinimum);
       maxBPdist += maxBP_add;
     }
@@ -1419,7 +1441,7 @@ main(int  argc,
       auto    it_min            = Minima.find(*start_struct_min);
       if (it_min == Minima.end()) {
         bool allow_min = true;
-        if (args_info.max_bp_dist_add_given) {
+        if (maxBPdistFilter) {
           int start_dist = vrna_bp_distance(startStructureMinimum,
                                             start_struct_min->toString().c_str());
           int final_dist = vrna_bp_distance(endStructureMinimum,
@@ -1593,7 +1615,7 @@ main(int  argc,
               }
 
               // stop exploration at final structure only if no maximal base pair distance is given!
-              if (!args_info.max_bp_dist_add_given) {
+              if (!maxBPdistFilter) {
                 //if final structure is in done list --> break;
                 if (!finalStructureFound && finalStructureMinimum != NULL) {
                   auto final_min_it = Minima.find(*finalStructureMinimum);

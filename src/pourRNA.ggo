@@ -111,13 +111,30 @@ optional
 option  "max-bp-dist-add" -
 "Increases the maximum base pair distance for direct neighbor minima to be explored. \
 Needs a start structure and a final structure in order to work. For all discovered \
-minima m holds: bp_dist(m, start-structure) + bp_dist(m, final-structure) < d(start-structure, final-structure) + maxBPdist_add.
+minima m holds: bp_dist(m, s) + bp_dist(m, t) <= bp_dist(s, t) + maxBPdist_add, \
+where s and t are the local minima of the start and the final structure. \
+The left side exceeds bp_dist(s, t) by 2 * (|m - (s u t)| + |(s n t) - m|): every base pair of m \
+that is in neither s nor t, and every common base pair of s and t that m lacks, counts twice. \
+A deviation of D base pairs from the direct path (the paper's Delta_bp) therefore needs maxBPdist_add = 2 * D, \
+or --max-bp-detour=D.
 If this parameter is given, the explorative flooding will not stop at the final structure! Instead
 it will explore all minima on the direct path and at its borders. This helps to evaluate optimal refolding paths
 in a post-processing step.\n"
 
 int
 default="65536"
+optional
+
+option  "max-bp-detour" -
+"Explores only minima on or near a direct path between the start and the final structure \
+(macroscopic direct paths with deviation Delta_bp). \
+Needs a start structure and a final structure in order to work. A discovered minimum m is explored \
+if |m - (s u t)| + |(s n t) - m| <= Delta_bp, where s and t are the local minima of the start and the final \
+structure: m may contain at most Delta_bp base pairs that are in neither s nor t, or that s and t share \
+but m lacks. 0 allows only minima on a direct path. \
+The same as --max-bp-dist-add=2*Delta_bp; the two options cannot be combined. \
+Like --max-bp-dist-add, the explorative flooding does not stop at the final structure.\n"
+int
 optional
 
 option  "minh" -
