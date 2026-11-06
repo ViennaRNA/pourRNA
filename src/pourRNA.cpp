@@ -1100,6 +1100,33 @@ main(int  argc,
         move_set = VRNA_MOVESET_DEFAULT;
     }
 
+    // The no-lonely-pair move set only reaches structures without lonely pairs. A start or
+    // final structure with a lonely pair lies outside that space: the gradient walk cannot
+    // remove it with these moves, so the structure would be mistaken for a local minimum.
+    if (move_set & VRNA_MOVESET_NO_LP) {
+      std::vector<std::pair<std::string, std::string> > to_check;
+      if (args_info.start_structure_given)
+        to_check.push_back({ "start structure", rna_start_str });
+
+      if (rna_final_str != "")
+        to_check.push_back({ "final structure", rna_final_str });
+
+      size_t line = 0;
+      for (auto it = start_structure_list.begin(); it != start_structure_list.end(); it++)
+        to_check.push_back({ "structure " + std::to_string(++line) + " of the start structure file",
+                             *it });
+
+      for (auto it = to_check.begin(); it != to_check.end(); it++) {
+        size_t i, j;
+        if (StructureUtils::HasLonelyPair(it->second, i, j)) {
+          error_Mas << "the " << it->first << " " << it->second << " has a lonely base pair ("
+                    << i << "," << j << "), which the no-lonely-pair move set (--move-set=2) "
+                    << "cannot reach or remove";
+          throw ArgException(error_Mas.str());
+        }
+      }
+    }
+
 
     if (args_info.energy_model_given) {
       // set energyModel.
@@ -1185,7 +1212,10 @@ main(int  argc,
     vrna_md_set_default(&md);
     md.circ = 0;
     //md.uniq_ML = 1; /* in case we need M1 arrays */
-    md.noLP         = 0;
+    // Use the same structure space for the reference MFE as for the moves: with the
+    // no-lonely-pair move set, an MFE structure with lonely pairs is unreachable, so it was
+    // never found ("MFE not found", and --dynamic-best-k explored until exhaustion).
+    md.noLP         = (move_set & VRNA_MOVESET_NO_LP) ? 1 : 0;
     md.gquad        = 0;
     md.noGU         = 0;
     md.compute_bpp  = 0;

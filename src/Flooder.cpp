@@ -48,7 +48,8 @@ Flooder::get_Neighbors_pt(vrna_fold_compound_t  *vc,
   short     *pt_neighbor;
   struct_en *neighbor;
   for (vrna_move_t *m = tmp_neighbors; m->pos_5 != 0; m++, i++) {
-    energy      = vrna_eval_move_shift_pt(vc, m, structureEnergy->structure); // vrna_eval_move_pt(vc, structureEnergy->structure, m->pos_5,m->pos_3);
+    // EvalMove also counts the second base pair of composite (no-lonely-pair) moves
+    energy      = StructureUtils::EvalMove(vc, m, structureEnergy->structure);
     pt_neighbor = vrna_ptable_copy(structureEnergy->structure);
     vrna_move_apply(pt_neighbor, m);
     neighbor            = &neighbors[i];
@@ -56,7 +57,8 @@ Flooder::get_Neighbors_pt(vrna_fold_compound_t  *vc,
     neighbor->structure = pt_neighbor;
   }
   neighbors[i].structure = NULL;
-  free(tmp_neighbors);
+  // frees the m->next lists of composite moves too (free() leaked them)
+  vrna_move_list_free(tmp_neighbors);
   return neighbors;
 }
 

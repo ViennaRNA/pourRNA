@@ -10,6 +10,10 @@
 
 #include <string>
 #include <iostream>
+extern "C" {
+#include <ViennaRNA/fold_compound.h>
+#include <ViennaRNA/neighbor.h>
+}
 #include <regex>
 /**
  * ! Purpose: convert structures or compare them.
@@ -96,6 +100,31 @@ ValidateSequence(const std::string& sequence,
  * @param error set to a human-readable reason if the structure is invalid.
  * @return true if the structure is valid.
  */
+/**
+ * ! Find a lonely base pair, i.e. a pair (i,j) without a stacked pair (i-1,j+1) or (i+1,j-1).
+ * @param structure a balanced dot-bracket structure.
+ * @param i,j set to the 1-based positions of the first lonely pair found.
+ * @return true if the structure contains a lonely pair.
+ */
+static bool
+HasLonelyPair(const std::string& structure,
+              size_t&            i,
+              size_t&            j);
+
+
+/**
+ * ! Energy change (in dcal/mol) of applying move m to the structure pt.
+ * Unlike vrna_eval_move_shift_pt(), this also includes the successive moves in
+ * m->next, which the no-lonely-pair move set uses to insert or delete a stack of
+ * two base pairs at once (vrna_move_apply() applies them, vrna_eval_move_shift_pt()
+ * only evaluates the first base pair).
+ */
+static int
+EvalMove(vrna_fold_compound_t *vc,
+         const vrna_move_t    *m,
+         const short          *pt);
+
+
 static bool
 ValidateStructure(const std::string& structure,
                   const std::string& sequence,

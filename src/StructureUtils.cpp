@@ -10,6 +10,11 @@
 #include <sstream>
 #include <vector>
 #include "StructureUtils.h"
+#include <cstdlib>
+extern "C" {
+#include <ViennaRNA/eval.h>
+#include <ViennaRNA/utils/structures.h>
+}
 
 StructureUtils::StructureUtils()
 {
@@ -250,4 +255,58 @@ StructureUtils::ValidateStructure(const std::string& structure,
   }
 
   return true;
+}
+
+
+bool
+StructureUtils::HasLonelyPair(const std::string& structure,
+                              size_t&            i,
+                              size_t&            j)
+{
+  short *pt = vrna_ptable(structure.c_str());
+
+  if (pt == NULL)
+    return false;
+
+  bool  found = false;
+  for (int p = 1; p <= pt[0] && !found; p++) {
+    int q = pt[p];
+    if (q <= p)
+      continue;  // unpaired or closing bracket
+
+    bool outer_stack  = (p > 1 && q < pt[0] && pt[p - 1] == q + 1);
+    bool inner_stack  = (pt[p + 1] == q - 1);
+    if (!outer_stack && !inner_stack) {
+      i     = p;
+      j     = q;
+      found = true;
+    }
+  }
+  free(pt);
+  return found;
+}
+
+
+int
+StructureUtils::EvalMove(vrna_fold_compound_t *vc,
+                         const vrna_move_t    *m,
+                         const short          *pt)
+{
+  vrna_move_t first = *m;
+
+  first.next = NULL;
+
+  if (m->next == NULL || m->next->pos_5 == 0)
+    return vrna_eval_move_shift_pt(vc, &first, (short *)pt);
+
+  // evaluate the parts one after another on a copy that gets each part applied
+  short *tmp    = vrna_ptable_copy(pt);
+  int   energy  = vrna_eval_move_shift_pt(vc, &first, tmp);
+  vrna_move_apply(tmp, &first);
+  for (const vrna_move_t *n = m->next; n->pos_5 != 0; n++) {
+    energy += StructureUtils::EvalMove(vc, n, tmp);
+    vrna_move_apply(tmp, n);
+  }
+  free(tmp);
+  return energy;
 }
