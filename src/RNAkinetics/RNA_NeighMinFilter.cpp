@@ -7,6 +7,7 @@
  */
 
 #include "RNA_NeighMinFilter.h"
+#include "../StructureUtils.h"
 
 //################################################################################################################################
 
@@ -86,7 +87,9 @@ NeighMin_E_Filter::filter(const PairHashTable::HashTable &        minimaSet,
     if (otherMin != NULL) {
       // keep : E(curMin) >= (E(neighMin)-deltaE)
       // remove E(curMin) < (E(neighMin)-deltaE)
-      if ((currentMin.energy / 100.0 >= (otherMin->energy / 100.0 - deltaE)))
+      // compared in integer 10 cal/mol, so that a neighbor exactly at the threshold is
+      // always kept (the floating-point version could misjudge it by rounding)
+      if ((long long)otherMin->energy - currentMin.energy <= StructureUtils::KcalToDcal(deltaE))
         tempList.push_back(*i);
     }
   }

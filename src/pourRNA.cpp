@@ -365,9 +365,14 @@ floodBasin(vrna_fold_compound_t   *vc,
                          inParameter->storeEnergies
                          );
 
-  // set the maximal energy as upper floodlevel.
-  double  maxEnergy = min(inParameter->MaxEnergy,
-                          (inParameter->DeltaE + minState->energy / 100.0));
+  // set the maximal energy as upper floodlevel: min(maxE, E(minimum) + deltaE).
+  // Computed in integer 10 cal/mol: the former floating-point sum, truncated to int in the
+  // Flooder, could move the limit by one unit (e.g. -29.90 + 5 = -24.9 became -2489 instead
+  // of -2490), so states exactly at the limit were included or excluded inconsistently.
+  long long limit_dcal = std::min<long long>(
+    StructureUtils::KcalToDcal(inParameter->MaxEnergy),
+    (long long)minState->energy + StructureUtils::KcalToDcal(inParameter->DeltaE));
+  double    maxEnergy = limit_dcal / 100.0;  // converted back exactly by the Flooder
 
   Flooder myFlooder(maxEnergy, inParameter->MaxToQueue, inParameter->Move_set);
 

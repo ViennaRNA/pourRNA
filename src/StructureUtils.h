@@ -119,6 +119,16 @@ HasLonelyPair(const std::string& structure,
  * two base pairs at once (vrna_move_apply() applies them, vrna_eval_move_shift_pt()
  * only evaluates the first base pair).
  */
+/**
+ * ! Convert an energy in kcal/mol to ViennaRNA's integer unit (10 cal/mol), rounded to
+ * the nearest integer and clamped to the int range.
+ * Plain truncation, (int)(kcal * 100), rounds 2.30 down to 229 because 2.30 * 100 is
+ * 229.99999999999997 in floating point, and rounds negative values towards zero.
+ */
+static int
+KcalToDcal(double kcal);
+
+
 static int
 EvalMove(vrna_fold_compound_t *vc,
          const vrna_move_t    *m,

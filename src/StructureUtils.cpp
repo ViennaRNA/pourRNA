@@ -11,6 +11,8 @@
 #include <vector>
 #include "StructureUtils.h"
 #include <cstdlib>
+#include <cmath>
+#include <climits>
 extern "C" {
 #include <ViennaRNA/eval.h>
 #include <ViennaRNA/utils/structures.h>
@@ -309,4 +311,19 @@ StructureUtils::EvalMove(vrna_fold_compound_t *vc,
   }
   free(tmp);
   return energy;
+}
+
+
+int
+StructureUtils::KcalToDcal(double kcal)
+{
+  double dcal = std::round(kcal * 100.0);
+
+  if (dcal >= (double)INT_MAX)
+    return INT_MAX;
+
+  if (dcal <= (double)INT_MIN)
+    return INT_MIN;
+
+  return (int)dcal;
 }

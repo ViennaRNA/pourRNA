@@ -13,11 +13,12 @@ extern "C" {
 #include <ViennaRNA/structure_utils.h>
 }
 
-//energy*100 --> convert from kcal/mol to 10cal/mol (the ViennaRNA internal integer format for energies)
+//convert from kcal/mol to 10cal/mol (the ViennaRNA internal integer format for energies),
+//rounded instead of truncated
 Flooder::Flooder(double       maxEnergy,
                  size_t       maxToQueue,
                  unsigned int move_set) :
-  MaxEnergy(maxEnergy * 100.0), MaxStatesToQueue(
+  MaxEnergy(StructureUtils::KcalToDcal(maxEnergy)), MaxStatesToQueue(
     maxToQueue), ProcessedStates(0), Move_set(move_set)
 {
 }
@@ -76,8 +77,9 @@ Flooder::floodBasin(vrna_fold_compound_t  *vc,
   if (scBasin == NULL)
     throw std::invalid_argument("Flooder::floodBasin: no state collector given (scBasin == NULL)");
 
-  if (localMinState.energy >= MaxEnergy)
-    std::cout << "E(localMin) >= maxE" << std::endl;
+  // states with energy <= MaxEnergy are flooded, so a minimum exactly at MaxEnergy is fine
+  if (localMinState.energy > MaxEnergy)
+    std::cerr << "Warning: E(localMin) > maxE" << std::endl;
 
   ProcessedStates = 0;
 
