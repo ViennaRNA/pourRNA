@@ -72,6 +72,17 @@ filter_minh(std::vector<saddle_t> &minimal_saddle_list,
 
 void
 free_tree(node_t *root);
+
+
+/**
+ * ! check whether a leaf of the tree represents the given minimum.
+ * @param root - root of the (sub)tree.
+ * @param minimum_id - output index of the minimum.
+ * @return true if one of the leaves has this minimum_id.
+ */
+bool
+contains_minimum(node_t *root,
+                 size_t minimum_id);
 };
 
 #endif /* SRC_BARRIERSTREE_H_ */

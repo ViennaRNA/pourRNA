@@ -2418,31 +2418,49 @@ main(int  argc,
 
       // write barriers tree
       if (args_info.barrier_tree_file_given) {
+        // energies by output index (0 = lowest minimum), the indices used in minimal_saddle_list
         std::unordered_map<size_t, int> structure_index_to_energy;
         for (auto it = sorted_min_and_output_ids->begin(); it != sorted_min_and_output_ids->end();
              it++)
           structure_index_to_energy[it->second] = it->first.energy;
 
-        size_t                          output_mfe_id = sortedMinimaIDs[0].first;
+        // Note: sortedMinimaIDs[0].first is the minimum's global flooding ID, not its output
+        // index. Writing the MFE energy under that ID overwrote the energy of an unrelated
+        // minimum (whichever has that output index), which depends on the discovery order and
+        // thus on thread scheduling. The loop above already stores the MFE at index 0.
         int                             output_mfe    = sortedMinimaIDs[0].second->energy;
-        structure_index_to_energy[output_mfe_id] = output_mfe;
 
         std::vector<node_t *>           forest = bt.create_barrier_tree(minimal_saddle_list,
                                                                         structure_index_to_energy);
-        //node_t* tree = forest[0]; //TODO: search mfe tree.
         std::cout << std::endl;
-        //bt.free_tree(tree);
-        for (size_t t = 0; t < forest.size(); t++) {
-          std::string   newick_tree = bt.newick_string_builder(forest[t]);
-          std::ofstream tree_file(barrierTreeFileName);
-          tree_file << newick_tree << std::endl;
-          tree_file.close();
-          //std::cout << newick_tree << std::endl;
-        }
         if (forest.size() > 0) {
+          // The saddles can form several disconnected trees. Find the tree that contains
+          // the lowest minimum (output index 0); it is written first and drawn as SVG.
+          size_t mfe_tree = 0;
+          for (size_t t = 0; t < forest.size(); t++) {
+            if (bt.contains_minimum(forest[t], 0)) {
+              mfe_tree = t;
+              break;
+            }
+          }
+
+          // Write all trees, one Newick tree per line. Previously the file was reopened
+          // for every tree, so only the last one survived.
+          std::ofstream newick_file(barrierTreeFileName);
+          newick_file << bt.newick_string_builder(forest[mfe_tree]) << std::endl;
+          for (size_t t = 0; t < forest.size(); t++)
+            if (t != mfe_tree)
+              newick_file << bt.newick_string_builder(forest[t]) << std::endl;
+
+          newick_file.close();
+          if (forest.size() > 1)
+            std::cerr << "Note: the barrier tree file contains " << forest.size()
+                      << " disconnected trees (one per line, the tree with the lowest minimum first)."
+                      << std::endl;
+
           size_t        inorder_index = 0;
           std::string   svg_tree      =
-            bt.svg_string_builder(forest[0], output_mfe, &inorder_index);
+            bt.svg_string_builder(forest[mfe_tree], output_mfe, &inorder_index);
           std::ofstream tree_file(barrierTreeFileName + "_tree.svg");
           tree_file << svg_tree << std::endl;
           tree_file.close();

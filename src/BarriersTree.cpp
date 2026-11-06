@@ -699,3 +699,31 @@ BarriersTree::free_tree(node_t *tree)
 
   delete tree;
 }
+
+
+bool
+BarriersTree::contains_minimum(node_t *root,
+                               size_t minimum_id)
+{
+  // iterative depth-first search; inner nodes also carry minimum_id 0, so only leaves count
+  std::vector<node_t *> stack;
+
+  if (root != NULL)
+    stack.push_back(root);
+
+  while (!stack.empty()) {
+    node_t *node = stack.back();
+    stack.pop_back();
+    if (node->left_child == NULL && node->right_child == NULL) {
+      if (node->minimum_id == minimum_id)
+        return true;
+    } else {
+      if (node->left_child != NULL)
+        stack.push_back(node->left_child);
+
+      if (node->right_child != NULL)
+        stack.push_back(node->right_child);
+    }
+  }
+  return false;
+}
