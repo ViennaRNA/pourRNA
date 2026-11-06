@@ -448,6 +448,72 @@ estimateMaxToHash(size_t  numberOfHashMaps,
 }
 
 
+/**
+ * ! FIFO of basin IDs still to be flooded that also answers "is this ID queued?" in constant
+ *   time. The former std::list was searched with std::find for every discovered minimum,
+ *   which costs O(length of the queue) each time. An ID that is already queued is not added
+ *   again (all callers checked this before).
+ */
+class ToDoQueue
+{
+private:
+std::list<size_t>           order;
+std::unordered_set<size_t>  members;
+
+public:
+bool
+contains(size_t id) const
+{
+  return members.find(id) != members.end();
+}
+
+
+void
+push_back(size_t id)
+{
+  if (members.insert(id).second)
+    order.push_back(id);
+}
+
+
+size_t
+front() const
+{
+  return order.front();
+}
+
+
+void
+pop_front()
+{
+  members.erase(order.front());
+  order.pop_front();
+}
+
+
+bool
+empty() const
+{
+  return order.empty();
+}
+
+
+size_t
+size() const
+{
+  return order.size();
+}
+
+
+void
+clear()
+{
+  order.clear();
+  members.clear();
+}
+};
+
+
 int
 merge_results(std::vector<std::pair<flooderInputParameter *,
                                     flooderOutputParameter *> > *threadParameter,
@@ -462,7 +528,7 @@ merge_results(std::vector<std::pair<flooderInputParameter *,
               SC_PartitionFunction::Z_Matrix &z,
               bool dynamicBestK,
               std::unordered_map<size_t, std::vector<size_t> > &dynamicBestKFilterNeighborList,
-              std::list<size_t> &toDo_List,
+              ToDoQueue &toDo_List,
               std::unordered_set<size_t> &done_List,
               std::unordered_map<MyState, SC_DotPlot::DotPlot, PairHashTable::PairTableHash,
                                  PairHashTable::PairTableEqual> &dot_plot_per_basin,
@@ -622,8 +688,7 @@ merge_results(std::vector<std::pair<flooderInputParameter *,
         outParameter->IndicesOfFilteredMinima.at(i));
       // if the element at the index position is not already in done List, add it to toDo_list
       if (done_List.find(index) == done_List.end()
-          && std::find(toDo_List.begin(), toDo_List.end(), index)
-          == toDo_List.end())
+          && !toDo_List.contains(index))
         toDo_List.push_back(index);
     } // end for
 
@@ -1321,7 +1386,7 @@ main(int  argc,
     ///////////   ITERATE EXPLORATIVE LOCAL FLOODING  /////////////
 
     // initializing the DO list as queue, which contain all states that should be processed
-    std::list<size_t>
+    ToDoQueue
     toDo_List;
 
     // initializing the List of all states, which had already visited
@@ -1430,6 +1495,8 @@ main(int  argc,
         //v[0].wait();
         while (!finish) {
           finish = true;
+          // whether this pass merged a result or started a worker
+          bool progressed = false;
           for (int index = 0; index < maxThreads; index++) {
             bool res = true;
             try {
@@ -1471,10 +1538,7 @@ main(int  argc,
                       // if the element at the index position is not already in done List, add it to toDo_list
                       if (done_List.find(lowestMaxIndex)
                           == done_List.end()
-                          && std::find(toDo_List.begin(),
-                                       toDo_List.end(),
-                                       lowestMaxIndex)
-                          == toDo_List.end())
+                          && !toDo_List.contains(lowestMaxIndex))
                         toDo_List.push_back(lowestMaxIndex);
                     }
 
@@ -1510,6 +1574,7 @@ main(int  argc,
               }
 
               if (threadParameter->size() > 0) {
+                progressed = true;
                 merge_results(threadParameter, logEnergies,
                               energiesPerBasin, addedMinIDs, writeDotplot,
                               dotplot, Minima, MinimaForReverseSearch,
@@ -1631,6 +1696,20 @@ main(int  argc,
                 //threadFunction( vc, threadParameter);
                 v[index] = std::async(std::launch::async,
                                       threadFunction, vc, threadParameter);
+                progressed = true;
+              }
+            }
+          }
+
+          // Nothing to do until a worker finishes: block on a running worker instead of
+          // polling again immediately (the former loop kept one core at 100% for the whole
+          // run). The timeout keeps picking up newly discovered minima for idle slots.
+          if (!finish && !progressed) {
+            for (int index = 0; index < maxThreads; index++) {
+              if (v[index].valid()
+                  && v[index].wait_for(std::chrono::nanoseconds(0)) != std::future_status::ready) {
+                v[index].wait_for(std::chrono::milliseconds(1));
+                break;
               }
             }
           }
@@ -1694,9 +1773,7 @@ main(int  argc,
               size_t kNeighbor = dynBKit->second.at(
                 filterValueK - 1);
               if (done_List.find(kNeighbor) == done_List.end()
-                  && std::find(toDo_List.begin(),
-                               toDo_List.end(), kNeighbor)
-                  == toDo_List.end())
+                  && !toDo_List.contains(kNeighbor))
                 toDo_List.push_back(kNeighbor);
             }
           }
