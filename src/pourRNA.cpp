@@ -1170,7 +1170,7 @@ main(int  argc,
                 << elapsed_seconds_InitialWalk.count() << "s\n";
     }
 
-    char    *startStructureMinimum  = vrna_db_from_ptable(startState.getStructure());
+    char    *startStructureMinimum  = vrna_db_from_ptable(startStateMinimum->getStructure());
     short   *rnaFinalStructurePT    = NULL;
     MyState *finalStructureMinimum  = NULL;
     char    *endStructureMinimum    = NULL;
