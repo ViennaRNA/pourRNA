@@ -20,6 +20,7 @@
 #include <time.h>
 #include <vector>
 #include <future>
+#include <stdexcept>
 #include <thread>
 //#include <omp.h>
 //basic file operations
@@ -1460,6 +1461,27 @@ main(int  argc,
                 std::pair<flooderInputParameter *,
                           flooderOutputParameter *> > *threadParameter =
                 &threadParameterLists[index];
+
+              // Collect the worker's result. get() rethrows an exception thrown in the worker
+              // (e.g. std::bad_alloc); without it, the half-filled results of a failed job
+              // were merged silently and the run produced an incomplete rate matrix.
+              // Rethrowing ends the run with an error; the destructors of the remaining
+              // futures wait for the other workers to finish first.
+              if (v[index].valid()) {
+                try {
+                  v[index].get();
+                } catch (const std::exception& e) {
+                  throw std::runtime_error(
+                          "flooding failed in worker thread " + std::to_string(index) +
+                          " (" + std::to_string(threadParameter->size()) + " basin(s) in this job): " +
+                          e.what());
+                } catch (...) {
+                  throw std::runtime_error(
+                          "flooding failed in worker thread " + std::to_string(index) +
+                          " with an unknown exception");
+                }
+              }
+
               if (threadParameter->size() > 0) {
                 merge_results(threadParameter, logEnergies,
                               energyFile, addedMinIDs, writeDotplot,

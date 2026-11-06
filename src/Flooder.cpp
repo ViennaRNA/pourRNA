@@ -5,6 +5,7 @@
  *      Author: Gregor Entzian
  */
 
+#include <stdexcept>
 #include "Flooder.h"
 extern "C" {
 #include <ViennaRNA/neighbor.h>
@@ -66,11 +67,12 @@ Flooder::floodBasin(vrna_fold_compound_t  *vc,
                     StateCollector        *scBasin,
                     StatePairCollector    *scSurface)
 {
+  // These used to only print a message and then dereference the NULL pointer.
   if (localMinState.structure == NULL)
-    std::cout << "No local Min given! (structure==NULL)" << std::endl;
+    throw std::invalid_argument("Flooder::floodBasin: no local minimum given (structure == NULL)");
 
   if (scBasin == NULL)
-    std::cout << "No StateCollector given! (scBasin==NULL)" << std::endl;
+    throw std::invalid_argument("Flooder::floodBasin: no state collector given (scBasin == NULL)");
 
   if (localMinState.energy >= MaxEnergy)
     std::cout << "E(localMin) >= maxE" << std::endl;
