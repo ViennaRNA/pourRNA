@@ -452,7 +452,7 @@ int
 merge_results(std::vector<std::pair<flooderInputParameter *,
                                     flooderOutputParameter *> > *threadParameter,
               bool logEnergies,
-              ofstream &energyFile,
+              std::map<MyState, std::vector<int> > &energiesPerBasin,
               std::unordered_set<size_t> &addedMinIDs,
               bool writeDotplot,
               SC_DotPlot::DotPlot &dotplot,
@@ -510,13 +510,9 @@ merge_results(std::vector<std::pair<flooderInputParameter *,
       if (addedMinIDs.find(inParameter->BasinID) == addedMinIDs.end()) {
         addedMinIDs.insert(inParameter->BasinID);
 
-        const std::vector<int>& energies =
-          outParameter->ScBasin->getEnergies();
-        int                     energy;
-        for (size_t m = 0; m < energies.size(); m++) {
-          energy = energies[m];
-          energyFile << energy << " ";
-        }
+        // collected per basin and written at the end in the order of the minima, so that the
+        // file does not depend on the order in which the threads finished their basins
+        energiesPerBasin[*inParameter->CurrentMinimum] = outParameter->ScBasin->getEnergies();
       }
     }
 
@@ -1312,11 +1308,7 @@ main(int  argc,
 
     ///// for tests only -> write file with all Energies ///
     std::unordered_set<size_t>          addedMinIDs;
-    ofstream                            energyFile;
-    if ((energyFileName.size() > 0) & logEnergies) {
-      energyFile.open(energyFileName);
-      energyFile << "/* energy in 10kcal/mol*/.\n";
-    }
+    std::map<MyState, std::vector<int> > energiesPerBasin;  // ordered by minimum (energy, structure)
 
     //initialize DotPlot file:
     SC_DotPlot::DotPlot
@@ -1519,7 +1511,7 @@ main(int  argc,
 
               if (threadParameter->size() > 0) {
                 merge_results(threadParameter, logEnergies,
-                              energyFile, addedMinIDs, writeDotplot,
+                              energiesPerBasin, addedMinIDs, writeDotplot,
                               dotplot, Minima, MinimaForReverseSearch,
                               minimum_index_and_basin_size,
                               z, dynamicBestK,
@@ -1656,8 +1648,6 @@ main(int  argc,
         }
       } // end while
 
-      if (logEnergies)
-        energyFile.close();
 
       /////// Search the MFE structure in the done_list ////
       short *mfeStructurePT = vrna_ptable(mfeStructure);
@@ -1715,6 +1705,17 @@ main(int  argc,
 
       /////////////////////////////
     } while (dynamicBestK && !mfeFound && !toDo_List.empty()); //end dynamic best k filter loop.
+
+    if ((energyFileName.size() > 0) & logEnergies) {
+      // basins in the order of their minima (lower energy, then lexicographically smaller);
+      // the energies of one basin in flooding order as before
+      ofstream energyFile(energyFileName);
+      energyFile << "/* energy in 10kcal/mol*/.\n";
+      for (auto it = energiesPerBasin.begin(); it != energiesPerBasin.end(); it++)
+        for (size_t m = 0; m < it->second.size(); m++)
+          energyFile << it->second[m] << " ";
+      energyFile.close();
+    }
 
     if (dynamicBestK) {
       if (mfeFound) {
@@ -2476,6 +2477,9 @@ main(int  argc,
                              std::string("loc_min_to_energy, saddle, saddle_energy\n");
         fwrite(header.c_str(), sizeof(char), header.length(), saddle_file);
 
+        // rows sorted by (id_from, id_to); the hash map order depended on the order in which
+        // the threads had found the saddles
+        std::vector<std::pair<std::pair<int, int>, std::string> > saddle_rows;
         for (auto it = all_saddles.begin(); it != all_saddles.end(); it++) {
           //const std::pair<MyState, MyState>&  from_to       = it->first;
           const MyState *state_from = &it->first;
@@ -2492,20 +2496,25 @@ main(int  argc,
                 std::string   saddle        = state_saddle->toString();
                 int           id_from       = id_from_it->second;
                 int           id_to         = id_to_it->second;
-                std::fprintf(saddle_file,
-                             "%d, %s, %.2f, %d, %s, %.2f, %s, %.2f\n",
-                             id_from,
-                             s1.c_str(),
-                             state_from->energy / 100.0,
-                             id_to,
-                             s2.c_str(),
-                             state_to->energy / 100.0,
-                             saddle.c_str(),
-                             saddle_height);
+                const char    *fmt  = "%d, %s, %.2f, %d, %s, %.2f, %s, %.2f\n";
+                int           len   = std::snprintf(NULL, 0, fmt, id_from, s1.c_str(),
+                                                    state_from->energy / 100.0, id_to,
+                                                    s2.c_str(), state_to->energy / 100.0,
+                                                    saddle.c_str(), saddle_height);
+                std::string   row(len + 1, '\0');
+                std::snprintf(&row[0], len + 1, fmt, id_from, s1.c_str(),
+                              state_from->energy / 100.0, id_to, s2.c_str(),
+                              state_to->energy / 100.0, saddle.c_str(), saddle_height);
+                row.resize(len);
+                saddle_rows.push_back({ { id_from, id_to }, row });
               }
             }
           }
         }
+        std::sort(saddle_rows.begin(), saddle_rows.end());
+        for (auto it = saddle_rows.begin(); it != saddle_rows.end(); it++)
+          fwrite(it->second.c_str(), sizeof(char), it->second.length(), saddle_file);
+
         fclose(saddle_file);
       }
 
