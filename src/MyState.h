@@ -39,8 +39,9 @@ bool
 operator<(const MyState& toCompare) const;
 
 
-MyState
-operator=(MyState toCopy);
+//! copy assignment (frees the previous structure)
+MyState&
+operator=(const MyState& toCopy);
 
 
 MyState *

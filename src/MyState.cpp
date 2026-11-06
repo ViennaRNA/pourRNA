@@ -60,14 +60,21 @@ MyState::operator <(const MyState& s) const
 }
 
 
-MyState
-MyState::operator=(MyState toCopy)
+MyState&
+MyState::operator=(const MyState& toCopy)
 {
-  this->structure = NULL;
-  if (toCopy.structure != NULL)
-    this->structure = (vrna_ptable_copy(toCopy.structure));
+  // The former version took its argument by value, overwrote this->structure without
+  // freeing it (a leak on every assignment) and returned a copy instead of *this.
+  if (this != &toCopy) {
+    short *copy = NULL;
+    if (toCopy.structure != NULL)
+      copy = vrna_ptable_copy(toCopy.structure);
 
-  this->energy = toCopy.energy;
+    free(this->structure);
+    this->structure = copy;
+    this->energy    = toCopy.energy;
+  }
+
   return *this;
 }
 

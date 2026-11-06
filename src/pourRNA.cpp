@@ -1991,6 +1991,7 @@ main(int  argc,
               rateMatrixFileName = tmp_rateMatrixFileName;
               rateMatrixFileName.append(appendix);
               transOutFile->close();
+              delete transOutFile;  // a new stream is opened for every threshold
               transOutFile = new std::ofstream(
                 rateMatrixFileName.c_str(),
                 std::ofstream::out);
@@ -2714,6 +2715,11 @@ main(int  argc,
 
     free(endStructureMinimum);
     delete sorted_min_and_output_ids;
+    if (transOutFile != NULL) {
+      transOutFile->close();
+      delete transOutFile;
+    }
+
     //	delete ScMinimum;
     vrna_fold_compound_free(vc);
     if (mfeStructure != NULL)
