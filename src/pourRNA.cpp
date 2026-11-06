@@ -157,12 +157,48 @@ calculateRateMatrix(SC_PartitionFunction::Z_Matrix& z,
   max_size++;
   biu::MatrixSparseC<double>& final_Rate = *new biu::MatrixSparseC<double>(
     max_size, max_size, 0.0);
-  // iterate through all elements of done List to produce the final rate matrix
-  auto                        fromIt = done_List.begin();
-  for (std::uint32_t from = 0; from < done_List.size(); from++, fromIt++) {
-    // copy according rates
-    std::uint32_t                 fromOrig  = fromIt->first;
-    auto                          toIt      = std::next(fromIt, 1); //done_List.begin();
+  // row sums of the off-diagonal rates, accumulated while the rates are set.
+  // Summing over the matrix afterwards would call the non-const
+  // MatrixSparseC::at() for every (from, to) pair, which inserts an explicit
+  // zero entry for each missing pair and makes the sparse matrix dense (O(n^2)).
+  std::vector<double>         rowSum(computeDiagonal ? max_size : 0, 0.0);
+  // Only basin pairs with a stored transition partition function can get a
+  // rate, so collect those pairs from z instead of testing all n^2 pairs of
+  // done_List (each with two hash lookups). The pairs are processed in the same
+  // order as the former all-pairs loop (by position in done_List), so the
+  // matrix and the floating-point row sums are bit-identical to before.
+  std::unordered_map<size_t, size_t> positionInDoneList;
+  positionInDoneList.reserve(done_List.size());
+  for (size_t pos = 0; pos < done_List.size(); pos++)
+    positionInDoneList.emplace(done_List[pos].first, pos);
+
+  // (position of from, position of to) with from before to in done_List
+  std::vector<std::pair<size_t, size_t> > pairPositions;
+  pairPositions.reserve(z.size());
+  for (auto z_it = z.begin(); z_it != z.end(); z_it++) {
+    size_t  a = z_it->first.first;
+    size_t  b = z_it->first.second;
+    if (a == b)
+      continue;  // basin partition function, not a transition
+
+    auto    a_pos = positionInDoneList.find(a);
+    auto    b_pos = positionInDoneList.find(b);
+    if (a_pos == positionInDoneList.end() || b_pos == positionInDoneList.end())
+      continue;  // rates are only computed between basins in done_List
+
+    pairPositions.push_back(std::make_pair(std::min(a_pos->second, b_pos->second),
+                                           std::max(a_pos->second, b_pos->second)));
+  }
+  // z(i,j) and z(j,i) yield the same (from, to) position pair. Process each basin
+  // pair only once: the loop below reads both z(i,j) and z(j,i) and uses the
+  // larger, and a duplicate pair would add its rates to rowSum twice.
+  std::sort(pairPositions.begin(), pairPositions.end());
+  pairPositions.erase(std::unique(pairPositions.begin(), pairPositions.end()),
+                      pairPositions.end());
+
+  for (auto pair_it = pairPositions.begin(); pair_it != pairPositions.end(); pair_it++) {
+    std::uint32_t                 fromOrig  = done_List[pair_it->first].first;
+    std::uint32_t                 toOrig    = done_List[pair_it->second].first;
 
     SC_PartitionFunction::PairID  basinID =
       SC_PartitionFunction::PairID(fromOrig, fromOrig);
@@ -172,68 +208,59 @@ calculateRateMatrix(SC_PartitionFunction::Z_Matrix& z,
     if (it_z_basin != z.end())
       z_basin = it_z_basin->second.getZ();
 
-    if (z_basin > 0.0) {
-      for (std::uint32_t to = from + 1; to < done_List.size(); to++, toIt++) {
-        std::uint32_t toOrig = toIt->first;
-        // copy non-diagonal entries
-        //if (toOrig != fromOrig) {
-        //compute the rate from row-state two column-state
-        //in Z-Matrix: from i to j.
-        //in final_Rate: from j to i !
-        SC_PartitionFunction::PairID  transitionID =
-          SC_PartitionFunction::PairID(fromOrig, toOrig);
-        SC_PartitionFunction::PairID  reverseTransitionID =
-          SC_PartitionFunction::PairID(toOrig, fromOrig);
+    if (!(z_basin > 0.0))
+      continue;
 
+    //compute the rate from row-state two column-state
+    //in Z-Matrix: from i to j.
+    //in final_Rate: from j to i !
+    SC_PartitionFunction::PairID  transitionID =
+      SC_PartitionFunction::PairID(fromOrig, toOrig);
+    SC_PartitionFunction::PairID  reverseTransitionID =
+      SC_PartitionFunction::PairID(toOrig, fromOrig);
 
-        double                        z_transition          = 0.0;
-        double                        z_reverseTransition   = 0.0;
-        auto                          it_transition         = z.find(transitionID);
-        auto                          it_reverse_transition = z.find(reverseTransitionID);
-        if (it_reverse_transition != z.end())
-          z_reverseTransition = it_reverse_transition->second.getZ();
+    double                        z_transition          = 0.0;
+    double                        z_reverseTransition   = 0.0;
+    auto                          it_transition         = z.find(transitionID);
+    auto                          it_reverse_transition = z.find(reverseTransitionID);
+    if (it_reverse_transition != z.end())
+      z_reverseTransition = it_reverse_transition->second.getZ();
 
-        if (it_transition != z.end())
-          z_transition = it_transition->second.getZ();
+    if (it_transition != z.end())
+      z_transition = it_transition->second.getZ();
 
-        //max is important if filters are applied! Otherwise it should be equal.
-        z_transition = max(z_transition, z_reverseTransition);
+    //max is important if filters are applied! Otherwise it should be equal.
+    z_transition = max(z_transition, z_reverseTransition);
 
-        if (z_transition != 0.0) {
-          double                        rate_Val = z_transition / (/*maxNeighNum * */ z_basin);
-          if (rate_Val > 0.0)
-            final_Rate.at(fromOrig, toOrig) = rate_Val;
+    if (z_transition != 0.0) {
+      double                        rate_Val = z_transition / (/*maxNeighNum * */ z_basin);
+      if (rate_Val > 0.0) {
+        final_Rate.at(fromOrig, toOrig) = rate_Val;
+        if (computeDiagonal)
+          rowSum[fromOrig] += rate_Val;
+      }
 
-          SC_PartitionFunction::PairID  basinID2    = SC_PartitionFunction::PairID(toOrig, toOrig);
-          double                        z_basin2    = 0.0;
-          auto                          it_z_basin2 = z.find(basinID2);
-          if (it_z_basin2 != z.end()) {
-            z_basin2 = it_z_basin2->second.getZ();
+      SC_PartitionFunction::PairID  basinID2    = SC_PartitionFunction::PairID(toOrig, toOrig);
+      double                        z_basin2    = 0.0;
+      auto                          it_z_basin2 = z.find(basinID2);
+      if (it_z_basin2 != z.end()) {
+        z_basin2 = it_z_basin2->second.getZ();
 
-            if (z_basin2 > 0.0) {
-              double rate_Val = z_transition / (/*maxNeighNum * */ z_basin2);
-              if (rate_Val > 0.0)
-                final_Rate.at(toOrig, fromOrig) = rate_Val;
-            }
+        if (z_basin2 > 0.0) {
+          double rate_Val = z_transition / (/*maxNeighNum * */ z_basin2);
+          if (rate_Val > 0.0) {
+            final_Rate.at(toOrig, fromOrig) = rate_Val;
+            if (computeDiagonal)
+              rowSum[toOrig] += rate_Val;
           }
         }
-
-        //}
       }
     }
-  }   // end for
-  // compute diagonal
-  if (computeDiagonal) {
-    double sum;
-    for (auto from_it = done_List.begin(); from_it != done_List.end(); from_it++) {
-      sum = 0.0;
-      for (auto to_it = done_List.begin(); to_it != done_List.end(); to_it++)
-        if (from_it->first != to_it->first)
-          sum += final_Rate.at(from_it->first, to_it->first);
-
-      final_Rate.at(from_it->first, from_it->first) = -sum;
-    }
   }
+  // compute diagonal
+  if (computeDiagonal)
+    for (auto from_it = done_List.begin(); from_it != done_List.end(); from_it++)
+      final_Rate.at(from_it->first, from_it->first) = -rowSum[from_it->first];
 
   return final_Rate;
 }
