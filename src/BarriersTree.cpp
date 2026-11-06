@@ -64,11 +64,15 @@ print_sets(std::vector<std::unordered_set<size_t> *>& clusters_id_sets)
  *   The bottleneck between two minima is the largest saddle on their path in a minimum
  *   spanning tree of the saddle graph, so Kruskal's algorithm finds it: saddles are added in
  *   ascending order and joined with a union-find structure. A minimum i gets its answer at
- *   the first saddle height w at which its component contains a minimum with lower energy;
+ *   the first saddle height w at which its component contains a deeper minimum;
  *   the saddle is w and the target is the lowest minimum of the component (its smallest
  *   output index), which is the deeper minimum with the smallest index among all deeper
  *   minima reachable over saddles <= w.
- *   This gives the same list (same entries, same order) as the former all-pairs
+ *   "Deeper" means energetically smaller as defined for gradient basins: lower energy, or
+ *   equal energy and lexicographically smaller structure, i.e. a smaller output index
+ *   (sortedMinimaIDs is sorted that way). Requiring a strictly lower energy, as before,
+ *   skipped equal-energy neighbors and gave such minima a too high saddle.
+ *   Apart from that, this gives the same list (same entries, same order) as the former all-pairs
  *   Floyd-Warshall computation, but needs O(n + m) memory and O(m log m + n log n) time
  *   for n minima and m saddles instead of O(n^2) memory and O(n^3) time.
  *
@@ -136,9 +140,6 @@ BarriersTree::create_minimal_saddle_list(const std::vector<std::pair<size_t,
                      }
                      return x;
                    };
-  auto energy_of = [&sortedMinimaIDs](size_t i) {
-                     return sortedMinimaIDs[i].second->energy;
-                   };
 
   std::vector<size_t>                 target(n, SIZE_MAX);
   std::vector<int>                    saddle_of(n, INT32_MAX);
@@ -177,14 +178,14 @@ BarriersTree::create_minimal_saddle_list(const std::vector<std::pair<size_t,
         continue;
 
       is_touched[r] = 1;
-      const int           lowest_energy = energy_of(lowest[r]);
       std::vector<size_t> keep;
       for (size_t v : unanswered[r]) {
-        if (lowest_energy < energy_of(v)) {
+        // the lowest minimum of the component is deeper than every other member
+        if (lowest[r] < v) {
           target[v]     = lowest[r];
           saddle_of[v]  = saddle;
         } else {
-          keep.push_back(v);  // nothing strictly deeper in this component yet
+          keep.push_back(v);  // v is the lowest minimum of its component
         }
       }
       unanswered[r].swap(keep);
