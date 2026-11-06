@@ -1396,6 +1396,9 @@ main(int  argc,
     // insert the index of current minima to toDo_list
     toDo_List.push_back(currentMinID);
 
+    // basins added as start points by --start-structure-file (reported in the output header)
+    size_t startFileBasins = 0;
+
     if (args_info.max_bp_dist_add_given) {
       maxBPdist = vrna_bp_distance(startStructureMinimum, endStructureMinimum);
       maxBPdist += maxBP_add;
@@ -1426,6 +1429,7 @@ main(int  argc,
         }
 
         if (allow_min) {
+          startFileBasins++;
           size_t min_id_from_list = TypeID::value<size_t>();
           Minima.insert({ MyState(*start_struct_min), min_id_from_list });
           MinimaForReverseSearch.insert({ min_id_from_list, MyState(*start_struct_min) });
@@ -2324,6 +2328,18 @@ main(int  argc,
       padding_length  = offset - out.length();
       pad             = std::string(padding_length, ' ');
       *transOut << pad << rna_start_str << std::endl;
+
+      if (args_info.start_structure_file_given) {
+        // The start state above (the open chain unless --start-structure is given) is only one
+        // of the start points; without this line the structures from the file were not
+        // mentioned at all.
+        out = "Start structures from file: ";
+        *transOut << out;
+        padding_length  = offset - out.length();
+        pad             = std::string(padding_length, ' ');
+        *transOut << pad << start_structure_list.size() << " in " << args_info.start_structure_file_arg
+                  << ", " << startFileBasins << " additional start basin(s)" << std::endl;
+      }
 
       out = "The start state ends in basin: ";
       *transOut << out;
