@@ -73,7 +73,9 @@ off
 option  "max-neigh-e" -
 "reduces outgoing transitions to the neighbored minima, for which the\
  energy is lower than the energy of the current minimum plus the filter value.\
- (E(neighbored minimum) < E(current minimum) + filterValue) for each gradient basin.\n"
+ (E(neighbored minimum) < E(current minimum) + filterValue) for each gradient basin.\
+ At equal energy, the lexicographically smaller structure counts as lower (as for gradient\
+ basins), so 0 keeps only more stable neighbors.\n"
 double
 optional
 
