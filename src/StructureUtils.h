@@ -72,6 +72,35 @@ IsValidSequence(std::string sequence);
  */
 static bool
 IsValidStructure(std::string structure);
+
+
+/**
+ * ! Full validation of an RNA sequence: non-empty and only a|A|c|C|g|G|u|U.
+ * @param sequence the RNA sequence.
+ * @param error set to a human-readable reason if the sequence is invalid.
+ * @return true if the sequence is valid.
+ */
+static bool
+ValidateSequence(const std::string& sequence,
+                 std::string&       error);
+
+
+/**
+ * ! Full validation of a dot-bracket structure against its sequence.
+ * Checks the alphabet, that the length equals the sequence length, that the
+ * brackets are balanced, that every base pair is canonical (AU, GC, GU) and
+ * that every base pair encloses at least minLoopSize unpaired bases.
+ * @param structure the dot-bracket structure.
+ * @param sequence the RNA sequence the structure belongs to.
+ * @param minLoopSize the minimal hairpin loop size of the energy model.
+ * @param error set to a human-readable reason if the structure is invalid.
+ * @return true if the structure is valid.
+ */
+static bool
+ValidateStructure(const std::string& structure,
+                  const std::string& sequence,
+                  int                minLoopSize,
+                  std::string&       error);
 };
 
 #endif /* STRUCTUREUTILS_H_ */

@@ -6,6 +6,9 @@
  */
 
 #include <cstring>
+#include <cctype>
+#include <sstream>
+#include <vector>
 #include "StructureUtils.h"
 
 StructureUtils::StructureUtils()
@@ -141,5 +144,110 @@ StructureUtils::IsValidStructure(std::string structure)
     if (!((letter == '.') | (letter == '(') | (letter == ')')))
       return false;
   }
+  return true;
+}
+
+
+bool
+StructureUtils::ValidateSequence(const std::string& sequence,
+                                 std::string&       error)
+{
+  if (sequence.empty()) {
+    error = "the sequence is empty";
+    return false;
+  }
+
+  for (size_t i = 0; i < sequence.size(); i++) {
+    char c = std::toupper(static_cast<unsigned char>(sequence[i]));
+    if (c != 'A' && c != 'C' && c != 'G' && c != 'U') {
+      std::ostringstream msg;
+      msg << "invalid character '" << sequence[i] << "' at position " << (i + 1)
+          << " (only A, C, G, U are allowed";
+      if (c == 'T')
+        msg << "; replace T by U";
+
+      msg << ")";
+      error = msg.str();
+      return false;
+    }
+  }
+  return true;
+}
+
+
+static bool
+isCanonicalPair(char a,
+                char b)
+{
+  a = std::toupper(static_cast<unsigned char>(a));
+  b = std::toupper(static_cast<unsigned char>(b));
+  return (a == 'A' && b == 'U') || (a == 'U' && b == 'A')
+         || (a == 'G' && b == 'C') || (a == 'C' && b == 'G')
+         || (a == 'G' && b == 'U') || (a == 'U' && b == 'G');
+}
+
+
+bool
+StructureUtils::ValidateStructure(const std::string& structure,
+                                  const std::string& sequence,
+                                  int                minLoopSize,
+                                  std::string&       error)
+{
+  std::ostringstream msg;
+
+  if (structure.size() != sequence.size()) {
+    msg << "structure length " << structure.size()
+        << " does not match sequence length " << sequence.size();
+    error = msg.str();
+    return false;
+  }
+
+  std::vector<size_t> open;  // 0-based positions of unmatched '('
+  for (size_t j = 0; j < structure.size(); j++) {
+    char c = structure[j];
+    if (c == '.') {
+      continue;
+    } else if (c == '(') {
+      open.push_back(j);
+    } else if (c == ')') {
+      if (open.empty()) {
+        msg << "unbalanced brackets: ')' at position " << (j + 1)
+            << " has no matching '('";
+        error = msg.str();
+        return false;
+      }
+
+      size_t i = open.back();
+      open.pop_back();
+      if (!isCanonicalPair(sequence[i], sequence[j])) {
+        msg << "non-canonical base pair (" << (i + 1) << "," << (j + 1) << ") "
+            << sequence[i] << "-" << sequence[j]
+            << " (only AU, GC and GU pairs are allowed)";
+        error = msg.str();
+        return false;
+      }
+
+      if (static_cast<int>(j - i - 1) < minLoopSize) {
+        msg << "base pair (" << (i + 1) << "," << (j + 1) << ") encloses only "
+            << (j - i - 1) << " unpaired bases (minimum hairpin size is "
+            << minLoopSize << ")";
+        error = msg.str();
+        return false;
+      }
+    } else {
+      msg << "invalid character '" << c << "' at position " << (j + 1)
+          << " (only '.', '(' and ')' are allowed)";
+      error = msg.str();
+      return false;
+    }
+  }
+
+  if (!open.empty()) {
+    msg << "unbalanced brackets: '(' at position " << (open.back() + 1)
+        << " has no matching ')'";
+    error = msg.str();
+    return false;
+  }
+
   return true;
 }

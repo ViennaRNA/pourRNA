@@ -779,6 +779,10 @@ main(int  argc,
 
   try {
     // parse sequence
+    // minimal hairpin loop size of the energy model (ViennaRNA default TURN)
+    const int   minHairpinSize  = 3;
+    std::string validationError = "";
+
     std::string rnaSequence = "";
     if (!args_info.sequence_given) {
       rnaSequence = read_sequence_from_stdin();
@@ -786,10 +790,12 @@ main(int  argc,
         throw ArgException("No RNA sequence given");
     } else {
       rnaSequence = std::string(args_info.sequence_arg);
-      if (!StructureUtils::IsValidSequence(rnaSequence)) {
-        error_Mas << "Sequence " << rnaSequence << " is no valid Sequence ";
-        throw ArgException(error_Mas.str());
-      }
+    }
+
+    // validate the sequence regardless of whether it came from --sequence or stdin
+    if (!StructureUtils::ValidateSequence(rnaSequence, validationError)) {
+      error_Mas << "invalid sequence: " << validationError;
+      throw ArgException(error_Mas.str());
     }
 
     // parse structure
@@ -799,9 +805,10 @@ main(int  argc,
       rna_start_str = std::string(rnaSequence.size(), '.');
     } else {
       rna_start_str = std::string(args_info.start_structure_arg);
-      if (!StructureUtils::IsValidStructure(rna_start_str)) {
-        error_Mas << " start Structure " << rna_start_str
-                  << " is no valid structure";
+      if (!StructureUtils::ValidateStructure(rna_start_str, rnaSequence,
+                                             minHairpinSize, validationError)) {
+        error_Mas << "invalid start structure " << rna_start_str << ": "
+                  << validationError;
         throw ArgException(error_Mas.str());
       }
     }
@@ -809,10 +816,10 @@ main(int  argc,
     std::string rna_final_str = "";
     if (args_info.final_structure_given) {
       rna_final_str = args_info.final_structure_arg;
-      if (!StructureUtils::IsValidStructure(rna_final_str)
-          || rna_final_str.size() == 0) {
-        error_Mas << " final Structure " << rna_final_str
-                  << " is no valid structure";
+      if (!StructureUtils::ValidateStructure(rna_final_str, rnaSequence,
+                                             minHairpinSize, validationError)) {
+        error_Mas << "invalid final structure " << rna_final_str << ": "
+                  << validationError;
         throw ArgException(error_Mas.str());
       }
 
@@ -838,10 +845,37 @@ main(int  argc,
       std::string start_structure_file = args_info.start_structure_file_arg;
       if (start_structure_file.size() != 0) {
         std::ifstream infile(start_structure_file);
-        std::string   line;
-        while (std::getline(infile, line))
-          if (StructureUtils::IsValidStructure(line))
-            start_structure_list.push_back(line);
+        if (!infile.is_open()) {
+          error_Mas << "cannot open start structure file " << start_structure_file;
+          throw ArgException(error_Mas.str());
+        }
+
+        std::string line;
+        size_t      lineNumber = 0;
+        while (std::getline(infile, line)) {
+          lineNumber++;
+          // strip surrounding whitespace, including '\r' from Windows line endings
+          size_t first = line.find_first_not_of(" \t\r\n");
+          if (first == std::string::npos)
+            continue;  // skip empty lines
+
+          size_t last = line.find_last_not_of(" \t\r\n");
+          line = line.substr(first, last - first + 1);
+
+          if (!StructureUtils::ValidateStructure(line, rnaSequence,
+                                                 minHairpinSize, validationError)) {
+            error_Mas << start_structure_file << ":" << lineNumber
+                      << ": invalid structure " << line << ": " << validationError;
+            throw ArgException(error_Mas.str());
+          }
+
+          start_structure_list.push_back(line);
+        }
+        if (start_structure_list.empty()) {
+          error_Mas << "start structure file " << start_structure_file
+                    << " contains no structures";
+          throw ArgException(error_Mas.str());
+        }
       }
     }
 
@@ -1024,7 +1058,7 @@ main(int  argc,
     if (args_info.energy_model_given) {
       // set energyModel.
       int energyModelNumber = args_info.energy_model_arg;
-      if (energyModelNumber >= 0 || energyModelNumber <= 2) {
+      if (energyModelNumber >= 0 && energyModelNumber <= 2) {
         // Get the last position of '/'
         char        buf[UINT16_MAX] = "";
         ssize_t     res             = readlink("/proc/self/exe", buf, UINT16_MAX);
@@ -1053,8 +1087,6 @@ main(int  argc,
           case 0:
             energyModelFile = path + shareFolder
                               + "/rna_turner2004.par";
-            //printf("%s \n",energyModelFile.c_str());
-            read_parameter_file(energyModelFile.c_str());
             /*TODO: find out why the default setting of viennaRNA 2.3.5
              *      produces different results than the results after
              *      reading the default file
@@ -1063,14 +1095,22 @@ main(int  argc,
           case 1:
             energyModelFile = path + shareFolder
                               + "/rna_turner1999.par";
-            read_parameter_file(energyModelFile.c_str());
             break;
           case 2:
             energyModelFile = path + shareFolder
                               + "/rna_andronescu2007.par";
-            read_parameter_file(energyModelFile.c_str());
             break;
         }
+        // read_parameter_file() only warns on a missing file and then keeps the
+        // default parameters, so check the file first.
+        if (!std::ifstream(energyModelFile).good()) {
+          error_Mas << "energy parameter file " << energyModelFile
+                    << " for --energy-model=" << energyModelNumber
+                    << " not found";
+          throw ArgException(error_Mas.str());
+        }
+
+        read_parameter_file(energyModelFile.c_str());
       } else {
         throw ArgException(
                 "Error: Only values between 0 and 2 are allowed for parameter M (energy model)!");
@@ -2445,7 +2485,7 @@ main(int  argc,
 
     pourRNA_cmdline_parser_free(&args_info);
   } catch (std::exception & ex) {
-    std::cerr << "\n\n ERORR : " << ex.what() << "\n" << std::endl;
+    std::cerr << "\n\n ERROR : " << ex.what() << "\n" << std::endl;
     return_Value = -1;
   }
 
