@@ -6,4 +6,5 @@ SUBDIRS = src misc doc
 pkgconfigdir = $(libdir)/pkgconfig
 
 EXTRA_DIST =  packaging/debian \
-              README.md
+              README.md \
+              scripts/reproduce_sv11_paper.py
