@@ -1,3 +1,14 @@
+pourrna (1.3.0-1) UNRELEASED; urgency=medium
+
+  * --max-bp-detour: direct path deviation in base pairs (the paper's Delta_bp)
+  * --max-bp-dist-legacy: reproduce the published results of pourRNA 1.0
+  * Script to reproduce the sv11 results of the paper
+  * Fixes for rates, energy thresholds, no-lonely-pair moves, filters and minh
+  * Faster rate matrix and barrier tree, no data races, deterministic output
+  * Build with GCC 13 and ViennaRNA flags from pkg-config
+
+ -- Gregor Entzian <entzian@tbi.univie.ac.at>  Sat, 07 Nov 2026 12:00:00 +0100
+
 pourrna (1.2.0-1) UNRELEASED; urgency=medium
 
   * Gas constant parameter
