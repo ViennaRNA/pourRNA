@@ -1,5 +1,4 @@
 [![GitHub release](https://img.shields.io/github/release/ViennaRNA/pourRNA.svg)](https://github.com/ViennaRNA/pourRNA/releases)
-[![Build Status](https://travis-ci.org/ViennaRNA/pourRNA.svg?branch=master)](https://travis-ci.org/ViennaRNA/pourRNA)
 [![Conda](https://img.shields.io/conda/v/bioconda/pourRNA.svg)](https://anaconda.org/bioconda/pourRNA)<br>
 Release Tar: [![Github All Releases](https://img.shields.io/github/downloads/ViennaRNA/pourRNA/total.svg)](https://github.com/ViennaRNA/pourRNA/releases)<br>
 Conda: [![Conda Downloads](https://anaconda.org/bioconda/pourrna/badges/downloads.svg)](https://anaconda.org/bioconda/pourRNA)<br>
