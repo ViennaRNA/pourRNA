@@ -6,6 +6,10 @@
  */
 
 
+// before the ViennaRNA headers: ViennaRNA 2.8.0's sequences/sequence.h uses size_t without
+// including <stddef.h> itself
+#include <cstddef>
+
 extern "C" {
 //#include <ViennaRNA/utils/structures.h>
 #include <ViennaRNA/data_structures.h>
