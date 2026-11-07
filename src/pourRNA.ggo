@@ -137,6 +137,14 @@ Like --max-bp-dist-add, the explorative flooding does not stop at the final stru
 int
 optional
 
+option  "max-bp-dist-legacy" -
+"With --max-bp-dist-add or --max-bp-detour: decide with the base pair distance of the basin that is \
+flooded right now instead of the discovered minimum, as pourRNA 1.0 did. Every neighbor minimum of a \
+basin within the bound is then accepted and flooded, which adds one layer of basins beyond the bound. \
+Use it with --max-bp-dist-add=Delta_bp to reproduce the results of the paper (Entzian and Raden, 2020).\n"
+flag
+off
+
 option  "minh" -
 "Set the minimal global saddle height (in kcal/mol). All basins with a lower minimal \
 saddle will be merged to the neighbored basin with lower energy\n"

@@ -66,6 +66,7 @@ StatePairCollector(size_t                           currentMinID,
                    const char                       *sourceStructure,
                    const char                       *targetStructure,
                    int                              maxBPdist,
+                   bool                             maxBPdistLegacy,
                    bool                             storeStructures = false,
                    bool                             storeEnergies   = false);
 virtual
@@ -123,6 +124,10 @@ char *CurrentStructure;
 const char *SourceStructure;
 const char *TargetStructure;
 int MaxBPdist;
+
+//! measure the base pair distance of the flooded basin's minimum instead of the discovered
+//! minimum (behaviour of pourRNA 1.0, used for the published results)
+bool MaxBPdistLegacy;
 HashSet::UnorderedHashSet MininaToIgnore;
 
 //! variable decides if energies should be stored.

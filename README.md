@@ -230,11 +230,15 @@ m may contain at most D base pairs that are in neither s nor t, or that s and t 
 
 `--max-bp-dist-add=X` bounds the same deviation in moves instead of base pairs (d(m,s) + d(m,t) <= d(s,t) + X).
 Every deviating base pair costs two moves, so `--max-bp-detour=D` is the same as `--max-bp-dist-add=2*D`.
-The &Delta;<sub>bp</sub> values in the paper (Table 1, Supplementary Table 2) were passed to `--max-bp-dist-add`, so
-they allowed only &lfloor;&Delta;<sub>bp</sub>/2&rfloor; deviating base pairs: `--max-bp-dist-add=Delta_bp` reproduces all
-published sv11 energy barriers, while `--max-bp-detour=6` finds a lower barrier (-57.5 instead of -56.6 kcal/mol,
-turner-04, deltaE=5) than the published run with &Delta;<sub>bp</sub>=6. To reproduce a published run, use
-`--max-bp-dist-add=Delta_bp`; for new work, use `--max-bp-detour`. `scripts/reproduce_sv11_paper.py` runs the
+The published results (Table 1, Supplementary Table 2) were computed with pourRNA 1.0, which passed the paper's
+&Delta;<sub>bp</sub> to `--max-bp-dist-add` and decided with the base pair distance of the basin flooded at that moment
+instead of the discovered minimum: all basins within &Delta;<sub>bp</sub> moves (&lfloor;&Delta;<sub>bp</sub>/2&rfloor; deviating
+base pairs) of a direct path were flooded, plus one layer of neighbor basins beyond. `--max-bp-dist-legacy` restores
+this behaviour; `--max-bp-dist-add=Delta_bp --max-bp-dist-legacy` reproduces the published energy barriers and numbers
+of flooded basins (within 2 %). Without `--max-bp-dist-legacy`, `--max-bp-dist-add=Delta_bp` still reproduces the
+published barriers, but floods fewer basins. For new work, use `--max-bp-detour`: with &Delta;<sub>bp</sub>=6 it finds a
+lower barrier (-57.5 instead of -56.6 kcal/mol, turner-04, deltaE=5) than the published run.
+`scripts/reproduce_sv11_paper.py` runs the
 sv11 refolding experiments of Table 1 and Supplementary Table 2 with both options and compares energy barriers,
 numbers of flooded basins and runtimes to the published values:
 ```

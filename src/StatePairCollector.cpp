@@ -21,6 +21,7 @@ StatePairCollector::StatePairCollector(size_t                           currentM
                                        const char                       *sourceStructure,
                                        const char                       *targetStructure,
                                        int                              maxBPdist,
+                                       bool                             maxBPdistLegacy,
                                        bool                             storeStructures,
                                        bool                             storeEnergies) :
   CurMinID(currentMinID), Minima(minima), Z(z), GradWalk(
@@ -28,6 +29,7 @@ StatePairCollector::StatePairCollector(size_t                           currentM
     discoveredMinima), BoltzmannWeightTemperature(
     boltzmannWeightTemperature), GasConstant(gas_constant), MFE(mfe), All_Saddles(all_saddles),
   SourceStructure(sourceStructure), TargetStructure(targetStructure), MaxBPdist(maxBPdist),
+  MaxBPdistLegacy(maxBPdistLegacy),
   MininaToIgnore(), StoreStructures(storeStructures), StoreEnergies(storeEnergies)
 {
   current_min       = Minima.begin()->first.clone();
@@ -72,7 +74,11 @@ StatePairCollector::add(vrna_fold_compound_t  *vc,
 
     //max base pair distance filter:
     if (MaxBPdist >= 0 && SourceStructure != NULL && TargetStructure != NULL) {
-      std::string new_min_str         = newMin->toString();
+      // legacy (pourRNA 1.0): the distance of the basin that is flooded right now decides,
+      // so every neighbor minimum of a basin within the bound is accepted (and flooded), which
+      // adds one layer of basins beyond the bound
+      std::string new_min_str         = MaxBPdistLegacy ? std::string(CurrentStructure) :
+                                        newMin->toString();
       const char  *new_min_structure  = new_min_str.c_str();
       int         dist_from_source    = vrna_bp_distance(new_min_structure, SourceStructure);
       int         dist_from_target    = vrna_bp_distance(new_min_structure, TargetStructure);

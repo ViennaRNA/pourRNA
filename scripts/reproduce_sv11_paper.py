@@ -12,13 +12,18 @@ maxE = -56 kcal/mol and shift moves, as stated in the paper.
 
 The paper's Delta_bp (Section 3.3.4) is the number of base pairs by which the local minimum
 of an explored basin may deviate from a direct path between start and final minimum.
-Runs that use Delta_bp are therefore made twice:
+Runs that use Delta_bp can be made in three modes (--modes, default add,detour):
 
   add     --max-bp-dist-add=Delta_bp   (the paper's values passed to the old option; this
                                         bounds the extra *moves*, i.e. 2 * deviating pairs,
                                         and allows only floor(Delta_bp/2) deviating pairs)
   detour  --max-bp-detour=Delta_bp     (Delta_bp deviating base pairs, as the paper defines it;
                                         the same as --max-bp-dist-add=2*Delta_bp)
+  legacy  --max-bp-dist-add=Delta_bp --max-bp-dist-legacy
+                                       (as pourRNA 1.0 computed the published results: the
+                                        distance of the flooded basin decides, which adds one
+                                        layer of basins beyond the bound; reproduces the
+                                        published barriers and numbers of flooded basins)
 
 For each run the script reports the energy barrier (lowest possible highest saddle on any
 path from the start minimum to the final minimum through the explored basins, computed from
@@ -150,6 +155,8 @@ def run_one(args, run, mode):
         cmd.append(f"--max-bp-dist-add={dbp}")
     elif mode == "detour":
         cmd.append(f"--max-bp-detour={dbp}")
+    elif mode == "legacy":
+        cmd += [f"--max-bp-dist-add={dbp}", "--max-bp-dist-legacy"]
     with open(os.path.join(wdir, "command.txt"), "w") as f:
         f.write(" ".join(f"'{c}'" if "(" in c else c for c in cmd) + "\n")
 
@@ -194,7 +201,7 @@ def main():
     p.add_argument("--runs", default="quick",
                    help="quick, table1, table2, all, or comma-separated run ids (see --list)")
     p.add_argument("--modes", default="add,detour",
-                   help="for runs with Delta_bp: add, detour or both (default: add,detour)")
+                   help="for runs with Delta_bp: add, detour and/or legacy (default: add,detour)")
     p.add_argument("--timeout", type=float, default=None, help="seconds per pourRNA run")
     p.add_argument("--out", default="sv11-repro", help="output directory")
     p.add_argument("--list", action="store_true", help="list the runs and exit")
@@ -214,8 +221,8 @@ def main():
     if unknown:
         p.error("unknown run id(s): " + ", ".join(unknown) + " (see --list)")
     modes = [m.strip() for m in args.modes.split(",") if m.strip()]
-    if any(m not in ("add", "detour") for m in modes):
-        p.error("--modes takes add and/or detour")
+    if any(m not in ("add", "detour", "legacy") for m in modes):
+        p.error("--modes takes add, detour and/or legacy")
 
     os.makedirs(args.out, exist_ok=True)
     rows = []
@@ -230,6 +237,8 @@ def main():
                 option, pairs = f"--max-bp-dist-add={dbp}", dbp // 2
             elif mode == "detour":
                 option, pairs = f"--max-bp-detour={dbp}", dbp
+            elif mode == "legacy":
+                option, pairs = f"--max-bp-dist-add={dbp} --max-bp-dist-legacy", f"{dbp // 2} (+1 layer)"
             else:
                 option, pairs = "", ""
             pub_barrier = "not connected" if run[6] is None else f"{run[6]:.2f}"

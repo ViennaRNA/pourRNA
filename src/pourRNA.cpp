@@ -281,6 +281,7 @@ struct flooderInputParameter {
   unsigned int                  Move_set;
   StatePairCollector::MapOfMaps *All_Saddles;
   int                           MaxBPdist;
+  bool                          MaxBPdistLegacy;
   char                          *SourceStructure;
   char                          *TargetStructure;
   double                        MFE; //used for pf scaling
@@ -361,6 +362,7 @@ floodBasin(vrna_fold_compound_t   *vc,
                          inParameter->SourceStructure,
                          inParameter->TargetStructure,
                          inParameter->MaxBPdist,
+                         inParameter->MaxBPdistLegacy,
                          inParameter->storeStructures,
                          inParameter->storeEnergies
                          );
@@ -973,6 +975,10 @@ main(int  argc,
       maxBP_add       = 2 * std::min(args_info.max_bp_detour_arg, 1 << 20);
       maxBPdistFilter = true;
     }
+
+    if (args_info.max_bp_dist_legacy_flag && !maxBPdistFilter)
+      throw ArgException(
+              "Error: --max-bp-dist-legacy needs --max-bp-dist-add or --max-bp-detour!");
 
     std::list<std::string> start_structure_list;
     if (args_info.start_structure_file_given) {
@@ -1690,6 +1696,7 @@ main(int  argc,
                     inParameter->All_Saddles = NULL;
 
                   inParameter->MaxBPdist        = maxBPdist;
+                  inParameter->MaxBPdistLegacy  = args_info.max_bp_dist_legacy_flag;
                   inParameter->SourceStructure  = startStructureMinimum;
                   inParameter->TargetStructure  = endStructureMinimum;
 

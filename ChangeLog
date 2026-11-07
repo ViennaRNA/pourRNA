@@ -3,6 +3,9 @@
 		 of at most D base pairs from a direct path between start and final minimum (the paper's
 		 Delta_bp): |m - (s u t)| + |(s n t) - m| <= D. Same as --max-bp-dist-add=2*D, which counts
 		 moves instead of base pairs; the two options are mutually exclusive.
+		*src/StatePairCollector.*, src/pourRNA.ggo, src/pourRNA.cpp: --max-bp-dist-legacy decides
+		 with the base pair distance of the flooded basin instead of the discovered minimum, as
+		 pourRNA 1.0 did (one layer of basins beyond the bound); reproduces the published results.
 	BUGFIXES (rates and landscape):
 		*src/SC_PartitionFunction.*, src/StatePairCollector.cpp: --gas-constant is now used for the
 		 transition partition functions as well; rates mixed two kT values before, and --minh
